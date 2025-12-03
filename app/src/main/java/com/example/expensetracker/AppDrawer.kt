@@ -1,0 +1,57 @@
+package com.example.expensetracker
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Money
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+
+@Composable
+fun AppDrawer(
+    navController: NavController,
+    drawerState: DrawerState,
+    scope: CoroutineScope
+) {
+    ModalDrawerSheet {
+        NavigationDrawerItem(
+            icon = { Icon(Icons.Default.Home, contentDescription = null) },
+            label = { Text("Home") },
+            selected = navController.currentDestination?.route == "home",
+            onClick = { navController.navigate("home"); scope.launch { drawerState.close() } },
+            modifier = Modifier.padding(8.dp)
+        )
+        NavigationDrawerItem(
+            icon = { Icon(Icons.Default.AccountBalance, contentDescription = null) },
+            label = { Text("Accounts") },
+            selected = navController.currentDestination?.route == "accounts",
+            onClick = { navController.navigate("accounts"); scope.launch { drawerState.close() } },
+            modifier = Modifier.padding(8.dp)
+        )
+        NavigationDrawerItem(
+            icon = { Icon(Icons.Default.Category, contentDescription = null) },
+            label = { Text("Categories") },
+            selected = navController.currentDestination?.route == "categories",
+            onClick = { navController.navigate("categories"); scope.launch { drawerState.close() } },
+            modifier = Modifier.padding(8.dp)
+        )
+        NavigationDrawerItem(
+            icon = { Icon(Icons.Default.Money, contentDescription = null) },
+            label = { Text("Currencies") },
+            selected = navController.currentDestination?.route == "currencies",
+            onClick = { navController.navigate("currencies"); scope.launch { drawerState.close() } },
+            modifier = Modifier.padding(8.dp)
+        )
+    }
+}

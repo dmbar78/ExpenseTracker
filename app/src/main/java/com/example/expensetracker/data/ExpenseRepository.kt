@@ -1,0 +1,30 @@
+package com.example.expensetracker.data
+
+import kotlinx.coroutines.flow.Flow
+
+class ExpenseRepository(private val expenseDao: ExpenseDao) {
+
+    // Get all expenses as a Flow for live updates
+    val allExpenses: Flow<List<Expense>> = expenseDao.getAllExpenses()
+
+    fun getExpensesByType(type: String): Flow<List<Expense>> {
+        return expenseDao.getExpensesByType(type)
+    }
+
+    // Suspend function to insert an expense
+    suspend fun insert(expense: Expense) {
+        expenseDao.insert(expense)
+    }
+
+    suspend fun update(expense: Expense) {
+        expenseDao.update(expense)
+    }
+
+    fun getExpenseById(expenseId: Int): Flow<Expense> {
+        return expenseDao.getExpenseById(expenseId)
+    }
+
+    suspend fun delete(expense: Expense) {
+        expenseDao.delete(expense)
+    }
+}
