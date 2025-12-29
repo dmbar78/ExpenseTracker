@@ -1,6 +1,6 @@
 [versions]
 # Your core plugin versions are very modern and correct.
-agp = "8.13.1"
+agp = "8.13.2"
 kotlin = "2.0.0"
 navigationCompose = "2.7.7"
 
