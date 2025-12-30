@@ -14,17 +14,16 @@ This behavior points to **shared global back navigation** via `navigateBackFlow`
 
 ## Current hypothesis (what’s likely happening)
 1. I do a voice transfer first. That:
-   - Calls `processParsedTransfer`.
-   - Updates accounts twice.
-   - Each account update emits a global back event (`_navigateBackChannel.send(Unit)`).
+    - Calls `processParsedTransfer`.
+    - Updates accounts twice.
+    - Each account update emits a global back event (`_navigateBackChannel.send(Unit)`).
 
 2. Later I do a voice expense with unknown category:
-   - `processParsedExpense` navigates to `editExpense/0?...`.
+    - `processParsedExpense` navigates to `editExpense/0?...`.
 
-3. In `EditExpenseScreen` I choose **Create New...** and go to `AddCategoryScreen`.
+3. In `EditExpenseScreen` I choose **Create New...** to go to `AddCategoryScreen`.
 
-4. `AddCategoryScreen` saves:
-   - `insertCategory` sends another `_navigateBackChannel.send(Unit)`.
+4. Instead of opening `AddCategoryScreen` normally, the global back event causes `EditExpenseScreen` to close unexpectedly.
 
 5. Some screens (notably add/edit screens) have a `LaunchedEffect` collecting `navigateBackFlow` and calling `navController.popBackStack()`.
 
@@ -59,7 +58,7 @@ Since `updateAccount(...)` emits `navigateBackFlow`, a single voice transfer pro
 
 This mixes:
 - **Data-layer state changes** (update balances / save transfer)
-with
+  with
 - **Navigation side effects** (pop back)
 
 Because the event is global and collectors are screen-based, **any active collector can pop** in response to an unrelated event.
@@ -70,35 +69,27 @@ Make “data changes” and “navigation” clearly separated.
 
 ### Change set
 1. **Stop emitting global back events from data operations.**
-   - In `ExpenseViewModel`, remove `_navigateBackChannel.send(Unit)` from:
-     - `updateAccount` (critical for this bug)
-     - `updateTransfer`
-     - `updateExpense`
-   - (Optional, for consistency) also remove it from:
-     - `insertAccount`
-     - `insertCategory` / `updateCategory`
-     - `insertCurrency`
+    - In `ExpenseViewModel`, remove `_navigateBackChannel.send(Unit)` from:
+        - `updateAccount` (critical for this bug)
+        - `updateTransfer`
+        - `updateExpense`
+    - (Optional, for consistency) also remove it from:
+        - `insertAccount`
+        - `insertCategory` / `updateCategory`
+        - `insertCurrency`
 
 2. **Introduce explicit screen-only APIs that emit navigation.**
-   - Keep `*AndNavigateBack(...)` helpers for screens that want “save then close”.
-   - Example:
-     - `updateAccount(account)` → data only
-     - `updateAccountAndNavigateBack(account)` → data + `_navigateBackChannel.send(Unit)`
+    - Keep `*AndNavigateBack(...)` helpers for screens that want “save then close”.
+    - Example:
+        - `updateAccount(account)` → data only
+        - `updateAccountAndNavigateBack(account)` → data + `_navigateBackChannel.send(Unit)`
 
 3. **Fix voice transfer path to use non-navigating updates only.**
-   - In `processParsedTransfer`, update accounts using internal/no-nav methods.
+    - In `processParsedTransfer`, update accounts using internal/no-nav methods.
 
-4. **Ensure only dedicated add/edit screens collect `navigateBackFlow`.**
-   - No host/parent screen should collect it.
-   - Add/edit screens can do:
-
-```kotlin
-LaunchedEffect(Unit) {
-    viewModel.navigateBackFlow.collectLatest {
-        navController.popBackStack()
-    }
-}
-```
+4. **Remove `navigateBackFlow` completely.**
+    - UI-local `navController.popBackStack()` should be used everywhere.
+    - Each screen that wants to pop after save should call it directly after invoking the data operation.
 
 ## Expected behavior after fix
 - A preceding voice transfer should not “queue up” any back events.
