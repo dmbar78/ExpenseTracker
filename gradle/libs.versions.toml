@@ -2,18 +2,18 @@
 # Your core plugin versions are very modern and correct.
 agp = "8.13.2"
 kotlin = "2.0.0"
-navigationCompose = "2.7.7"
+navigationCompose = "2.9.6"
 
 # --- CONSOLIDATED LIBRARY VERSIONS ---
 # We will use one version for all lifecycle components. 2.8.0 is what you need.
-lifecycle = "2.8.0"
-room = "2.6.1"
-composeBom = "2024.09.00"
-activityCompose = "1.8.0"
-coreKtx = "1.10.1"
+lifecycle = "2.10.0"
+room = "2.8.4"
+composeBom = "2025.12.01"
+activityCompose = "1.12.2"
+coreKtx = "1.17.0"
 junit = "4.13.2"
-junitVersion = "1.1.5"
-espressoCore = "3.5.1"
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
 
 # --- DELETED REDUNDANT/CONFLICTING VERSIONS ---
 # Deleted: lifecycleRuntimeKtx = "2.6.1"
