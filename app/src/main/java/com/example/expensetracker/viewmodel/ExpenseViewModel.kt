@@ -148,8 +148,9 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val updatedSourceAccount = sourceAccount.copy(balance = sourceAccount.balance - parsedTransfer.amount)
         val updatedDestAccount = destAccount.copy(balance = destAccount.balance + parsedTransfer.amount)
 
-        updateAccount(updatedSourceAccount)
-        updateAccount(updatedDestAccount)
+        // Use internal update (no navigation) for voice transfer
+        updateAccountInternal(updatedSourceAccount)
+        updateAccountInternal(updatedDestAccount)
 
         val transferRecord = TransferHistory(
             sourceAccount = sourceAccount.name,
@@ -401,7 +402,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         }
 
         expenseRepository.update(expense)
-        _navigateBackChannel.send(Unit)
     }
 
     fun updateTransfer(transfer: TransferHistory) = viewModelScope.launch {
@@ -431,6 +431,24 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         _navigateBackChannel.send(Unit)
     }
 
+    // Data-only version used internally (e.g. voice transfer) - no navigation
+    private suspend fun updateAccountInternal(account: Account): Boolean {
+        if (account.name.isBlank() || account.currency.isBlank()) {
+            _errorChannel.send("Account Name and Currency cannot be empty.")
+            return false
+        }
+        return try {
+            accountRepository.update(account)
+            true
+        } catch (e: android.database.sqlite.SQLiteConstraintException) {
+            _errorChannel.send("Account with name '${account.name}' already exists.")
+            false
+        } catch (e: Exception) {
+            _errorChannel.send("An unknown error occurred.")
+            false
+        }
+    }
+
     fun insertAccount(account: Account) = viewModelScope.launch {
         if (account.name.isBlank() || account.currency.isBlank()) {
             _errorChannel.send("Account Name and Currency cannot be empty.")
@@ -447,17 +465,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun updateAccount(account: Account) = viewModelScope.launch {
-        if (account.name.isBlank() || account.currency.isBlank()) {
-            _errorChannel.send("Account Name and Currency cannot be empty.")
-            return@launch
-        }
-        try {
-            accountRepository.update(account)
+        if (updateAccountInternal(account)) {
             _navigateBackChannel.send(Unit)
-        } catch (e: android.database.sqlite.SQLiteConstraintException) {
-            _errorChannel.send("Account with name '${account.name}' already exists.")
-        } catch (e: Exception) {
-            _errorChannel.send("An unknown error occurred.")
         }
     }
 
