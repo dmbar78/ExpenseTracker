@@ -51,18 +51,12 @@ Refactor all monetary values (amounts, balances, transfer amounts) from `Double`
 - Pros: preserves decimal precision; avoids SQLite REAL rounding.
 - Cons: SQL numeric aggregation gets harder; likely prefer aggregations in Kotlin anyway.
 
-Alternative (stronger currency correctness): store money as `LONG` minor-units with currency-aware scale.
-- Pros: deterministic and fast for aggregation.
-- Cons: requires careful per-currency scaling and wider refactor.
-
-Non-goal option (not recommended): keep column type REAL and convert `Double <-> BigDecimal`.
-- This keeps floating-point persistence and undercuts the reason for the change.
-
 ### 2) Rounding/scale policy
 Define a consistent policy used everywhere:
 - Determine scale via currency (ISO `defaultFractionDigits`) with fallback.
 - Choose explicit `RoundingMode` (e.g., `HALF_UP`).
 - Ensure balances/amounts are normalized after operations.
+- I need to see in every money value 2 digits after the point for typical currencies (e.g., 10.00, not 10 or 10.0), even if the user entered a whole number.
 
 ### 3) Formatting & parsing
 - Replace `.toString()` with a consistent monetary formatter.
@@ -158,7 +152,8 @@ Because SQLite cannot truly `ALTER COLUMN` type, use create/copy/rename:
 
 ## Acceptance Criteria
 - No money field persists as `Double` in Room entities.
-- All money math uses `BigDecimal` with explicit rounding/scale.
+- All money math uses `BigDecimal` with explicit rounding/scale (2 digits after decimal).
 - App upgrades existing DB (v11) to new schema (v12) without data loss.
 - No navigation route passes money as float/double.
 - UI and voice flows can input and display amounts reliably.
+- If the bigger amounts are inputed, and parsed with commas, they are handled correctly. For example, "1,234.56" or "1234,56" depending on locale, shoud be treated in both cases as 1234.56.
