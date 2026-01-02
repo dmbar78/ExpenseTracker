@@ -20,6 +20,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.expensetracker.viewmodel.ExpenseViewModel
+import java.math.BigDecimal
+import java.math.RoundingMode
+
+/**
+ * Formats a BigDecimal for display with exactly 2 decimal places.
+ */
+private fun formatBalance(balance: BigDecimal): String {
+    return balance.setScale(2, RoundingMode.HALF_UP).toPlainString()
+}
 
 @Composable
 fun AccountsScreen(viewModel: ExpenseViewModel, navController: NavController) {
@@ -50,7 +59,7 @@ fun AccountsScreen(viewModel: ExpenseViewModel, navController: NavController) {
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text("${it.name} (${it.currency})")
-                            Text("Balance: ${it.balance}", style = MaterialTheme.typography.bodySmall)
+                            Text("Balance: ${formatBalance(it.balance)}", style = MaterialTheme.typography.bodySmall)
                         }
                         Button(onClick = { navController.navigate("editAccount/${it.id}") }) {
                             Text("Edit")

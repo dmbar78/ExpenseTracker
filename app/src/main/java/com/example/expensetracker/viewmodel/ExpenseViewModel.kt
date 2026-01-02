@@ -7,6 +7,8 @@ import com.example.expensetracker.data.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.Locale
 
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
@@ -145,8 +147,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             return
         }
 
-        val updatedSourceAccount = sourceAccount.copy(balance = sourceAccount.balance - parsedTransfer.amount)
-        val updatedDestAccount = destAccount.copy(balance = destAccount.balance + parsedTransfer.amount)
+        val updatedSourceAccount = sourceAccount.copy(balance = sourceAccount.balance.subtract(parsedTransfer.amount).setScale(2, RoundingMode.HALF_UP))
+        val updatedDestAccount = destAccount.copy(balance = destAccount.balance.add(parsedTransfer.amount).setScale(2, RoundingMode.HALF_UP))
 
         // Use internal update (no navigation) for voice transfer
         updateAccountInternal(updatedSourceAccount)
@@ -155,7 +157,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val transferRecord = TransferHistory(
             sourceAccount = sourceAccount.name,
             destinationAccount = destAccount.name,
-            amount = parsedTransfer.amount,
+            amount = parsedTransfer.amount.setScale(2, RoundingMode.HALF_UP),
             currency = sourceAccount.currency,
             comment = parsedTransfer.comment
         )
@@ -178,7 +180,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             val categoryName = if (categoryError) "Category Not Found" else parsedExpense.categoryName
             val expenseType = parsedExpense.type ?: if (_selectedTab.value == 0) "Expense" else "Income"
             
-            _navigateTo.send("editExpense/0?accountName=${accountName}&amount=${parsedExpense.amount}&categoryName=${categoryName}&type=${expenseType}&accountError=${accountError}&categoryError=${categoryError}")
+            _navigateTo.send("editExpense/0?accountName=${accountName}&amount=${parsedExpense.amount.toPlainString()}&categoryName=${categoryName}&type=${expenseType}&accountError=${accountError}&categoryError=${categoryError}")
             return
         }
 
@@ -186,7 +188,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
         val finalExpense = Expense(
             account = account.name,
-            amount = parsedExpense.amount,
+            amount = parsedExpense.amount.setScale(2, RoundingMode.HALF_UP),
             currency = account.currency,
             category = category.name,
             expenseDate = parsedExpense.expenseDate,
@@ -214,14 +216,15 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val sourceAccountStr = input.substring(transferIndex + 14, toIndex).trim()
         val restAfterTo = input.substring(toIndex + 4).trim()
 
-        val amountRegex = Regex("(\\d+\\.?\\d*|\\d*\\.?\\d+)")
+        // Regex that handles both dot and comma decimal separators, and thousand separators
+        val amountRegex = Regex("([\\d,]+\\.?\\d*|[\\d.]+,?\\d*)")
         val commentRegex = Regex("comment (.*)")
 
         val amountMatch = amountRegex.findAll(restAfterTo).lastOrNull()
         if (amountMatch == null) {
             return null
         }
-        val amount = amountMatch.value.toDoubleOrNull() ?: return null
+        val amount = parseMoneyAmount(amountMatch.value) ?: return null
 
         val destAccountStr: String
         val comment: String?
@@ -268,7 +271,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val accountAndAmountBlock = input.substring(typeIndex, categoryIndex).trim()
         val categoryStr = input.substring(categoryIndex + 10).trim()
 
-        val amountRegex = Regex("(\\d+\\.?\\d*|\\d*\\.?\\d+)")
+        // Regex that handles both dot and comma decimal separators, and thousand separators
+        val amountRegex = Regex("([\\d,]+\\.?\\d*|[\\d.]+,?\\d*)")
         val amountMatch = amountRegex.findAll(accountAndAmountBlock).lastOrNull()
 
         if (amountMatch == null) {
@@ -278,7 +282,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val accountStr = accountAndAmountBlock.substring(0, amountMatch.range.first).trim()
         val amountStr = amountMatch.value
 
-        val amount = amountStr.toDoubleOrNull()
+        val amount = parseMoneyAmount(amountStr)
         if (amount == null) {
             return null
         }
@@ -314,10 +318,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val account = allAccounts.value.find { it.name.equals(expense.account, ignoreCase = true) }
         if (account != null) {
             val restoredBalance = if (expense.type == "Expense") {
-                account.balance + expense.amount
+                account.balance.add(expense.amount)
             } else {
-                account.balance - expense.amount
-            }
+                account.balance.subtract(expense.amount)
+            }.setScale(2, RoundingMode.HALF_UP)
             val updatedAccount = account.copy(balance = restoredBalance)
             accountRepository.update(updatedAccount)
         }
@@ -329,8 +333,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val destAccount = allAccounts.value.find { it.name.equals(transfer.destinationAccount, ignoreCase = true) }
 
         if (sourceAccount != null && destAccount != null) {
-            val updatedSource = sourceAccount.copy(balance = sourceAccount.balance + transfer.amount)
-            val updatedDest = destAccount.copy(balance = destAccount.balance - transfer.amount)
+            val updatedSource = sourceAccount.copy(balance = sourceAccount.balance.add(transfer.amount).setScale(2, RoundingMode.HALF_UP))
+            val updatedDest = destAccount.copy(balance = destAccount.balance.subtract(transfer.amount).setScale(2, RoundingMode.HALF_UP))
             accountRepository.update(updatedSource)
             accountRepository.update(updatedDest)
         }
@@ -341,10 +345,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val account = allAccounts.value.find { it.name.equals(expense.account, ignoreCase = true) }
         if (account != null) {
             val newBalance = if (expense.type == "Expense") {
-                account.balance - expense.amount
+                account.balance.subtract(expense.amount)
             } else {
-                account.balance + expense.amount
-            }
+                account.balance.add(expense.amount)
+            }.setScale(2, RoundingMode.HALF_UP)
             val updatedAccount = account.copy(balance = newBalance)
             accountRepository.update(updatedAccount)
         }
@@ -365,15 +369,15 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             val account = allAccounts.value.find { it.name.equals(newAccountName, ignoreCase = true) }
             if (account != null) {
                 val balanceAfterRevert = if (originalExpense.type == "Expense") {
-                    account.balance + originalExpense.amount
+                    account.balance.add(originalExpense.amount)
                 } else {
-                    account.balance - originalExpense.amount
+                    account.balance.subtract(originalExpense.amount)
                 }
                 val finalBalance = if (expense.type == "Expense") {
-                    balanceAfterRevert - expense.amount
+                    balanceAfterRevert.subtract(expense.amount)
                 } else {
-                    balanceAfterRevert + expense.amount
-                }
+                    balanceAfterRevert.add(expense.amount)
+                }.setScale(2, RoundingMode.HALF_UP)
                 val updatedAccount = account.copy(balance = finalBalance)
                 accountRepository.update(updatedAccount)
             }
@@ -381,10 +385,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             val oldAccount = allAccounts.value.find { it.name.equals(oldAccountName, ignoreCase = true) }
             if (oldAccount != null) {
                 val restoredBalance = if (originalExpense.type == "Expense") {
-                    oldAccount.balance + originalExpense.amount
+                    oldAccount.balance.add(originalExpense.amount)
                 } else {
-                    oldAccount.balance - originalExpense.amount
-                }
+                    oldAccount.balance.subtract(originalExpense.amount)
+                }.setScale(2, RoundingMode.HALF_UP)
                 val restoredAccount = oldAccount.copy(balance = restoredBalance)
                 accountRepository.update(restoredAccount)
             }
@@ -392,10 +396,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             val newAccount = allAccounts.value.find { it.name.equals(newAccountName, ignoreCase = true) }
             if (newAccount != null) {
                 val newBalance = if (expense.type == "Expense") {
-                    newAccount.balance - expense.amount
+                    newAccount.balance.subtract(expense.amount)
                 } else {
-                    newAccount.balance + expense.amount
-                }
+                    newAccount.balance.add(expense.amount)
+                }.setScale(2, RoundingMode.HALF_UP)
                 val updatedNewAccount = newAccount.copy(balance = newBalance)
                 accountRepository.update(updatedNewAccount)
             }
@@ -411,8 +415,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val oldSourceAccount = allAccounts.value.find { it.name.equals(originalTransfer.sourceAccount, ignoreCase = true) }
         val oldDestAccount = allAccounts.value.find { it.name.equals(originalTransfer.destinationAccount, ignoreCase = true) }
         if (oldSourceAccount != null && oldDestAccount != null) {
-            val revertedSource = oldSourceAccount.copy(balance = oldSourceAccount.balance + originalTransfer.amount)
-            val revertedDest = oldDestAccount.copy(balance = oldDestAccount.balance - originalTransfer.amount)
+            val revertedSource = oldSourceAccount.copy(balance = oldSourceAccount.balance.add(originalTransfer.amount).setScale(2, RoundingMode.HALF_UP))
+            val revertedDest = oldDestAccount.copy(balance = oldDestAccount.balance.subtract(originalTransfer.amount).setScale(2, RoundingMode.HALF_UP))
             accountRepository.update(revertedSource)
             accountRepository.update(revertedDest)
         }
@@ -421,8 +425,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val newSourceAccount = allAccounts.value.find { it.name.equals(transfer.sourceAccount, ignoreCase = true) }
         val newDestAccount = allAccounts.value.find { it.name.equals(transfer.destinationAccount, ignoreCase = true) }
         if (newSourceAccount != null && newDestAccount != null) {
-            val updatedSource = newSourceAccount.copy(balance = newSourceAccount.balance - transfer.amount)
-            val updatedDest = newDestAccount.copy(balance = newDestAccount.balance + transfer.amount)
+            val updatedSource = newSourceAccount.copy(balance = newSourceAccount.balance.subtract(transfer.amount).setScale(2, RoundingMode.HALF_UP))
+            val updatedDest = newDestAccount.copy(balance = newDestAccount.balance.add(transfer.amount).setScale(2, RoundingMode.HALF_UP))
             accountRepository.update(updatedSource)
             accountRepository.update(updatedDest)
         }
@@ -517,5 +521,62 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     fun updateCurrency(currency: Currency) = viewModelScope.launch {
         currencyRepository.update(currency)
+    }
+
+    /**
+     * Parses a money amount string handling both dot and comma decimal separators.
+     * Supports formats like: "1234.56", "1,234.56", "1234,56", "1.234,56"
+     * Returns a BigDecimal with scale 2, or null if parsing fails.
+     */
+    private fun parseMoneyAmount(input: String): BigDecimal? {
+        if (input.isBlank()) return null
+        
+        val cleaned = input.trim()
+        
+        // Determine which format is used based on the last separator
+        val lastDotIndex = cleaned.lastIndexOf('.')
+        val lastCommaIndex = cleaned.lastIndexOf(',')
+        
+        val normalizedString = when {
+            // No separators - just digits
+            lastDotIndex == -1 && lastCommaIndex == -1 -> cleaned
+            // Only dots - could be decimal or thousand separator
+            lastCommaIndex == -1 -> {
+                // If there's only one dot and it has 1-2 digits after it, treat as decimal
+                val afterDot = cleaned.length - lastDotIndex - 1
+                if (cleaned.count { it == '.' } == 1 && afterDot <= 2) {
+                    cleaned // e.g., "1234.56"
+                } else {
+                    // Multiple dots or > 2 digits after = thousand separators, remove them
+                    cleaned.replace(".", "") // e.g., "1.234.567" -> "1234567"
+                }
+            }
+            // Only commas - could be decimal or thousand separator
+            lastDotIndex == -1 -> {
+                // If there's only one comma and it has 1-2 digits after it, treat as decimal
+                val afterComma = cleaned.length - lastCommaIndex - 1
+                if (cleaned.count { it == ',' } == 1 && afterComma <= 2) {
+                    cleaned.replace(',', '.') // e.g., "1234,56" -> "1234.56"
+                } else {
+                    // Multiple commas or > 2 digits after = thousand separators, remove them
+                    cleaned.replace(",", "") // e.g., "1,234,567" -> "1234567"
+                }
+            }
+            // Both dot and comma present
+            lastDotIndex > lastCommaIndex -> {
+                // Dot is the decimal separator (US format: 1,234.56)
+                cleaned.replace(",", "") // Remove thousand separators
+            }
+            else -> {
+                // Comma is the decimal separator (EU format: 1.234,56)
+                cleaned.replace(".", "").replace(',', '.')
+            }
+        }
+        
+        return try {
+            BigDecimal(normalizedString).setScale(2, RoundingMode.HALF_UP)
+        } catch (e: NumberFormatException) {
+            null
+        }
     }
 }

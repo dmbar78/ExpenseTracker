@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.expensetracker.data.Expense
 import com.example.expensetracker.viewmodel.ExpenseViewModel
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -28,7 +30,7 @@ fun EditExpenseScreen(
     viewModel: ExpenseViewModel,
     navController: NavController,
     initialAccountName: String? = null,
-    initialAmount: Double? = null,
+    initialAmount: BigDecimal? = null,
     initialCategoryName: String? = null,
     initialType: String? = null,
     initialAccountError: Boolean = false,
@@ -54,7 +56,7 @@ fun EditExpenseScreen(
     val categories by viewModel.allCategories.collectAsState()
 
     // State variables using rememberSaveable to persist across navigation
-    var amount by rememberSaveable { mutableStateOf(initialAmount?.toString() ?: "") }
+    var amount by rememberSaveable { mutableStateOf(initialAmount?.toPlainString() ?: "") }
     var accountName by rememberSaveable { mutableStateOf(initialAccountName ?: "") }
     var category by rememberSaveable { mutableStateOf(initialCategoryName ?: "") }
     var currency by rememberSaveable { mutableStateOf("") }
@@ -98,7 +100,7 @@ fun EditExpenseScreen(
     LaunchedEffect(expense) {
         if (expenseId > 0) {
             expense?.let {
-                amount = it.amount.toString()
+                amount = it.amount.toPlainString()
                 accountName = it.account
                 category = it.category
                 currency = it.currency
@@ -314,16 +316,17 @@ fun EditExpenseScreen(
                             categoryError = true
                             isValid = false
                         }
-                        if (amount.toDoubleOrNull() == null || amount.toDouble() <= 0) {
+                        val parsedAmount = parseMoneyInput(amount)
+                        if (parsedAmount == null || parsedAmount <= BigDecimal.ZERO) {
                             amountError = true
                             isValid = false
                         }
 
-                        if (isValid) {
+                        if (isValid && parsedAmount != null) {
                             val expenseToSave = if (expenseId > 0 && expense != null) {
                                 expense!!.copy(
                                     account = accountName,
-                                    amount = amount.toDouble(),
+                                    amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
                                     category = category,
                                     currency = currency,
                                     expenseDate = expenseDate,
@@ -333,7 +336,7 @@ fun EditExpenseScreen(
                                 // Create new expense
                                  Expense(
                                     account = accountName,
-                                    amount = amount.toDouble(),
+                                    amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
                                     category = category,
                                     currency = currency,
                                     expenseDate = expenseDate,
@@ -389,5 +392,62 @@ fun EditExpenseScreen(
                 }
             }
         )
+    }
+}
+
+/**
+ * Parses a money input string handling both dot and comma decimal separators.
+ * Supports formats like: "1234.56", "1,234.56", "1234,56", "1.234,56"
+ * Returns a BigDecimal or null if parsing fails.
+ */
+private fun parseMoneyInput(input: String): BigDecimal? {
+    if (input.isBlank()) return null
+    
+    val cleaned = input.trim()
+    
+    // Determine which format is used based on the last separator
+    val lastDotIndex = cleaned.lastIndexOf('.')
+    val lastCommaIndex = cleaned.lastIndexOf(',')
+    
+    val normalizedString = when {
+        // No separators - just digits
+        lastDotIndex == -1 && lastCommaIndex == -1 -> cleaned
+        // Only dots - could be decimal or thousand separator
+        lastCommaIndex == -1 -> {
+            // If there's only one dot and it has 1-2 digits after it, treat as decimal
+            val afterDot = cleaned.length - lastDotIndex - 1
+            if (cleaned.count { it == '.' } == 1 && afterDot <= 2) {
+                cleaned // e.g., "1234.56"
+            } else {
+                // Multiple dots or > 2 digits after = thousand separators, remove them
+                cleaned.replace(".", "") // e.g., "1.234.567" -> "1234567"
+            }
+        }
+        // Only commas - could be decimal or thousand separator
+        lastDotIndex == -1 -> {
+            // If there's only one comma and it has 1-2 digits after it, treat as decimal
+            val afterComma = cleaned.length - lastCommaIndex - 1
+            if (cleaned.count { it == ',' } == 1 && afterComma <= 2) {
+                cleaned.replace(',', '.') // e.g., "1234,56" -> "1234.56"
+            } else {
+                // Multiple commas or > 2 digits after = thousand separators, remove them
+                cleaned.replace(",", "") // e.g., "1,234,567" -> "1234567"
+            }
+        }
+        // Both dot and comma present
+        lastDotIndex > lastCommaIndex -> {
+            // Dot is the decimal separator (US format: 1,234.56)
+            cleaned.replace(",", "") // Remove thousand separators
+        }
+        else -> {
+            // Comma is the decimal separator (EU format: 1.234,56)
+            cleaned.replace(".", "").replace(',', '.')
+        }
+    }
+    
+    return try {
+        BigDecimal(normalizedString).setScale(2, RoundingMode.HALF_UP)
+    } catch (e: NumberFormatException) {
+        null
     }
 }

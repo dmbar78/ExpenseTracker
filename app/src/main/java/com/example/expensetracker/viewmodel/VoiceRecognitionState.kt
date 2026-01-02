@@ -2,11 +2,12 @@ package com.example.expensetracker.viewmodel
 
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Category
+import java.math.BigDecimal
 
 // Data class for parsed expense/income
 data class ParsedExpense(
     val accountName: String,
-    val amount: Double,
+    val amount: BigDecimal,
     val categoryName: String,
     var expenseDate: Long = System.currentTimeMillis(),
     val type: String // "Expense" or "Income"
@@ -16,7 +17,7 @@ data class ParsedExpense(
 data class ParsedTransfer(
     val sourceAccountName: String,
     val destAccountName: String,
-    val amount: Double,
+    val amount: BigDecimal,
     val comment: String? = null
 )
 

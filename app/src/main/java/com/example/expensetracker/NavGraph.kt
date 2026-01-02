@@ -10,6 +10,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.expensetracker.ui.screens.*
 import com.example.expensetracker.viewmodel.ExpenseViewModel
+import java.math.BigDecimal
 
 @Composable
 fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modifier: Modifier = Modifier) {
@@ -58,7 +59,7 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             arguments = listOf(
                 navArgument("expenseId") { type = NavType.IntType },
                 navArgument("accountName") { type = NavType.StringType; nullable = true },
-                navArgument("amount") { type = NavType.FloatType; defaultValue = 0f },
+                navArgument("amount") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("categoryName") { type = NavType.StringType; nullable = true },
                 navArgument("type") { type = NavType.StringType; nullable = true },
                 navArgument("accountError") { type = NavType.BoolType; defaultValue = false },
@@ -67,7 +68,8 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
         ) {
             val expenseId = it.arguments?.getInt("expenseId") ?: 0
             val accountName = it.arguments?.getString("accountName")
-            val amount = it.arguments?.getFloat("amount")?.toDouble()
+            val amountStr = it.arguments?.getString("amount")
+            val amount = amountStr?.let { str -> runCatching { BigDecimal(str) }.getOrNull() }
             val categoryName = it.arguments?.getString("categoryName")
             val type = it.arguments?.getString("type")
             val accountError = it.arguments?.getBoolean("accountError") ?: false

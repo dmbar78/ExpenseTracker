@@ -2,6 +2,7 @@ package com.example.expensetracker.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.math.BigDecimal
 
 @Entity(tableName = "transfer_history")
 data class TransferHistory(
@@ -10,7 +11,7 @@ data class TransferHistory(
     val date: Long = System.currentTimeMillis(),
     val sourceAccount: String,
     val destinationAccount: String,
-    val amount: Double,
+    val amount: BigDecimal,
     val currency: String,
     val comment: String? = null
 )
