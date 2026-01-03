@@ -163,7 +163,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         )
         transferHistoryRepository.insert(transferRecord)
 
-        _voiceRecognitionState.value = VoiceRecognitionState.Success("Transfer successfully completed.")
+        _voiceRecognitionState.value = VoiceRecognitionState.Success("Transfer from ${parsedTransfer.sourceAccountName} to ${parsedTransfer.destAccountName} for ${parsedTransfer.amount} ${sourceAccount.currency} successfully added.")
     }
 
     private suspend fun processParsedExpense(parsedExpense: ParsedExpense) {
@@ -195,7 +195,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             type = expenseType
         )
         insertExpense(finalExpense)
-        _voiceRecognitionState.value = VoiceRecognitionState.Success("Expense successfully added.")
+        _voiceRecognitionState.value = VoiceRecognitionState.Success("${expenseType} of ${finalExpense.amount} ${finalExpense.currency} on ${finalExpense.expenseDate} for account ${finalExpense.account} and category ${finalExpense.category} successfully added.")
     }
 
     fun reprocessTransfer(parsedTransfer: ParsedTransfer) {
