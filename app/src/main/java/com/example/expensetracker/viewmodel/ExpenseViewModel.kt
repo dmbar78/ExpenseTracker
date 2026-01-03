@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
@@ -195,7 +197,15 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             type = expenseType
         )
         insertExpense(finalExpense)
-        _voiceRecognitionState.value = VoiceRecognitionState.Success("${expenseType} of ${finalExpense.amount} ${finalExpense.currency} on ${finalExpense.expenseDate} for account ${finalExpense.account} and category ${finalExpense.category} successfully added.")
+        _voiceRecognitionState.value = VoiceRecognitionState.Success("${expenseType} of ${finalExpense.amount} ${finalExpense.currency} on ${formatDate(finalExpense.expenseDate)} for account ${finalExpense.account} and category ${finalExpense.category} successfully added.")
+    }
+
+    /**
+     * Formats a date (epoch millis) to dd.MM.yyyy for user-facing messages.
+     */
+    private fun formatDate(millis: Long): String {
+        val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+        return sdf.format(Date(millis))
     }
 
     fun reprocessTransfer(parsedTransfer: ParsedTransfer) {
