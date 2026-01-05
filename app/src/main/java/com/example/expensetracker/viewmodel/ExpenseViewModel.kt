@@ -124,7 +124,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 return@launch
             }
             
-            _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed("Couldn't recognize input: '$spokenText'. Please repeat in the format: Expense from/Income to <Account> <Amount> Category <Category> or Transfer from <Source Account> to <Destination Account> <Amount> Comment <Comment>")
+            _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed("Couldn't recognize input: '$spokenText'. Please repeat in the format: Expense from/Income to <Account> <Amount> Category <Category> or Transfer from <Source Account> to <Destination Account> <Amount>")
         }
     }
 
@@ -228,7 +228,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
         // Regex that handles both dot and comma decimal separators, and thousand separators
         val amountRegex = Regex("([\\d,]+\\.?\\d*|[\\d.]+,?\\d*)")
-        val commentRegex = Regex("comment (.*)")
 
         val amountMatch = amountRegex.findAll(restAfterTo).lastOrNull()
         if (amountMatch == null) {
@@ -236,19 +235,9 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         }
         val amount = parseMoneyAmount(amountMatch.value) ?: return null
 
-        val destAccountStr: String
-        val comment: String?
-
-        val commentMatch = commentRegex.find(restAfterTo)
-        if (commentMatch != null) {
-            destAccountStr = restAfterTo.substring(0, commentMatch.range.first).trim()
-            comment = commentMatch.groupValues[1].trim()
-        } else {
-            destAccountStr = restAfterTo.substring(0, amountMatch.range.first).trim()
-            comment = null
-        }
+        val destAccountStr = restAfterTo.substring(0, amountMatch.range.first).trim()
         
-        return ParsedTransfer(sourceAccountName = sourceAccountStr, destAccountName = destAccountStr, amount = amount, comment = comment)
+        return ParsedTransfer(sourceAccountName = sourceAccountStr, destAccountName = destAccountStr, amount = amount, comment = null)
     }
 
     private fun parseExpense(input: String): ParsedExpense? {
