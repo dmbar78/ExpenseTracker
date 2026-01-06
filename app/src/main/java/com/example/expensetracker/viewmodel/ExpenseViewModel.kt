@@ -1,6 +1,7 @@
 package com.example.expensetracker.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.expensetracker.data.*
@@ -10,10 +11,15 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
+
+    companion object {
+        private const val TAG = "VoiceDateParse"
+    }
 
     private val expenseRepository: ExpenseRepository
     private val accountRepository: AccountRepository
@@ -161,11 +167,12 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             destinationAccount = destAccount.name,
             amount = parsedTransfer.amount.setScale(2, RoundingMode.HALF_UP),
             currency = sourceAccount.currency,
-            comment = parsedTransfer.comment
+            comment = parsedTransfer.comment,
+            date = parsedTransfer.transferDate
         )
         transferHistoryRepository.insert(transferRecord)
 
-        _voiceRecognitionState.value = VoiceRecognitionState.Success("Transfer from ${parsedTransfer.sourceAccountName} to ${parsedTransfer.destAccountName} for ${parsedTransfer.amount} ${sourceAccount.currency} successfully added.")
+        _voiceRecognitionState.value = VoiceRecognitionState.Success("Transfer from ${parsedTransfer.sourceAccountName} to ${parsedTransfer.destAccountName} for ${parsedTransfer.amount} ${sourceAccount.currency} on ${formatDate(transferRecord.date)} successfully added.")
     }
 
     private suspend fun processParsedExpense(parsedExpense: ParsedExpense) {
@@ -218,7 +225,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val lowerInput = input.lowercase(Locale.ROOT)
         val transferIndex = lowerInput.indexOf("transfer from ")
         val toIndex = lowerInput.indexOf(" to ")
-        
+
         if (transferIndex == -1 || toIndex == -1 || !(transferIndex < toIndex)) {
             return null
         }
@@ -226,18 +233,23 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val sourceAccountStr = input.substring(transferIndex + 14, toIndex).trim()
         val restAfterTo = input.substring(toIndex + 4).trim()
 
+        // 1) Parse (and remove) trailing date first so day numbers (e.g., "1st") don't get treated as amount
+        val (restWithoutDate, transferDate) = parseTrailingSpokenDate(restAfterTo)
+
         // Regex that handles both dot and comma decimal separators, and thousand separators
         val amountRegex = Regex("([\\d,]+\\.?\\d*|[\\d.]+,?\\d*)")
-
-        val amountMatch = amountRegex.findAll(restAfterTo).lastOrNull()
-        if (amountMatch == null) {
-            return null
-        }
+        val amountMatch = amountRegex.findAll(restWithoutDate).lastOrNull() ?: return null
         val amount = parseMoneyAmount(amountMatch.value) ?: return null
 
-        val destAccountStr = restAfterTo.substring(0, amountMatch.range.first).trim()
-        
-        return ParsedTransfer(sourceAccountName = sourceAccountStr, destAccountName = destAccountStr, amount = amount, comment = null)
+        val destAccountStr = restWithoutDate.substring(0, amountMatch.range.first).trim()
+
+        return ParsedTransfer(
+            sourceAccountName = sourceAccountStr,
+            destAccountName = destAccountStr,
+            amount = amount,
+            transferDate = transferDate,
+            comment = null
+        )
     }
 
     private fun parseExpense(input: String): ParsedExpense? {
@@ -286,7 +298,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             return null
         }
 
-        return ParsedExpense(accountName = accountStr, amount = amount, categoryName = categoryStr, type = type)
+        // Parse optional trailing date from category string
+        val (finalCategoryStr, parsedDate) = parseTrailingSpokenDate(categoryStr)
+        val expenseDate = parsedDate ?: System.currentTimeMillis()
+
+        return ParsedExpense(accountName = accountStr, amount = amount, categoryName = finalCategoryStr, type = type, expenseDate = expenseDate)
     }
 
     fun reprocessExpenseWithNewCategory(newCategoryName: String) {
@@ -577,5 +593,167 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         } catch (e: NumberFormatException) {
             null
         }
+    }
+
+    /**
+     * Parses a trailing date phrase from spoken text.
+     * Supports formats like:
+     * - "January 1", "January 1st", "January first"
+     * - "1st of January", "first of January"
+     * - "1 January", "1st January"
+     * Returns a Pair of (text with date removed, epoch millis) or (original text, default millis) if no date found.
+     */
+    private fun parseTrailingSpokenDate(input: String, defaultMillis: Long = System.currentTimeMillis()): Pair<String, Long> {
+        val trimmed = input.trim()
+        if (trimmed.isBlank()) {
+            Log.d(TAG, "parseTrailingSpokenDate: blank input; returning defaultMillis=$defaultMillis")
+            return Pair(trimmed, defaultMillis)
+        }
+
+        // Month names (English)
+        val months = listOf(
+            "january", "february", "march", "april", "may", "june",
+            "july", "august", "september", "october", "november", "december"
+        )
+
+        // Ordinal words to numbers
+        val ordinalWords = mapOf(
+            "first" to 1, "second" to 2, "third" to 3, "fourth" to 4, "fifth" to 5,
+            "sixth" to 6, "seventh" to 7, "eighth" to 8, "ninth" to 9, "tenth" to 10,
+            "eleventh" to 11, "twelfth" to 12, "thirteenth" to 13, "fourteenth" to 14,
+            "fifteenth" to 15, "sixteenth" to 16, "seventeenth" to 17, "eighteenth" to 18,
+            "nineteenth" to 19, "twentieth" to 20, "twenty first" to 21, "twenty-first" to 21,
+            "twenty second" to 22, "twenty-second" to 22, "twenty third" to 23, "twenty-third" to 23,
+            "twenty fourth" to 24, "twenty-fourth" to 24, "twenty fifth" to 25, "twenty-fifth" to 25,
+            "twenty sixth" to 26, "twenty-sixth" to 26, "twenty seventh" to 27, "twenty-seventh" to 27,
+            "twenty eighth" to 28, "twenty-eighth" to 28, "twenty ninth" to 29, "twenty-ninth" to 29,
+            "thirtieth" to 30, "thirty first" to 31, "thirty-first" to 31
+        )
+
+        val lowerInput = trimmed.lowercase(Locale.ROOT)
+
+        Log.d(TAG, "parseTrailingSpokenDate: input='$input' trimmed='$trimmed' lower='$lowerInput' defaultMillis=$defaultMillis (${formatDate(defaultMillis)})")
+
+        // Try to find a date pattern at the end
+        // Pattern 1: "<month> <day>" e.g., "January 1", "January 1st", "January first"
+        // Pattern 2: "<day> of <month>" e.g., "1st of January", "first of January"
+        // Pattern 3: "<day> <month>" e.g., "1 January", "1st January"
+
+        for ((monthIndex, monthName) in months.withIndex()) {
+            Log.d(TAG, "--- Month loop: month='$monthName' index=$monthIndex")
+            // Pattern 1: month followed by day at end
+            val monthDayRegex = Regex("\\s+$monthName\\s+(\\d{1,2})(?:st|nd|rd|th)?\\s*$", RegexOption.IGNORE_CASE)
+            val monthDayMatch = monthDayRegex.find(lowerInput)
+            Log.d(TAG, "Pattern1 <month> <day>: regex='${monthDayRegex.pattern}' match='${monthDayMatch?.value}'")
+            if (monthDayMatch != null) {
+                val day = monthDayMatch.groupValues[1].toIntOrNull()
+                Log.d(TAG, "Pattern1 parse: rawDay='${monthDayMatch.groupValues[1]}' parsedDay=$day")
+                if (day != null && day in 1..31) {
+                    val strippedText = trimmed.substring(0, monthDayMatch.range.first).trim()
+                    val millis = buildDateMillis(monthIndex, day)
+                    Log.d(TAG, "Pattern1 MATCH: month='$monthName' day=$day -> millis=$millis (${formatDate(millis)}) strippedText='$strippedText'")
+                    return Pair(strippedText, millis)
+                }
+            }
+
+            // Pattern 1b: month followed by ordinal word at end
+            var pattern1bMatched = false
+            for ((ordinalWord, day) in ordinalWords) {
+                val pattern = Regex("\\s+$monthName\\s+$ordinalWord\\s*$", RegexOption.IGNORE_CASE)
+                val match = pattern.find(lowerInput)
+                if (match != null) {
+                    val strippedText = trimmed.substring(0, match.range.first).trim()
+                    val millis = buildDateMillis(monthIndex, day)
+                    Log.d(TAG, "Pattern1b <month> <ordinal>: MATCH month='$monthName' ordinal='$ordinalWord' day=$day -> millis=$millis (${formatDate(millis)}) strippedText='$strippedText'")
+                    pattern1bMatched = true
+                    return Pair(strippedText, millis)
+                }
+            }
+            if (!pattern1bMatched) {
+                Log.d(TAG, "Pattern1b <month> <ordinal>: no match")
+            }
+
+            // Pattern 2: "<day> of <month>" at end
+            val dayOfMonthRegex = Regex("\\s+(\\d{1,2})(?:st|nd|rd|th)?\\s+of\\s+$monthName\\s*$", RegexOption.IGNORE_CASE)
+            val dayOfMonthMatch = dayOfMonthRegex.find(lowerInput)
+            Log.d(TAG, "Pattern2 <day> of <month>: regex='${dayOfMonthRegex.pattern}' match='${dayOfMonthMatch?.value}'")
+            if (dayOfMonthMatch != null) {
+                val day = dayOfMonthMatch.groupValues[1].toIntOrNull()
+                Log.d(TAG, "Pattern2 parse: rawDay='${dayOfMonthMatch.groupValues[1]}' parsedDay=$day")
+                if (day != null && day in 1..31) {
+                    val strippedText = trimmed.substring(0, dayOfMonthMatch.range.first).trim()
+                    val millis = buildDateMillis(monthIndex, day)
+                    Log.d(TAG, "Pattern2 MATCH: month='$monthName' day=$day -> millis=$millis (${formatDate(millis)}) strippedText='$strippedText'")
+                    return Pair(strippedText, millis)
+                }
+            }
+
+            // Pattern 2b: ordinal word + "of" + month at end
+            var pattern2bMatched = false
+            for ((ordinalWord, day) in ordinalWords) {
+                val pattern = Regex("\\s+$ordinalWord\\s+of\\s+$monthName\\s*$", RegexOption.IGNORE_CASE)
+                val match = pattern.find(lowerInput)
+                if (match != null) {
+                    val strippedText = trimmed.substring(0, match.range.first).trim()
+                    val millis = buildDateMillis(monthIndex, day)
+                    Log.d(TAG, "Pattern2b <ordinal> of <month>: MATCH month='$monthName' ordinal='$ordinalWord' day=$day -> millis=$millis (${formatDate(millis)}) strippedText='$strippedText'")
+                    pattern2bMatched = true
+                    return Pair(strippedText, millis)
+                }
+            }
+            if (!pattern2bMatched) {
+                Log.d(TAG, "Pattern2b <ordinal> of <month>: no match")
+            }
+
+            // Pattern 3: "<day> <month>" at end (no "of")
+            val dayMonthRegex = Regex("\\s+(\\d{1,2})(?:st|nd|rd|th)?\\s+$monthName\\s*$", RegexOption.IGNORE_CASE)
+            val dayMonthMatch = dayMonthRegex.find(lowerInput)
+            Log.d(TAG, "Pattern3 <day> <month>: regex='${dayMonthRegex.pattern}' match='${dayMonthMatch?.value}'")
+            if (dayMonthMatch != null) {
+                val day = dayMonthMatch.groupValues[1].toIntOrNull()
+                Log.d(TAG, "Pattern3 parse: rawDay='${dayMonthMatch.groupValues[1]}' parsedDay=$day")
+                if (day != null && day in 1..31) {
+                    val strippedText = trimmed.substring(0, dayMonthMatch.range.first).trim()
+                    val millis = buildDateMillis(monthIndex, day)
+                    Log.d(TAG, "Pattern3 MATCH: month='$monthName' day=$day -> millis=$millis (${formatDate(millis)}) strippedText='$strippedText'")
+                    return Pair(strippedText, millis)
+                }
+            }
+
+            // Pattern 3b: ordinal word + month at end (no "of")
+            var pattern3bMatched = false
+            for ((ordinalWord, day) in ordinalWords) {
+                val pattern = Regex("\\s+$ordinalWord\\s+$monthName\\s*$", RegexOption.IGNORE_CASE)
+                val match = pattern.find(lowerInput)
+                if (match != null) {
+                    val strippedText = trimmed.substring(0, match.range.first).trim()
+                    val millis = buildDateMillis(monthIndex, day)
+                    Log.d(TAG, "Pattern3b <ordinal> <month>: MATCH month='$monthName' ordinal='$ordinalWord' day=$day -> millis=$millis (${formatDate(millis)}) strippedText='$strippedText'")
+                    pattern3bMatched = true
+                    return Pair(strippedText, millis)
+                }
+            }
+            if (!pattern3bMatched) {
+                Log.d(TAG, "Pattern3b <ordinal> <month>: no match")
+            }
+        }
+
+        // No date pattern found
+        Log.d(TAG, "No date pattern found; returning original text and defaultMillis=$defaultMillis (${formatDate(defaultMillis)})")
+        return Pair(trimmed, defaultMillis)
+    }
+
+    /**
+     * Builds epoch millis for a given month (0-based) and day in the current year.
+     */
+    private fun buildDateMillis(month: Int, day: Int): Long {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.MONTH, month)
+        calendar.set(Calendar.DAY_OF_MONTH, day)
+        calendar.set(Calendar.HOUR_OF_DAY, 12) // Noon to avoid timezone edge cases
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
     }
 }

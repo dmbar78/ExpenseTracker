@@ -18,6 +18,7 @@ data class ParsedTransfer(
     val sourceAccountName: String,
     val destAccountName: String,
     val amount: BigDecimal,
+    val transferDate: Long = System.currentTimeMillis(),
     val comment: String? = null
 )
 
