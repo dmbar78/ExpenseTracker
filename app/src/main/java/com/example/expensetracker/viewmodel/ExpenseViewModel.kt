@@ -179,7 +179,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val accounts = allAccounts.first() // Wait for data to be loaded, but proceed even if empty
         val account = accounts.find { it.name.equals(parsedExpense.accountName, ignoreCase = true) }
         
-        val categories = allCategories.first() // Wait for data to be loaded, but proceed even if empty
+        // Wait for categories to be loaded (Default is pre-populated)
+        val categories = allCategories.first { it.isNotEmpty() }
         val category = categories.find { it.name.equals(parsedExpense.categoryName, ignoreCase = true) }
 
         if (account == null || category == null) {
