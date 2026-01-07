@@ -168,7 +168,7 @@ interface LedgerDao {
 
         // Validation: Currency mismatch check
         if (sourceAcc.currency != destAcc.currency) {
-            throw IllegalArgumentException("Transfer between accounts with different currencies is not supported.")
+            throw IllegalArgumentException("Currency mismatch: transfer between accounts with different currencies is not supported.")
         }
 
         val amount = transfer.amount.setScale(2, RoundingMode.HALF_UP)
@@ -207,7 +207,7 @@ interface LedgerDao {
 
         // Validation: Currency mismatch check
         if (newSourceAcc.currency != newDestAcc.currency) {
-            throw IllegalArgumentException("Transfer between accounts with different currencies is not supported.")
+            throw IllegalArgumentException("Currency mismatch: transfer between accounts with different currencies is not supported.")
         }
 
         // Build per-account delta map (case-insensitive keys)
