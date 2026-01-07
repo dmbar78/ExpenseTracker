@@ -147,16 +147,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             _voiceRecognitionState.value = VoiceRecognitionState.TransferAccountsNotFound(parsedTransfer, accounts)
             return
         }
-        
-        if (sourceAccount.name.equals(destAccount.name, ignoreCase = true)) {
-            _voiceRecognitionState.value = VoiceRecognitionState.SameAccountTransfer("Source and Destination Accounts can't be the same! Please, repeat transaction with correct values.")
-            return
-        }
-
-        if (sourceAccount.currency != destAccount.currency) {
-            _voiceRecognitionState.value = VoiceRecognitionState.TransferCurrencyMismatch("Transfer between accounts with different currencies is not supported.")
-            return
-        }
 
         val transferRecord = TransferHistory(
             sourceAccount = sourceAccount.name,
@@ -166,9 +156,22 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             comment = parsedTransfer.comment,
             date = parsedTransfer.transferDate
         )
-        ledgerRepository.addTransfer(transferRecord)
 
-        _voiceRecognitionState.value = VoiceRecognitionState.Success("Transfer from ${parsedTransfer.sourceAccountName} to ${parsedTransfer.destAccountName} for ${parsedTransfer.amount} ${sourceAccount.currency} on ${formatDate(transferRecord.date)} successfully added.")
+        try {
+            ledgerRepository.addTransfer(transferRecord)
+            _voiceRecognitionState.value = VoiceRecognitionState.Success("Transfer from ${parsedTransfer.sourceAccountName} to ${parsedTransfer.destAccountName} for ${parsedTransfer.amount} ${sourceAccount.currency} on ${formatDate(transferRecord.date)} successfully added.")
+        } catch (e: IllegalArgumentException) {
+            val message = e.message ?: "Invalid transfer."
+            if (message.contains("same", ignoreCase = true)) {
+                _voiceRecognitionState.value = VoiceRecognitionState.SameAccountTransfer(message)
+            } else if (message.contains("currency", ignoreCase = true)) {
+                _voiceRecognitionState.value = VoiceRecognitionState.TransferCurrencyMismatch(message)
+            } else {
+                _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed(message)
+            }
+        } catch (e: Exception) {
+            _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed(e.message ?: "Failed to add transfer.")
+        }
     }
 
     private suspend fun processParsedExpense(parsedExpense: ParsedExpense) {
@@ -371,6 +374,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         try {
             ledgerRepository.updateTransfer(transfer)
             _navigateBackChannel.send(Unit)
+        } catch (e: IllegalArgumentException) {
+            _errorChannel.send(e.message ?: "Invalid transfer.")
         } catch (e: IllegalStateException) {
             _errorChannel.send(e.message ?: "Failed to update transfer.")
         }

@@ -24,6 +24,7 @@ import java.util.*
 @Composable
 fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navController: NavController) {
     var showDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(transferId) {
         viewModel.loadTransfer(transferId)
@@ -33,6 +34,13 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
     LaunchedEffect(Unit) {
         viewModel.navigateBackFlow.collectLatest {
             navController.popBackStack()
+        }
+    }
+
+    // Collect error messages from ViewModel and show as Snackbar
+    LaunchedEffect(Unit) {
+        viewModel.errorFlow.collect { message ->
+            snackbarHostState.showSnackbar(message)
         }
     }
 
@@ -74,7 +82,10 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
         }
     }
 
-    LazyColumn(modifier = Modifier.padding(16.dp)) {
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        LazyColumn(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
         item {
             Text("Edit Transfer", style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(16.dp))
@@ -223,6 +234,7 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                 }
             }
         }
+    }
     }
 
     if (showDialog) {

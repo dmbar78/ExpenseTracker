@@ -158,13 +158,17 @@ interface LedgerDao {
         val destAcc = getAccountByNameOnce(transfer.destinationAccount)
             ?: throw IllegalStateException("Destination account '${transfer.destinationAccount}' not found")
 
-        // Handle same-account edge case (source == dest): no balance change needed
         val sourceKey = transfer.sourceAccount.lowercase()
         val destKey = transfer.destinationAccount.lowercase()
 
+        // Validation: Same account check
         if (sourceKey == destKey) {
-            // Same account - balance unchanged, just record transfer
-            return insertTransferRow(transfer)
+            throw IllegalArgumentException("Source and Destination Accounts can't be the same! Please, repeat transaction with correct values.")
+        }
+
+        // Validation: Currency mismatch check
+        if (sourceAcc.currency != destAcc.currency) {
+            throw IllegalArgumentException("Transfer between accounts with different currencies is not supported.")
         }
 
         val amount = transfer.amount.setScale(2, RoundingMode.HALF_UP)
@@ -187,15 +191,32 @@ interface LedgerDao {
         val original = getTransferByIdOnce(updated.id)
             ?: throw IllegalStateException("Transfer with id=${updated.id} not found")
 
+        // Fetch and validate new accounts
+        val newSourceAcc = getAccountByNameOnce(updated.sourceAccount)
+            ?: throw IllegalStateException("Source account '${updated.sourceAccount}' not found")
+        val newDestAcc = getAccountByNameOnce(updated.destinationAccount)
+            ?: throw IllegalStateException("Destination account '${updated.destinationAccount}' not found")
+
+        val newSourceKey = updated.sourceAccount.lowercase()
+        val newDestKey = updated.destinationAccount.lowercase()
+
+        // Validation: Same account check
+        if (newSourceKey == newDestKey) {
+            throw IllegalArgumentException("Source and Destination Accounts can't be the same! Please, repeat transaction with correct values.")
+        }
+
+        // Validation: Currency mismatch check
+        if (newSourceAcc.currency != newDestAcc.currency) {
+            throw IllegalArgumentException("Transfer between accounts with different currencies is not supported.")
+        }
+
         // Build per-account delta map (case-insensitive keys)
         val deltas = mutableMapOf<String, BigDecimal>()
 
         val oldSourceKey = original.sourceAccount.lowercase()
         val oldDestKey = original.destinationAccount.lowercase()
-        val newSourceKey = updated.sourceAccount.lowercase()
-        val newDestKey = updated.destinationAccount.lowercase()
 
-        // Revert original transfer (unless source==dest)
+        // Revert original transfer (unless source==dest - which shouldn't exist but handle gracefully)
         if (oldSourceKey != oldDestKey) {
             // Add back to old source
             deltas[oldSourceKey] = (deltas[oldSourceKey] ?: BigDecimal.ZERO).add(original.amount)
@@ -203,13 +224,11 @@ interface LedgerDao {
             deltas[oldDestKey] = (deltas[oldDestKey] ?: BigDecimal.ZERO).subtract(original.amount)
         }
 
-        // Apply new transfer (unless source==dest)
-        if (newSourceKey != newDestKey) {
-            // Subtract from new source
-            deltas[newSourceKey] = (deltas[newSourceKey] ?: BigDecimal.ZERO).subtract(updated.amount)
-            // Add to new dest
-            deltas[newDestKey] = (deltas[newDestKey] ?: BigDecimal.ZERO).add(updated.amount)
-        }
+        // Apply new transfer
+        // Subtract from new source
+        deltas[newSourceKey] = (deltas[newSourceKey] ?: BigDecimal.ZERO).subtract(updated.amount)
+        // Add to new dest
+        deltas[newDestKey] = (deltas[newDestKey] ?: BigDecimal.ZERO).add(updated.amount)
 
         // Apply merged deltas to each affected account
         for ((key, delta) in deltas) {
