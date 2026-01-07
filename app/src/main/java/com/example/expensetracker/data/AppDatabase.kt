@@ -18,6 +18,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun currencyDao(): CurrencyDao
     abstract fun keywordDao(): KeywordDao
     abstract fun transferHistoryDao(): TransferHistoryDao
+    abstract fun ledgerDao(): LedgerDao
 
     companion object {
         @Volatile

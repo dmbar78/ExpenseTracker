@@ -27,6 +27,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val categoryRepository: CategoryRepository
     private val currencyRepository: CurrencyRepository
     private val transferHistoryRepository: TransferHistoryRepository
+    private val ledgerRepository: LedgerRepository
 
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab
@@ -82,6 +83,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         categoryRepository = CategoryRepository(database.categoryDao())
         currencyRepository = CurrencyRepository(database.currencyDao())
         transferHistoryRepository = TransferHistoryRepository(database.transferHistoryDao())
+        ledgerRepository = LedgerRepository(database.ledgerDao())
 
         allExpenses = expenseRepository.getExpensesByType("Expense").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allIncomes = expenseRepository.getExpensesByType("Income").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -156,13 +158,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             return
         }
 
-        val updatedSourceAccount = sourceAccount.copy(balance = sourceAccount.balance.subtract(parsedTransfer.amount).setScale(2, RoundingMode.HALF_UP))
-        val updatedDestAccount = destAccount.copy(balance = destAccount.balance.add(parsedTransfer.amount).setScale(2, RoundingMode.HALF_UP))
-
-        // Use internal update (no navigation) for voice transfer
-        updateAccountInternal(updatedSourceAccount)
-        updateAccountInternal(updatedDestAccount)
-
         val transferRecord = TransferHistory(
             sourceAccount = sourceAccount.name,
             destinationAccount = destAccount.name,
@@ -171,7 +166,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             comment = parsedTransfer.comment,
             date = parsedTransfer.transferDate
         )
-        transferHistoryRepository.insert(transferRecord)
+        ledgerRepository.addTransfer(transferRecord)
 
         _voiceRecognitionState.value = VoiceRecognitionState.Success("Transfer from ${parsedTransfer.sourceAccountName} to ${parsedTransfer.destAccountName} for ${parsedTransfer.amount} ${sourceAccount.currency} on ${formatDate(transferRecord.date)} successfully added.")
     }
@@ -341,143 +336,44 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun deleteExpense(expense: Expense) = viewModelScope.launch {
-        val account = allAccounts.value.find { it.name.equals(expense.account, ignoreCase = true) }
-        if (account != null) {
-            val restoredBalance = if (expense.type == "Expense") {
-                account.balance.add(expense.amount)
-            } else {
-                account.balance.subtract(expense.amount)
-            }.setScale(2, RoundingMode.HALF_UP)
-            val updatedAccount = account.copy(balance = restoredBalance)
-            accountRepository.update(updatedAccount)
+        try {
+            ledgerRepository.deleteExpense(expense.id)
+        } catch (e: IllegalStateException) {
+            _errorChannel.send(e.message ?: "Failed to delete expense.")
         }
-        expenseRepository.delete(expense)
     }
 
     fun deleteTransfer(transfer: TransferHistory) = viewModelScope.launch {
-        val sourceAccount = allAccounts.value.find { it.name.equals(transfer.sourceAccount, ignoreCase = true) }
-        val destAccount = allAccounts.value.find { it.name.equals(transfer.destinationAccount, ignoreCase = true) }
-
-        if (sourceAccount != null && destAccount != null) {
-            val updatedSource = sourceAccount.copy(balance = sourceAccount.balance.add(transfer.amount).setScale(2, RoundingMode.HALF_UP))
-            val updatedDest = destAccount.copy(balance = destAccount.balance.subtract(transfer.amount).setScale(2, RoundingMode.HALF_UP))
-            accountRepository.update(updatedSource)
-            accountRepository.update(updatedDest)
+        try {
+            ledgerRepository.deleteTransfer(transfer.id)
+        } catch (e: IllegalStateException) {
+            _errorChannel.send(e.message ?: "Failed to delete transfer.")
         }
-        transferHistoryRepository.delete(transfer)
     }
 
     fun insertExpense(expense: Expense) = viewModelScope.launch {
-        val account = allAccounts.value.find { it.name.equals(expense.account, ignoreCase = true) }
-        if (account != null) {
-            val newBalance = if (expense.type == "Expense") {
-                account.balance.subtract(expense.amount)
-            } else {
-                account.balance.add(expense.amount)
-            }.setScale(2, RoundingMode.HALF_UP)
-            val updatedAccount = account.copy(balance = newBalance)
-            accountRepository.update(updatedAccount)
+        try {
+            ledgerRepository.addExpense(expense)
+        } catch (e: IllegalStateException) {
+            _errorChannel.send(e.message ?: "Failed to add expense.")
         }
-        expenseRepository.insert(expense)
     }
 
     fun updateExpense(expense: Expense) = viewModelScope.launch {
-        val originalExpense = selectedExpense.value
-        if (originalExpense == null) {
-            _errorChannel.send("Could not find original expense to update.")
-            return@launch
+        try {
+            ledgerRepository.updateExpense(expense)
+        } catch (e: IllegalStateException) {
+            _errorChannel.send(e.message ?: "Failed to update expense.")
         }
-
-        val newAccountName = expense.account
-        val oldAccountName = originalExpense.account
-
-        if (newAccountName.equals(oldAccountName, ignoreCase = true)) {
-            val account = allAccounts.value.find { it.name.equals(newAccountName, ignoreCase = true) }
-            if (account != null) {
-                val balanceAfterRevert = if (originalExpense.type == "Expense") {
-                    account.balance.add(originalExpense.amount)
-                } else {
-                    account.balance.subtract(originalExpense.amount)
-                }
-                val finalBalance = if (expense.type == "Expense") {
-                    balanceAfterRevert.subtract(expense.amount)
-                } else {
-                    balanceAfterRevert.add(expense.amount)
-                }.setScale(2, RoundingMode.HALF_UP)
-                val updatedAccount = account.copy(balance = finalBalance)
-                accountRepository.update(updatedAccount)
-            }
-        } else {
-            val oldAccount = allAccounts.value.find { it.name.equals(oldAccountName, ignoreCase = true) }
-            if (oldAccount != null) {
-                val restoredBalance = if (originalExpense.type == "Expense") {
-                    oldAccount.balance.add(originalExpense.amount)
-                } else {
-                    oldAccount.balance.subtract(originalExpense.amount)
-                }.setScale(2, RoundingMode.HALF_UP)
-                val restoredAccount = oldAccount.copy(balance = restoredBalance)
-                accountRepository.update(restoredAccount)
-            }
-
-            val newAccount = allAccounts.value.find { it.name.equals(newAccountName, ignoreCase = true) }
-            if (newAccount != null) {
-                val newBalance = if (expense.type == "Expense") {
-                    newAccount.balance.subtract(expense.amount)
-                } else {
-                    newAccount.balance.add(expense.amount)
-                }.setScale(2, RoundingMode.HALF_UP)
-                val updatedNewAccount = newAccount.copy(balance = newBalance)
-                accountRepository.update(updatedNewAccount)
-            }
-        }
-
-        expenseRepository.update(expense)
     }
 
     fun updateTransfer(transfer: TransferHistory) = viewModelScope.launch {
-        val originalTransfer = selectedTransfer.value ?: return@launch
-
-        // Check if balance-affecting fields changed
-        val balanceFieldsChanged =
-            !originalTransfer.sourceAccount.equals(transfer.sourceAccount, ignoreCase = true) ||
-            !originalTransfer.destinationAccount.equals(transfer.destinationAccount, ignoreCase = true) ||
-            originalTransfer.amount.compareTo(transfer.amount) != 0
-
-        // If only date/comment changed (or nothing changed), just update the transfer record
-        if (!balanceFieldsChanged) {
-            transferHistoryRepository.update(transfer)
+        try {
+            ledgerRepository.updateTransfer(transfer)
             _navigateBackChannel.send(Unit)
-            return@launch
+        } catch (e: IllegalStateException) {
+            _errorChannel.send(e.message ?: "Failed to update transfer.")
         }
-
-        // Balance-affecting change: compute deltas per account from a single baseline snapshot
-        val accounts = allAccounts.value
-        val deltas = mutableMapOf<String, BigDecimal>() // accountName (lowercase) -> net delta
-
-        // Revert original transfer effect: +amount to old source, -amount to old dest
-        val oldSourceKey = originalTransfer.sourceAccount.lowercase(Locale.ROOT)
-        val oldDestKey = originalTransfer.destinationAccount.lowercase(Locale.ROOT)
-        deltas[oldSourceKey] = (deltas[oldSourceKey] ?: BigDecimal.ZERO).add(originalTransfer.amount)
-        deltas[oldDestKey] = (deltas[oldDestKey] ?: BigDecimal.ZERO).subtract(originalTransfer.amount)
-
-        // Apply new transfer effect: -amount to new source, +amount to new dest
-        val newSourceKey = transfer.sourceAccount.lowercase(Locale.ROOT)
-        val newDestKey = transfer.destinationAccount.lowercase(Locale.ROOT)
-        deltas[newSourceKey] = (deltas[newSourceKey] ?: BigDecimal.ZERO).subtract(transfer.amount)
-        deltas[newDestKey] = (deltas[newDestKey] ?: BigDecimal.ZERO).add(transfer.amount)
-
-        // Apply merged deltas to each affected account (handles source==dest and overlaps)
-        for ((accountKey, delta) in deltas) {
-            if (delta.compareTo(BigDecimal.ZERO) == 0) continue // no net change
-            val account = accounts.find { it.name.lowercase(Locale.ROOT) == accountKey } ?: continue
-            val updatedAccount = account.copy(
-                balance = account.balance.add(delta).setScale(2, RoundingMode.HALF_UP)
-            )
-            accountRepository.update(updatedAccount)
-        }
-
-        transferHistoryRepository.update(transfer)
-        _navigateBackChannel.send(Unit)
     }
 
     // Data-only version used internally (e.g. voice transfer) - no navigation
