@@ -185,8 +185,9 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         if (account == null || category == null) {
             val accountError = account == null
             val categoryError = category == null
-            val accountName = if (accountError) "Account Not Found" else parsedExpense.accountName
-            val categoryName = if (categoryError) "Category Not Found" else parsedExpense.categoryName
+            // Use canonical DB names (correct casing) when found, otherwise show error placeholder
+            val accountName = if (accountError) "Account Not Found" else account.name
+            val categoryName = if (categoryError) "Category Not Found" else category.name
             val expenseType = parsedExpense.type ?: if (_selectedTab.value == 0) "Expense" else "Income"
             
             _navigateTo.send(
