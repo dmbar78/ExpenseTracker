@@ -437,24 +437,43 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun updateTransfer(transfer: TransferHistory) = viewModelScope.launch {
         val originalTransfer = selectedTransfer.value ?: return@launch
 
-        // Revert old transaction
-        val oldSourceAccount = allAccounts.value.find { it.name.equals(originalTransfer.sourceAccount, ignoreCase = true) }
-        val oldDestAccount = allAccounts.value.find { it.name.equals(originalTransfer.destinationAccount, ignoreCase = true) }
-        if (oldSourceAccount != null && oldDestAccount != null) {
-            val revertedSource = oldSourceAccount.copy(balance = oldSourceAccount.balance.add(originalTransfer.amount).setScale(2, RoundingMode.HALF_UP))
-            val revertedDest = oldDestAccount.copy(balance = oldDestAccount.balance.subtract(originalTransfer.amount).setScale(2, RoundingMode.HALF_UP))
-            accountRepository.update(revertedSource)
-            accountRepository.update(revertedDest)
+        // Check if balance-affecting fields changed
+        val balanceFieldsChanged =
+            !originalTransfer.sourceAccount.equals(transfer.sourceAccount, ignoreCase = true) ||
+            !originalTransfer.destinationAccount.equals(transfer.destinationAccount, ignoreCase = true) ||
+            originalTransfer.amount.compareTo(transfer.amount) != 0
+
+        // If only date/comment changed (or nothing changed), just update the transfer record
+        if (!balanceFieldsChanged) {
+            transferHistoryRepository.update(transfer)
+            _navigateBackChannel.send(Unit)
+            return@launch
         }
-        
-        // Apply new transaction
-        val newSourceAccount = allAccounts.value.find { it.name.equals(transfer.sourceAccount, ignoreCase = true) }
-        val newDestAccount = allAccounts.value.find { it.name.equals(transfer.destinationAccount, ignoreCase = true) }
-        if (newSourceAccount != null && newDestAccount != null) {
-            val updatedSource = newSourceAccount.copy(balance = newSourceAccount.balance.subtract(transfer.amount).setScale(2, RoundingMode.HALF_UP))
-            val updatedDest = newDestAccount.copy(balance = newDestAccount.balance.add(transfer.amount).setScale(2, RoundingMode.HALF_UP))
-            accountRepository.update(updatedSource)
-            accountRepository.update(updatedDest)
+
+        // Balance-affecting change: compute deltas per account from a single baseline snapshot
+        val accounts = allAccounts.value
+        val deltas = mutableMapOf<String, BigDecimal>() // accountName (lowercase) -> net delta
+
+        // Revert original transfer effect: +amount to old source, -amount to old dest
+        val oldSourceKey = originalTransfer.sourceAccount.lowercase(Locale.ROOT)
+        val oldDestKey = originalTransfer.destinationAccount.lowercase(Locale.ROOT)
+        deltas[oldSourceKey] = (deltas[oldSourceKey] ?: BigDecimal.ZERO).add(originalTransfer.amount)
+        deltas[oldDestKey] = (deltas[oldDestKey] ?: BigDecimal.ZERO).subtract(originalTransfer.amount)
+
+        // Apply new transfer effect: -amount to new source, +amount to new dest
+        val newSourceKey = transfer.sourceAccount.lowercase(Locale.ROOT)
+        val newDestKey = transfer.destinationAccount.lowercase(Locale.ROOT)
+        deltas[newSourceKey] = (deltas[newSourceKey] ?: BigDecimal.ZERO).subtract(transfer.amount)
+        deltas[newDestKey] = (deltas[newDestKey] ?: BigDecimal.ZERO).add(transfer.amount)
+
+        // Apply merged deltas to each affected account (handles source==dest and overlaps)
+        for ((accountKey, delta) in deltas) {
+            if (delta.compareTo(BigDecimal.ZERO) == 0) continue // no net change
+            val account = accounts.find { it.name.lowercase(Locale.ROOT) == accountKey } ?: continue
+            val updatedAccount = account.copy(
+                balance = account.balance.add(delta).setScale(2, RoundingMode.HALF_UP)
+            )
+            accountRepository.update(updatedAccount)
         }
 
         transferHistoryRepository.update(transfer)
