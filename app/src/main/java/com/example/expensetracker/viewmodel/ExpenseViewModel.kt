@@ -1,6 +1,7 @@
 package com.example.expensetracker.viewmodel
 
 import android.app.Application
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -190,7 +191,16 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             val categoryName = if (categoryError) "Category Not Found" else parsedExpense.categoryName
             val expenseType = parsedExpense.type ?: if (_selectedTab.value == 0) "Expense" else "Income"
             
-            _navigateTo.send("editExpense/0?accountName=${accountName}&amount=${parsedExpense.amount.toPlainString()}&categoryName=${categoryName}&type=${expenseType}&accountError=${accountError}&categoryError=${categoryError}")
+            _navigateTo.send(
+                "editExpense/0" +
+                    "?accountName=${Uri.encode(accountName)}" +
+                    "&amount=${Uri.encode(parsedExpense.amount.toPlainString())}" +
+                    "&categoryName=${Uri.encode(categoryName)}" +
+                    "&type=${Uri.encode(expenseType)}" +
+                    "&expenseDateMillis=${parsedExpense.expenseDate}" +
+                    "&accountError=$accountError" +
+                    "&categoryError=$categoryError"
+            )
             return
         }
 

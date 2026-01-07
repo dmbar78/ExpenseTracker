@@ -55,13 +55,14 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             AddCurrencyScreen(viewModel = viewModel, navController = navController)
         }
         composable(
-            route = "editExpense/{expenseId}?accountName={accountName}&amount={amount}&categoryName={categoryName}&type={type}&accountError={accountError}&categoryError={categoryError}",
+            route = "editExpense/{expenseId}?accountName={accountName}&amount={amount}&categoryName={categoryName}&type={type}&expenseDateMillis={expenseDateMillis}&accountError={accountError}&categoryError={categoryError}",
             arguments = listOf(
                 navArgument("expenseId") { type = NavType.IntType },
                 navArgument("accountName") { type = NavType.StringType; nullable = true },
                 navArgument("amount") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("categoryName") { type = NavType.StringType; nullable = true },
                 navArgument("type") { type = NavType.StringType; nullable = true },
+                navArgument("expenseDateMillis") { type = NavType.LongType; defaultValue = 0L },
                 navArgument("accountError") { type = NavType.BoolType; defaultValue = false },
                 navArgument("categoryError") { type = NavType.BoolType; defaultValue = false }
             )
@@ -72,6 +73,7 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             val amount = amountStr?.let { str -> runCatching { BigDecimal(str) }.getOrNull() }
             val categoryName = it.arguments?.getString("categoryName")
             val type = it.arguments?.getString("type")
+            val expenseDateMillis = it.arguments?.getLong("expenseDateMillis") ?: 0L
             val accountError = it.arguments?.getBoolean("accountError") ?: false
             val categoryError = it.arguments?.getBoolean("categoryError") ?: false
 
@@ -83,6 +85,7 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
                 initialAmount = amount,
                 initialCategoryName = categoryName,
                 initialType = type,
+                initialExpenseDateMillis = expenseDateMillis,
                 initialAccountError = accountError,
                 initialCategoryError = categoryError
             )

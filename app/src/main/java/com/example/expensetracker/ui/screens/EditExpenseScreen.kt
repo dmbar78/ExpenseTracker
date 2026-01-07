@@ -33,6 +33,7 @@ fun EditExpenseScreen(
     initialAmount: BigDecimal? = null,
     initialCategoryName: String? = null,
     initialType: String? = null,
+    initialExpenseDateMillis: Long = 0L,
     initialAccountError: Boolean = false,
     initialCategoryError: Boolean = false
 ) {
@@ -60,7 +61,9 @@ fun EditExpenseScreen(
     var accountName by rememberSaveable { mutableStateOf(initialAccountName ?: "") }
     var category by rememberSaveable { mutableStateOf(initialCategoryName ?: "") }
     var currency by rememberSaveable { mutableStateOf("") }
-    var expenseDate by rememberSaveable { mutableStateOf(System.currentTimeMillis()) }
+    // Use parsed date from voice if available (> 0), else default to now
+    val initialDateMillis = if (initialExpenseDateMillis > 0L) initialExpenseDateMillis else System.currentTimeMillis()
+    var expenseDate by rememberSaveable { mutableStateOf(initialDateMillis) }
     var comment by rememberSaveable { mutableStateOf("") }
     var type by rememberSaveable { mutableStateOf(initialType ?: "Expense") }
     
@@ -73,18 +76,40 @@ fun EditExpenseScreen(
     var isCategoryDropdownExpanded by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val calendar = Calendar.getInstance()
+    val calendar = remember { Calendar.getInstance() }
+    
+    // Keep calendar in sync with expenseDate state
+    LaunchedEffect(expenseDate) {
+        calendar.timeInMillis = expenseDate
+    }
 
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
+    val datePickerDialog = remember {
+        DatePickerDialog(
+            context,
+            null, // Set listener below
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+    }
+    
+    // Update picker's initial date and set listener
+    LaunchedEffect(expenseDate) {
+        datePickerDialog.updateDate(
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+    }
+    
+    // Set the date selection listener (stable reference)
+    DisposableEffect(Unit) {
+        datePickerDialog.setOnDateSetListener { _, year, month, dayOfMonth ->
             calendar.set(year, month, dayOfMonth)
             expenseDate = calendar.timeInMillis
-        },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
-    )
+        }
+        onDispose { }
+    }
 
     // Update category if a new one was created
     LaunchedEffect(createdCategoryName?.value) {
