@@ -28,7 +28,8 @@ data class EditTransferState(
     val currency: String = "",
     val date: Long = System.currentTimeMillis(),
     val comment: String = "",
-    val existingTransfer: TransferHistory? = null
+    val existingTransfer: TransferHistory? = null,
+    val isEditMode: Boolean = transferId > 0
 )
 
 /**
@@ -68,7 +69,10 @@ fun EditTransferScreenContent(
 
     LazyColumn(modifier = modifier.padding(16.dp).testTag(TestTags.EDIT_TRANSFER_ROOT)) {
         item {
-            Text("Edit Transfer", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                if (state.isEditMode) "Edit Transfer" else "Add Transfer",
+                style = MaterialTheme.typography.headlineSmall
+            )
             Spacer(modifier = Modifier.height(16.dp))
 
             // Date field
@@ -213,29 +217,47 @@ fun EditTransferScreenContent(
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = {
-                        state.existingTransfer?.let {
-                            val parsedAmount = parseTransferMoneyInputContent(localAmount) ?: it.amount
-                            val updatedTransfer = it.copy(
-                                sourceAccount = localSourceAccountName,
-                                destinationAccount = localDestAccountName,
-                                amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
-                                currency = localCurrency,
-                                date = state.date,
-                                comment = localComment
-                            )
-                            callbacks.onSave(updatedTransfer)
+                        val parsedAmount = parseTransferMoneyInputContent(localAmount)
+                        if (parsedAmount != null && parsedAmount > BigDecimal.ZERO &&
+                            localSourceAccountName.isNotBlank() && localDestAccountName.isNotBlank() &&
+                            localSourceAccountName != localDestAccountName
+                        ) {
+                            if (state.isEditMode && state.existingTransfer != null) {
+                                val updatedTransfer = state.existingTransfer.copy(
+                                    sourceAccount = localSourceAccountName,
+                                    destinationAccount = localDestAccountName,
+                                    amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
+                                    currency = localCurrency,
+                                    date = state.date,
+                                    comment = localComment
+                                )
+                                callbacks.onSave(updatedTransfer)
+                            } else {
+                                // Create mode - new transfer
+                                val newTransfer = TransferHistory(
+                                    sourceAccount = localSourceAccountName,
+                                    destinationAccount = localDestAccountName,
+                                    amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
+                                    currency = localCurrency,
+                                    date = state.date,
+                                    comment = localComment
+                                )
+                                callbacks.onSave(newTransfer)
+                            }
                         }
                     },
                     modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_TRANSFER_SAVE)
                 ) {
                     Text("Save")
                 }
-                Button(
-                    onClick = { showDeleteDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                    modifier = Modifier.weight(1f).padding(start = 8.dp).testTag(TestTags.EDIT_TRANSFER_DELETE)
-                ) {
-                    Text("Delete")
+                if (state.isEditMode) {
+                    Button(
+                        onClick = { showDeleteDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                        modifier = Modifier.weight(1f).padding(start = 8.dp).testTag(TestTags.EDIT_TRANSFER_DELETE)
+                    ) {
+                        Text("Delete")
+                    }
                 }
             }
         }

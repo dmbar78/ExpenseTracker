@@ -3,6 +3,8 @@ package com.example.expensetracker.ui
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.expensetracker.MainActivity
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Category
 import com.example.expensetracker.data.Expense
@@ -12,6 +14,7 @@ import com.example.expensetracker.viewmodel.ParsedTransfer
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
 import java.math.BigDecimal
 import java.util.*
 
@@ -20,6 +23,7 @@ import java.util.*
  * These are "content tests" that render *Content composables directly
  * with fake state + callbacks, verifying prefill, validation, and callback args.
  */
+@RunWith(AndroidJUnit4::class)
 class VoiceFlowContentTest {
 
     @get:Rule
@@ -597,5 +601,256 @@ class VoiceFlowContentTest {
         // Verify callback
         assertNotNull("Save callback should be invoked", savedTransfer)
         assertEquals(BigDecimal("75.00"), savedTransfer!!.amount)
+    }
+
+    // --- Create-mode transfer: Save creates new transfer ---
+    @Test
+    fun createTransfer_fillFieldsAndSave_callbackInvoked() {
+        var savedTransfer: TransferHistory? = null
+
+        val state = EditTransferState(
+            transferId = 0, // Create mode
+            sourceAccountName = "",
+            destAccountName = "",
+            amount = "",
+            currency = "",
+            date = jan1_2026,
+            existingTransfer = null,
+            isEditMode = false
+        )
+
+        val callbacks = EditTransferCallbacks(
+            onSave = { savedTransfer = it },
+            onSourceAccountSelect = {},
+            onDestAccountSelect = {}
+        )
+
+        composeTestRule.setContent {
+            EditTransferScreenContent(
+                state = state,
+                accounts = testAccounts,
+                callbacks = callbacks
+            )
+        }
+
+        // Verify shows "Add Transfer" title
+        composeTestRule.onNodeWithText("Add Transfer").assertExists()
+
+        // Delete button should NOT exist in create mode
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DELETE).assertDoesNotExist()
+
+        // Select source account (Test2, id=3)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SOURCE_DROPDOWN).performClick()
+        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "source_3").performClick()
+
+        // Select dest account (Test3, id=4)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DESTINATION_DROPDOWN).performClick()
+        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "dest_4").performClick()
+
+        // Enter amount
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).performTextInput("100")
+
+        // Click Save
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SAVE).performClick()
+
+        // Verify callback invoked with new transfer
+        assertNotNull("Save callback should be invoked", savedTransfer)
+        assertEquals("Test2", savedTransfer!!.sourceAccount)
+        assertEquals("Test3", savedTransfer!!.destinationAccount)
+        assertEquals(BigDecimal("100.00"), savedTransfer!!.amount)
+        assertEquals(0, savedTransfer!!.id) // New transfer has id=0
+    }
+
+    // --- Create-mode transfer: Validation blocks Save ---
+    @Test
+    fun createTransfer_missingFields_saveBlocked() {
+        var savedTransfer: TransferHistory? = null
+
+        val state = EditTransferState(
+            transferId = 0,
+            sourceAccountName = "",
+            destAccountName = "",
+            amount = "",
+            currency = "",
+            date = jan1_2026,
+            isEditMode = false
+        )
+
+        val callbacks = EditTransferCallbacks(
+            onSave = { savedTransfer = it }
+        )
+
+        composeTestRule.setContent {
+            EditTransferScreenContent(
+                state = state,
+                accounts = testAccounts,
+                callbacks = callbacks
+            )
+        }
+
+        // Click Save without filling fields
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SAVE).performClick()
+
+        // Verify Save callback NOT invoked (validation failed)
+        assertNull("Save callback should not be invoked when fields are empty", savedTransfer)
+    }
+
+    // --- Create-mode expense: Save creates new expense ---
+    @Test
+    fun createExpense_fillFieldsAndSave_callbackInvoked() {
+        var savedExpense: Expense? = null
+
+        val state = EditExpenseState(
+            expenseId = 0, // Create mode
+            amount = "",
+            accountName = "",
+            category = "",
+            currency = "",
+            expenseDate = jan1_2026,
+            type = "Expense",
+            accountError = false,
+            categoryError = false
+        )
+
+        val callbacks = EditExpenseCallbacks(
+            onSave = { savedExpense = it },
+            onAccountSelect = {}
+        )
+
+        composeTestRule.setContent {
+            EditExpenseScreenContent(
+                state = state,
+                accounts = testAccounts,
+                categories = testCategories,
+                callbacks = callbacks
+            )
+        }
+
+        // Select account (Test1, id=2)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN).performClick()
+        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "2").performClick()
+
+        // Enter amount
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).performTextInput("50")
+
+        // Select category (default, id=1)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN).performClick()
+        composeTestRule.onNodeWithTag(TestTags.CATEGORY_OPTION_PREFIX + "1").performClick()
+
+        // Click Save
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+
+        // Verify callback invoked
+        assertNotNull("Save callback should be invoked", savedExpense)
+        assertEquals("Test1", savedExpense!!.account)
+        assertEquals(BigDecimal("50.00"), savedExpense!!.amount)
+        assertEquals("default", savedExpense!!.category)
+        assertEquals("Expense", savedExpense!!.type)
+    }
+
+    // --- Create-mode income: Save creates new income ---
+    @Test
+    fun createIncome_fillFieldsAndSave_callbackInvoked() {
+        var savedExpense: Expense? = null
+
+        val state = EditExpenseState(
+            expenseId = 0,
+            amount = "",
+            accountName = "",
+            category = "",
+            currency = "",
+            expenseDate = jan1_2026,
+            type = "Income", // Income mode
+            accountError = false,
+            categoryError = false
+        )
+
+        val callbacks = EditExpenseCallbacks(
+            onSave = { savedExpense = it }
+        )
+
+        composeTestRule.setContent {
+            EditExpenseScreenContent(
+                state = state,
+                accounts = testAccounts,
+                categories = testCategories,
+                callbacks = callbacks
+            )
+        }
+
+        // Select account
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN).performClick()
+        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "2").performClick()
+
+        // Enter amount
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).performTextInput("200")
+
+        // Select category
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN).performClick()
+        composeTestRule.onNodeWithTag(TestTags.CATEGORY_OPTION_PREFIX + "3").performClick()
+
+        // Click Save
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+
+        // Verify callback invoked with Income type
+        assertNotNull("Save callback should be invoked", savedExpense)
+        assertEquals("Income", savedExpense!!.type)
+    }
+}
+
+/**
+ * Instrumented wiring tests for the global "+" create menu.
+ * These run the real app NavGraph via MainActivity and verify the menu navigates correctly.
+ */
+@RunWith(AndroidJUnit4::class)
+class PlusMenuWiringTest {
+
+    @get:Rule
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Test
+    fun plusMenu_opensAndShowsAllItems() {
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON)
+            .assertIsDisplayed()
+            .performClick()
+
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_MENU).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_EXPENSE).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_INCOME).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_TRANSFER).assertIsDisplayed()
+    }
+
+    @Test
+    fun plusMenu_createExpense_navigatesToEditExpense_andPlusStillVisible() {
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_EXPENSE).performClick()
+
+        // Assert we reached EditExpenseScreen (real screen tag)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_DATE_FIELD).assertIsDisplayed()
+
+        // Plus button remains global across destinations
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).assertIsDisplayed()
+    }
+
+    @Test
+    fun plusMenu_createIncome_navigatesToEditExpense_andPlusStillVisible() {
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_INCOME).performClick()
+
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_DATE_FIELD).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).assertIsDisplayed()
+    }
+
+    @Test
+    fun plusMenu_createTransfer_navigatesToEditTransfer_andPlusStillVisible() {
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_TRANSFER).performClick()
+
+        // Assert we reached EditTransferScreen (real screen tag)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DATE_FIELD).assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).assertIsDisplayed()
     }
 }

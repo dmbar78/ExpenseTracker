@@ -17,6 +17,7 @@ import androidx.navigation.NavController
 import com.example.expensetracker.data.TransferHistory
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
@@ -27,9 +28,14 @@ import java.util.*
 fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navController: NavController) {
     var showDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    val isEditMode = transferId > 0
 
     LaunchedEffect(transferId) {
-        viewModel.loadTransfer(transferId)
+        if (isEditMode) {
+            viewModel.loadTransfer(transferId)
+        }
     }
 
     // This will listen for the signal from the ViewModel to navigate back
@@ -74,13 +80,15 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
     )
 
     LaunchedEffect(transfer) {
-        transfer?.let {
-            sourceAccountName = it.sourceAccount
-            destAccountName = it.destinationAccount
-            amount = it.amount.toPlainString()
-            currency = it.currency
-            date = it.date
-            comment = it.comment ?: ""
+        if (isEditMode) {
+            transfer?.let {
+                sourceAccountName = it.sourceAccount
+                destAccountName = it.destinationAccount
+                amount = it.amount.toPlainString()
+                currency = it.currency
+                date = it.date
+                comment = it.comment ?: ""
+            }
         }
     }
 
@@ -89,7 +97,7 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
     ) { paddingValues ->
         LazyColumn(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
         item {
-            Text("Edit Transfer", style = MaterialTheme.typography.headlineSmall)
+            Text(if (isEditMode) "Edit Transfer" else "Add Transfer", style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(16.dp))
 
             Box(modifier = Modifier.fillMaxWidth().clickable { datePickerDialog.show() }.testTag(TestTags.EDIT_TRANSFER_DATE_FIELD)) {
@@ -214,9 +222,35 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = {
-                        transfer?.let {
-                            val parsedAmount = parseTransferMoneyInput(amount) ?: it.amount
-                            val updatedTransfer = it.copy(
+                        // Validate inputs
+                        if (sourceAccountName.isBlank() || destAccountName.isBlank()) {
+                            scope.launch { snackbarHostState.showSnackbar("Please select both accounts.") }
+                            return@Button
+                        }
+                        val parsedAmount = parseTransferMoneyInput(amount)
+                        if (parsedAmount == null || parsedAmount <= BigDecimal.ZERO) {
+                            scope.launch { snackbarHostState.showSnackbar("Please enter a valid amount.") }
+                            return@Button
+                        }
+                        if (sourceAccountName == destAccountName) {
+                            scope.launch { snackbarHostState.showSnackbar("Source and destination accounts must be different.") }
+                            return@Button
+                        }
+
+                        if (isEditMode) {
+                            transfer?.let {
+                                val updatedTransfer = it.copy(
+                                    sourceAccount = sourceAccountName,
+                                    destinationAccount = destAccountName,
+                                    amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
+                                    currency = currency,
+                                    date = date,
+                                    comment = comment
+                                )
+                                viewModel.updateTransfer(updatedTransfer)
+                            }
+                        } else {
+                            val newTransfer = TransferHistory(
                                 sourceAccount = sourceAccountName,
                                 destinationAccount = destAccountName,
                                 amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
@@ -224,19 +258,21 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                                 date = date,
                                 comment = comment
                             )
-                            viewModel.updateTransfer(updatedTransfer)
+                            viewModel.insertTransfer(newTransfer)
                         }
                     },
                     modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_TRANSFER_SAVE)
                 ) {
                     Text("Save")
                 }
-                Button(
-                    onClick = { showDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                    modifier = Modifier.weight(1f).padding(start = 8.dp).testTag(TestTags.EDIT_TRANSFER_DELETE)
-                ) {
-                    Text("Delete")
+                if (isEditMode) {
+                    Button(
+                        onClick = { showDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                        modifier = Modifier.weight(1f).padding(start = 8.dp).testTag(TestTags.EDIT_TRANSFER_DELETE)
+                    ) {
+                        Text("Delete")
+                    }
                 }
             }
         }

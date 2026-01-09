@@ -63,6 +63,13 @@ object TestTags {
     const val VOICE_DIALOG_ERROR_SOURCE_NOT_FOUND = "voiceDialog_error_sourceNotFound"
     const val VOICE_DIALOG_ERROR_DEST_NOT_FOUND = "voiceDialog_error_destNotFound"
 
+    // Global Create Menu (+ button)
+    const val GLOBAL_CREATE_MENU = "globalCreate_menu"
+    const val GLOBAL_CREATE_BUTTON = "globalCreate_button"
+    const val GLOBAL_CREATE_EXPENSE = "globalCreate_expense"
+    const val GLOBAL_CREATE_INCOME = "globalCreate_income"
+    const val GLOBAL_CREATE_TRANSFER = "globalCreate_transfer"
+
     // Dropdown item prefix (append account/category id or normalized name)
     const val ACCOUNT_OPTION_PREFIX = "accountOption_"
     const val CATEGORY_OPTION_PREFIX = "categoryOption_"

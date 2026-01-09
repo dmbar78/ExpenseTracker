@@ -13,14 +13,20 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.*
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
+import com.example.expensetracker.ui.TestTags
 import androidx.navigation.compose.rememberNavController
 import com.example.expensetracker.ui.dialogs.VoiceRecognitionDialogs
 import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
@@ -85,7 +91,58 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     ) { innerPadding ->
-                        NavGraph(viewModel = viewModel, navController = navController, modifier = Modifier.padding(innerPadding))
+                        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                            NavGraph(viewModel = viewModel, navController = navController)
+
+                            // Global "+" create menu - available on every screen
+                            var isPlusMenuExpanded by remember { mutableStateOf(false) }
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 16.dp)
+                                    .testTag(TestTags.GLOBAL_CREATE_MENU)
+                            ) {
+                                FloatingActionButton(
+                                    onClick = { isPlusMenuExpanded = true },
+                                    modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_BUTTON)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Create")
+                                }
+                                DropdownMenu(
+                                    expanded = isPlusMenuExpanded,
+                                    onDismissRequest = { isPlusMenuExpanded = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Create Expense") },
+                                        onClick = {
+                                            isPlusMenuExpanded = false
+                                            navController.navigate(
+                                                "editExpense/0?type=Expense&expenseDateMillis=${System.currentTimeMillis()}"
+                                            )
+                                        },
+                                        modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_EXPENSE)
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Create Income") },
+                                        onClick = {
+                                            isPlusMenuExpanded = false
+                                            navController.navigate(
+                                                "editExpense/0?type=Income&expenseDateMillis=${System.currentTimeMillis()}"
+                                            )
+                                        },
+                                        modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_INCOME)
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Create Transfer") },
+                                        onClick = {
+                                            isPlusMenuExpanded = false
+                                            navController.navigate("editTransfer/0")
+                                        },
+                                        modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_TRANSFER)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

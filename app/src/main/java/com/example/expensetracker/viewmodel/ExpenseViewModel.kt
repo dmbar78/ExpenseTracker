@@ -382,6 +382,17 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun insertTransfer(transfer: TransferHistory) = viewModelScope.launch {
+        try {
+            ledgerRepository.addTransfer(transfer)
+            _navigateBackChannel.send(Unit)
+        } catch (e: IllegalArgumentException) {
+            _errorChannel.send(e.message ?: "Invalid transfer.")
+        } catch (e: IllegalStateException) {
+            _errorChannel.send(e.message ?: "Failed to add transfer.")
+        }
+    }
+
     // Data-only version used internally (e.g. voice transfer) - no navigation
     private suspend fun updateAccountInternal(account: Account): Boolean {
         if (account.name.isBlank() || account.currency.isBlank()) {
