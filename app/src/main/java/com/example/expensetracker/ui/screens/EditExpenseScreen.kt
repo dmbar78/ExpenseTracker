@@ -14,6 +14,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import com.example.expensetracker.ui.TestTags
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.expensetracker.data.Expense
@@ -182,7 +184,7 @@ fun EditExpenseScreen(
             Text(headerText, style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(16.dp))
 
-            Box(modifier = Modifier.fillMaxWidth().clickable { datePickerDialog.show() }) {
+            Box(modifier = Modifier.fillMaxWidth().clickable { datePickerDialog.show() }.testTag(TestTags.EDIT_EXPENSE_DATE_FIELD)) {
                 OutlinedTextField(
                     value = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(expenseDate),
                     onValueChange = {},
@@ -203,7 +205,8 @@ fun EditExpenseScreen(
 
             ExposedDropdownMenuBox(
                 expanded = isAccountDropdownExpanded,
-                onExpandedChange = { isAccountDropdownExpanded = !isAccountDropdownExpanded }
+                onExpandedChange = { isAccountDropdownExpanded = !isAccountDropdownExpanded },
+                modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN)
             ) {
                 OutlinedTextField(
                     value = accountName,
@@ -214,6 +217,7 @@ fun EditExpenseScreen(
                     modifier = Modifier
                         .menuAnchor()
                         .fillMaxWidth()
+                        .testTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE)
                         .then(if (accountError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
                     isError = accountError
                 )
@@ -229,13 +233,14 @@ fun EditExpenseScreen(
                                 currency = accountItem.currency
                                 accountError = false // Clear error on selection
                                 isAccountDropdownExpanded = false
-                            }
+                            },
+                            modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + accountItem.id)
                         )
                     }
                 }
             }
             if (accountError) {
-                Text("Account not found. Please select a valid account.", color = Color.Red, style = MaterialTheme.typography.bodySmall)
+                Text("Account not found. Please select a valid account.", color = Color.Red, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -247,18 +252,19 @@ fun EditExpenseScreen(
                     amountError = false
                 },
                 label = { Text("Amount") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD),
                 isError = amountError
             )
             if (amountError) {
-                Text("Amount cannot be empty.", color = Color.Red, style = MaterialTheme.typography.bodySmall)
+                Text("Amount cannot be empty.", color = Color.Red, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_AMOUNT))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             ExposedDropdownMenuBox(
                 expanded = isCategoryDropdownExpanded,
-                onExpandedChange = { isCategoryDropdownExpanded = !isCategoryDropdownExpanded }
+                onExpandedChange = { isCategoryDropdownExpanded = !isCategoryDropdownExpanded },
+                modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN)
             ) {
                 OutlinedTextField(
                     value = category,
@@ -269,6 +275,7 @@ fun EditExpenseScreen(
                     modifier = Modifier
                         .menuAnchor()
                         .fillMaxWidth()
+                        .testTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE)
                         .then(if (categoryError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
                     isError = categoryError
                 )
@@ -281,7 +288,8 @@ fun EditExpenseScreen(
                         onClick = {
                             isCategoryDropdownExpanded = false
                             navController.navigate("addCategory?categoryName=$category")
-                        }
+                        },
+                        modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_CATEGORY_CREATE_NEW)
                     )
                     Divider()
                     categories.forEach { categoryItem ->
@@ -291,13 +299,14 @@ fun EditExpenseScreen(
                                 category = categoryItem.name
                                 categoryError = false // Clear error on selection
                                 isCategoryDropdownExpanded = false
-                            }
+                            },
+                            modifier = Modifier.testTag(TestTags.CATEGORY_OPTION_PREFIX + categoryItem.id)
                         )
                     }
                 }
             }
              if (categoryError) {
-                Text("Category not found. Please select a valid category.", color = Color.Red, style = MaterialTheme.typography.bodySmall)
+                Text("Category not found. Please select a valid category.", color = Color.Red, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_CATEGORY_NOT_FOUND))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -307,7 +316,7 @@ fun EditExpenseScreen(
                 onValueChange = {},
                 label = { Text("Currency") },
                 readOnly = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_CURRENCY_VALUE),
                 enabled = false,
                 colors = OutlinedTextFieldDefaults.colors(
                     disabledTextColor = MaterialTheme.colorScheme.onSurface,
@@ -323,7 +332,7 @@ fun EditExpenseScreen(
                 value = comment,
                 onValueChange = { comment = it },
                 label = { Text("Comment") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -378,7 +387,7 @@ fun EditExpenseScreen(
                             navController.popBackStack()
                         }
                     },
-                    modifier = Modifier.weight(1f).padding(end = 8.dp)
+                    modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_EXPENSE_SAVE)
                 ) {
                     Text("Save")
                 }
@@ -386,7 +395,7 @@ fun EditExpenseScreen(
                     Button(
                         onClick = { showDialog = true },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                        modifier = Modifier.weight(1f).padding(start = 8.dp)
+                        modifier = Modifier.weight(1f).padding(start = 8.dp).testTag(TestTags.EDIT_EXPENSE_DELETE)
                     ) {
                         Text("Delete")
                     }

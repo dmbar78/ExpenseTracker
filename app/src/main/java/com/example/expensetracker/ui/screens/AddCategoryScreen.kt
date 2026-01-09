@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.example.expensetracker.ui.TestTags
 import androidx.navigation.NavController
 import com.example.expensetracker.data.Category
 import com.example.expensetracker.viewmodel.ExpenseViewModel
@@ -44,14 +46,14 @@ fun AddCategoryScreen(viewModel: ExpenseViewModel, navController: NavController,
         )
     }
 
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.padding(16.dp).testTag(TestTags.ADD_CATEGORY_ROOT)) {
         Text("Add Category", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
             label = { Text("Category Name") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_CATEGORY_NAME_FIELD)
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(
@@ -59,7 +61,7 @@ fun AddCategoryScreen(viewModel: ExpenseViewModel, navController: NavController,
                 val newCategory = Category(name = name)
                 viewModel.insertCategory(newCategory)
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_CATEGORY_SAVE)
         ) {
             Text("Save")
         }

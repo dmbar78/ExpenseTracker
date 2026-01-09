@@ -1,4 +1,4 @@
-package com.example.expensetracker.ui.screens
+package com.example.expensetracker.ui.screens.content
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -6,65 +6,67 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.example.expensetracker.ui.TestTags
-import androidx.navigation.NavController
 import com.example.expensetracker.data.Account
-import com.example.expensetracker.viewmodel.ExpenseViewModel
-import kotlinx.coroutines.flow.collectLatest
+import com.example.expensetracker.data.Currency
+import com.example.expensetracker.ui.TestTags
 import java.math.BigDecimal
 import java.math.RoundingMode
 
+/**
+ * State holder for AddAccountScreen content.
+ */
+data class AddAccountState(
+    val name: String = "",
+    val balance: String = "",
+    val currencyCode: String = ""
+)
+
+/**
+ * Callbacks for AddAccountScreen content.
+ */
+data class AddAccountCallbacks(
+    val onNameChange: (String) -> Unit = {},
+    val onBalanceChange: (String) -> Unit = {},
+    val onCurrencySelect: (Currency) -> Unit = {},
+    val onSave: (Account) -> Unit = {}
+)
+
+/**
+ * Pure UI content composable for AddAccountScreen.
+ * Accepts state + callbacks, no ViewModel or NavController dependencies.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddAccountScreen(viewModel: ExpenseViewModel, navController: NavController) {
-    var name by remember { mutableStateOf("") }
-    var balance by remember { mutableStateOf("") }
-    var currencyCode by remember { mutableStateOf("") }
+fun AddAccountScreenContent(
+    state: AddAccountState,
+    currencies: List<Currency>,
+    callbacks: AddAccountCallbacks,
+    modifier: Modifier = Modifier
+) {
+    var localName by remember(state.name) { mutableStateOf(state.name) }
+    var localBalance by remember(state.balance) { mutableStateOf(state.balance) }
+    var localCurrencyCode by remember(state.currencyCode) { mutableStateOf(state.currencyCode) }
     var isCurrencyDropdownExpanded by remember { mutableStateOf(false) }
-    var showErrorDialog by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
 
-    val currencies by viewModel.allCurrencies.collectAsState()
-
-    LaunchedEffect(Unit) {
-        viewModel.errorFlow.collectLatest { message ->
-            errorMessage = message
-            showErrorDialog = true
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        viewModel.navigateBackFlow.collectLatest { 
-            navController.popBackStack()
-        }
-    }
-
-    if (showErrorDialog) {
-        AlertDialog(
-            onDismissRequest = { showErrorDialog = false },
-            title = { Text("Error") },
-            text = { Text(errorMessage) },
-            confirmButton = {
-                Button(onClick = { showErrorDialog = false }) {
-                    Text("OK")
-                }
-            }
-        )
-    }
-
-    Column(modifier = Modifier.padding(16.dp).testTag(TestTags.ADD_ACCOUNT_ROOT)) {
+    Column(modifier = modifier.padding(16.dp).testTag(TestTags.ADD_ACCOUNT_ROOT)) {
         Text("Add Account", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
+            value = localName,
+            onValueChange = {
+                localName = it
+                callbacks.onNameChange(it)
+            },
             label = { Text("Account Name") },
             modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_ACCOUNT_NAME_FIELD)
         )
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
-            value = balance,
-            onValueChange = { balance = it },
+            value = localBalance,
+            onValueChange = {
+                localBalance = it
+                callbacks.onBalanceChange(it)
+            },
             label = { Text("Balance") },
             modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_ACCOUNT_BALANCE_FIELD)
         )
@@ -76,7 +78,7 @@ fun AddAccountScreen(viewModel: ExpenseViewModel, navController: NavController) 
             modifier = Modifier.testTag(TestTags.ADD_ACCOUNT_CURRENCY_DROPDOWN)
         ) {
             OutlinedTextField(
-                value = currencies.find { it.code == currencyCode }?.name ?: "",
+                value = currencies.find { it.code == localCurrencyCode }?.name ?: "",
                 onValueChange = {},
                 label = { Text("Currency") },
                 readOnly = true,
@@ -91,8 +93,9 @@ fun AddAccountScreen(viewModel: ExpenseViewModel, navController: NavController) 
                     DropdownMenuItem(
                         text = { Text(currencyItem.name) },
                         onClick = {
-                            currencyCode = currencyItem.code
+                            localCurrencyCode = currencyItem.code
                             isCurrencyDropdownExpanded = false
+                            callbacks.onCurrencySelect(currencyItem)
                         },
                         modifier = Modifier.testTag(TestTags.CURRENCY_OPTION_PREFIX + currencyItem.code)
                     )
@@ -103,13 +106,13 @@ fun AddAccountScreen(viewModel: ExpenseViewModel, navController: NavController) 
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = {
-                val parsedBalance = parseAccountMoneyInput(balance) ?: BigDecimal.ZERO
+                val parsedBalance = parseAccountMoneyInputContent(localBalance) ?: BigDecimal.ZERO
                 val newAccount = Account(
-                    name = name,
+                    name = localName,
                     balance = parsedBalance.setScale(2, RoundingMode.HALF_UP),
-                    currency = currencyCode
+                    currency = localCurrencyCode
                 )
-                viewModel.insertAccount(newAccount)
+                callbacks.onSave(newAccount)
             },
             modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_ACCOUNT_SAVE)
         ) {
@@ -120,54 +123,40 @@ fun AddAccountScreen(viewModel: ExpenseViewModel, navController: NavController) 
 
 /**
  * Parses a money input string handling both dot and comma decimal separators.
- * Supports formats like: "1234.56", "1,234.56", "1234,56", "1.234,56"
- * Returns a BigDecimal or null if parsing fails.
  */
-private fun parseAccountMoneyInput(input: String): BigDecimal? {
+internal fun parseAccountMoneyInputContent(input: String): BigDecimal? {
     if (input.isBlank()) return null
-    
+
     val cleaned = input.trim()
-    
-    // Determine which format is used based on the last separator
     val lastDotIndex = cleaned.lastIndexOf('.')
     val lastCommaIndex = cleaned.lastIndexOf(',')
-    
+
     val normalizedString = when {
-        // No separators - just digits
         lastDotIndex == -1 && lastCommaIndex == -1 -> cleaned
-        // Only dots - could be decimal or thousand separator
         lastCommaIndex == -1 -> {
-            // If there's only one dot and it has 1-2 digits after it, treat as decimal
             val afterDot = cleaned.length - lastDotIndex - 1
             if (cleaned.count { it == '.' } == 1 && afterDot <= 2) {
-                cleaned // e.g., "1234.56"
+                cleaned
             } else {
-                // Multiple dots or > 2 digits after = thousand separators, remove them
-                cleaned.replace(".", "") // e.g., "1.234.567" -> "1234567"
+                cleaned.replace(".", "")
             }
         }
-        // Only commas - could be decimal or thousand separator
         lastDotIndex == -1 -> {
-            // If there's only one comma and it has 1-2 digits after it, treat as decimal
             val afterComma = cleaned.length - lastCommaIndex - 1
             if (cleaned.count { it == ',' } == 1 && afterComma <= 2) {
-                cleaned.replace(',', '.') // e.g., "1234,56" -> "1234.56"
+                cleaned.replace(',', '.')
             } else {
-                // Multiple commas or > 2 digits after = thousand separators, remove them
-                cleaned.replace(",", "") // e.g., "1,234,567" -> "1234567"
+                cleaned.replace(",", "")
             }
         }
-        // Both dot and comma present
         lastDotIndex > lastCommaIndex -> {
-            // Dot is the decimal separator (US format: 1,234.56)
-            cleaned.replace(",", "") // Remove thousand separators
+            cleaned.replace(",", "")
         }
         else -> {
-            // Comma is the decimal separator (EU format: 1.234,56)
             cleaned.replace(".", "").replace(',', '.')
         }
     }
-    
+
     return try {
         BigDecimal(normalizedString).setScale(2, RoundingMode.HALF_UP)
     } catch (e: NumberFormatException) {

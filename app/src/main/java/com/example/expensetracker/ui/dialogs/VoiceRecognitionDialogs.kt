@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.example.expensetracker.ui.TestTags
 import androidx.navigation.NavController
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.viewmodel.ExpenseViewModel
@@ -23,7 +25,8 @@ fun VoiceRecognitionDialogs(viewModel: ExpenseViewModel, navController: NavContr
                 onDismissRequest = { viewModel.dismissVoiceRecognitionDialog() },
                 title = { Text("Recognition Failed") },
                 text = { Text(currentState.message) },
-                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text("OK") } }
+                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text("OK") } },
+                modifier = Modifier.testTag(TestTags.VOICE_DIALOG_RECOGNITION_FAILED)
             )
         }
         is VoiceRecognitionState.TransferAccountsNotFound -> {
@@ -38,7 +41,8 @@ fun VoiceRecognitionDialogs(viewModel: ExpenseViewModel, navController: NavContr
                 onDismissRequest = { viewModel.dismissVoiceRecognitionDialog() },
                 title = { Text("Currency Mismatch") },
                 text = { Text(currentState.message) },
-                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text("OK") } }
+                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text("OK") } },
+                modifier = Modifier.testTag(TestTags.VOICE_DIALOG_CURRENCY_MISMATCH)
             )
         }
         is VoiceRecognitionState.SameAccountTransfer -> {
@@ -46,7 +50,8 @@ fun VoiceRecognitionDialogs(viewModel: ExpenseViewModel, navController: NavContr
                 onDismissRequest = { viewModel.dismissVoiceRecognitionDialog() },
                 title = { Text("Invalid Transfer") },
                 text = { Text(currentState.message) },
-                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text("OK") } }
+                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text("OK") } },
+                modifier = Modifier.testTag(TestTags.VOICE_DIALOG_SAME_ACCOUNT)
             )
         }
         is VoiceRecognitionState.Success -> {
@@ -54,7 +59,8 @@ fun VoiceRecognitionDialogs(viewModel: ExpenseViewModel, navController: NavContr
                 onDismissRequest = { viewModel.dismissVoiceRecognitionDialog() },
                 title = { Text("Success") },
                 text = { Text(currentState.message) },
-                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text("OK") } }
+                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text("OK") } },
+                modifier = Modifier.testTag(TestTags.VOICE_DIALOG_SUCCESS)
             )
         }
     }
@@ -72,22 +78,32 @@ private fun TransferAccountDisambiguationDialog(
     var sourceExpanded by remember { mutableStateOf(false) }
     var destExpanded by remember { mutableStateOf(false) }
 
+    val sourceNotFound = accounts.find { it.name.equals(parsedTransfer.sourceAccountName, ignoreCase = true) } == null
+    val destNotFound = accounts.find { it.name.equals(parsedTransfer.destAccountName, ignoreCase = true) } == null
+
     AlertDialog(
         onDismissRequest = { viewModel.dismissVoiceRecognitionDialog() },
         title = { Text("Account Not Found") },
         text = {
             Column {
-                if (accounts.find { it.name.equals(parsedTransfer.sourceAccountName, ignoreCase = true) } == null) {
-                    Text("Couldn't find source account '${parsedTransfer.sourceAccountName}' in database. Please select the required account from the list.")
+                if (sourceNotFound) {
+                    Text(
+                        "Couldn't find source account '${parsedTransfer.sourceAccountName}' in database. Please select the required account from the list.",
+                        modifier = Modifier.testTag(TestTags.VOICE_DIALOG_ERROR_SOURCE_NOT_FOUND)
+                    )
                 }
-                ExposedDropdownMenuBox(expanded = sourceExpanded, onExpandedChange = { sourceExpanded = !sourceExpanded }) {
+                ExposedDropdownMenuBox(
+                    expanded = sourceExpanded,
+                    onExpandedChange = { sourceExpanded = !sourceExpanded },
+                    modifier = Modifier.testTag(TestTags.VOICE_DIALOG_SOURCE_DROPDOWN)
+                ) {
                     OutlinedTextField(
                         value = selectedSourceAccount?.name ?: parsedTransfer.sourceAccountName,
                         onValueChange = {},
                         label = { Text("Source Account") },
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded) },
-                        modifier = Modifier.menuAnchor()
+                        modifier = Modifier.menuAnchor().testTag(TestTags.VOICE_DIALOG_SOURCE_VALUE)
                     )
                     ExposedDropdownMenu(expanded = sourceExpanded, onDismissRequest = { sourceExpanded = false }) {
                         accounts.forEach { account ->
@@ -96,7 +112,8 @@ private fun TransferAccountDisambiguationDialog(
                                 onClick = {
                                     selectedSourceAccount = account
                                     sourceExpanded = false
-                                }
+                                },
+                                modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + "dialog_source_" + account.id)
                             )
                         }
                     }
@@ -104,17 +121,24 @@ private fun TransferAccountDisambiguationDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                if (accounts.find { it.name.equals(parsedTransfer.destAccountName, ignoreCase = true) } == null) {
-                    Text("Couldn't find destination account '${parsedTransfer.destAccountName}' in database. Please select the required account from the list.")
+                if (destNotFound) {
+                    Text(
+                        "Couldn't find destination account '${parsedTransfer.destAccountName}' in database. Please select the required account from the list.",
+                        modifier = Modifier.testTag(TestTags.VOICE_DIALOG_ERROR_DEST_NOT_FOUND)
+                    )
                 }
-                ExposedDropdownMenuBox(expanded = destExpanded, onExpandedChange = { destExpanded = !destExpanded }) {
+                ExposedDropdownMenuBox(
+                    expanded = destExpanded,
+                    onExpandedChange = { destExpanded = !destExpanded },
+                    modifier = Modifier.testTag(TestTags.VOICE_DIALOG_DESTINATION_DROPDOWN)
+                ) {
                     OutlinedTextField(
                         value = selectedDestAccount?.name ?: parsedTransfer.destAccountName,
                         onValueChange = {},
                         label = { Text("Destination Account") },
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = destExpanded) },
-                        modifier = Modifier.menuAnchor()
+                        modifier = Modifier.menuAnchor().testTag(TestTags.VOICE_DIALOG_DESTINATION_VALUE)
                     )
                     ExposedDropdownMenu(expanded = destExpanded, onDismissRequest = { destExpanded = false }) {
                         accounts.forEach { account ->
@@ -123,7 +147,8 @@ private fun TransferAccountDisambiguationDialog(
                                 onClick = {
                                     selectedDestAccount = account
                                     destExpanded = false
-                                }
+                                },
+                                modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + "dialog_dest_" + account.id)
                             )
                         }
                     }
@@ -136,15 +161,20 @@ private fun TransferAccountDisambiguationDialog(
                     val source = selectedSourceAccount?.name ?: parsedTransfer.sourceAccountName
                     val dest = selectedDestAccount?.name ?: parsedTransfer.destAccountName
                     viewModel.reprocessTransfer(parsedTransfer.copy(sourceAccountName = source, destAccountName = dest))
-                }
+                },
+                modifier = Modifier.testTag(TestTags.VOICE_DIALOG_SAVE)
             ) {
                 Text("OK")
             }
         },
         dismissButton = {
-            Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) {
+            Button(
+                onClick = { viewModel.dismissVoiceRecognitionDialog() },
+                modifier = Modifier.testTag(TestTags.VOICE_DIALOG_CANCEL)
+            ) {
                 Text("Cancel")
             }
-        }
+        },
+        modifier = Modifier.testTag(TestTags.VOICE_DIALOG_TRANSFER_ACCOUNTS_NOT_FOUND)
     )
 }

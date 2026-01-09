@@ -1,7 +1,5 @@
-package com.example.expensetracker.ui.screens
+package com.example.expensetracker.ui.screens.content
 
-import android.app.DatePickerDialog
-import android.widget.DatePicker
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,92 +7,79 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import com.example.expensetracker.ui.TestTags
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.TransferHistory
-import com.example.expensetracker.viewmodel.ExpenseViewModel
-import kotlinx.coroutines.flow.collectLatest
+import com.example.expensetracker.ui.TestTags
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * State holder for EditTransferScreen content.
+ */
+data class EditTransferState(
+    val transferId: Int = 0,
+    val sourceAccountName: String = "",
+    val destAccountName: String = "",
+    val amount: String = "",
+    val currency: String = "",
+    val date: Long = System.currentTimeMillis(),
+    val comment: String = "",
+    val existingTransfer: TransferHistory? = null
+)
+
+/**
+ * Callbacks for EditTransferScreen content.
+ */
+data class EditTransferCallbacks(
+    val onSourceAccountSelect: (Account) -> Unit = {},
+    val onDestAccountSelect: (Account) -> Unit = {},
+    val onAmountChange: (String) -> Unit = {},
+    val onDateClick: () -> Unit = {},
+    val onCommentChange: (String) -> Unit = {},
+    val onSave: (TransferHistory) -> Unit = {},
+    val onDelete: (TransferHistory) -> Unit = {}
+)
+
+/**
+ * Pure UI content composable for EditTransferScreen.
+ * Accepts state + callbacks, no ViewModel or NavController dependencies.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navController: NavController) {
-    var showDialog by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(transferId) {
-        viewModel.loadTransfer(transferId)
-    }
-
-    // This will listen for the signal from the ViewModel to navigate back
-    LaunchedEffect(Unit) {
-        viewModel.navigateBackFlow.collectLatest {
-            navController.popBackStack()
-        }
-    }
-
-    // Collect error messages from ViewModel and show as Snackbar
-    LaunchedEffect(Unit) {
-        viewModel.errorFlow.collect { message ->
-            snackbarHostState.showSnackbar(message)
-        }
-    }
-
-    val transfer by viewModel.selectedTransfer.collectAsState()
-    val accounts by viewModel.allAccounts.collectAsState()
-
-    var sourceAccountName by remember { mutableStateOf("") }
-    var destAccountName by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf("") }
-    var currency by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(System.currentTimeMillis()) }
-    var comment by remember { mutableStateOf("") }
-
+fun EditTransferScreenContent(
+    state: EditTransferState,
+    accounts: List<Account>,
+    callbacks: EditTransferCallbacks,
+    modifier: Modifier = Modifier
+) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
     var isSourceAccountDropdownExpanded by remember { mutableStateOf(false) }
     var isDestAccountDropdownExpanded by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
-    val calendar = Calendar.getInstance()
+    var localSourceAccountName by remember(state.sourceAccountName) { mutableStateOf(state.sourceAccountName) }
+    var localDestAccountName by remember(state.destAccountName) { mutableStateOf(state.destAccountName) }
+    var localAmount by remember(state.amount) { mutableStateOf(state.amount) }
+    var localCurrency by remember(state.currency) { mutableStateOf(state.currency) }
+    var localComment by remember(state.comment) { mutableStateOf(state.comment) }
 
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
-            calendar.set(year, month, dayOfMonth)
-            date = calendar.timeInMillis
-        },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
-    )
-
-    LaunchedEffect(transfer) {
-        transfer?.let {
-            sourceAccountName = it.sourceAccount
-            destAccountName = it.destinationAccount
-            amount = it.amount.toPlainString()
-            currency = it.currency
-            date = it.date
-            comment = it.comment ?: ""
-        }
-    }
-
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        LazyColumn(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
+    LazyColumn(modifier = modifier.padding(16.dp).testTag(TestTags.EDIT_TRANSFER_ROOT)) {
         item {
             Text("Edit Transfer", style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(16.dp))
 
-            Box(modifier = Modifier.fillMaxWidth().clickable { datePickerDialog.show() }.testTag(TestTags.EDIT_TRANSFER_DATE_FIELD)) {
+            // Date field
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { callbacks.onDateClick() }
+                    .testTag(TestTags.EDIT_TRANSFER_DATE_FIELD)
+            ) {
                 OutlinedTextField(
-                    value = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(date),
+                    value = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(state.date),
                     onValueChange = {},
                     label = { Text("Date") },
                     readOnly = true,
@@ -111,13 +96,14 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Source Account dropdown
             ExposedDropdownMenuBox(
                 expanded = isSourceAccountDropdownExpanded,
                 onExpandedChange = { isSourceAccountDropdownExpanded = !isSourceAccountDropdownExpanded },
                 modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_SOURCE_DROPDOWN)
             ) {
                 OutlinedTextField(
-                    value = sourceAccountName,
+                    value = localSourceAccountName,
                     onValueChange = {},
                     label = { Text("From") },
                     readOnly = true,
@@ -132,9 +118,10 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                         DropdownMenuItem(
                             text = { Text(accountItem.name) },
                             onClick = {
-                                sourceAccountName = accountItem.name
-                                currency = accountItem.currency
+                                localSourceAccountName = accountItem.name
+                                localCurrency = accountItem.currency
                                 isSourceAccountDropdownExpanded = false
+                                callbacks.onSourceAccountSelect(accountItem)
                             },
                             modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + "source_" + accountItem.id)
                         )
@@ -144,13 +131,14 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Destination Account dropdown
             ExposedDropdownMenuBox(
                 expanded = isDestAccountDropdownExpanded,
                 onExpandedChange = { isDestAccountDropdownExpanded = !isDestAccountDropdownExpanded },
                 modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_DESTINATION_DROPDOWN)
             ) {
                 OutlinedTextField(
-                    value = destAccountName,
+                    value = localDestAccountName,
                     onValueChange = {},
                     label = { Text("To") },
                     readOnly = true,
@@ -165,8 +153,9 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                         DropdownMenuItem(
                             text = { Text(accountItem.name) },
                             onClick = {
-                                destAccountName = accountItem.name
+                                localDestAccountName = accountItem.name
                                 isDestAccountDropdownExpanded = false
+                                callbacks.onDestAccountSelect(accountItem)
                             },
                             modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + "dest_" + accountItem.id)
                         )
@@ -176,17 +165,22 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Amount field
             OutlinedTextField(
-                value = amount,
-                onValueChange = { amount = it },
+                value = localAmount,
+                onValueChange = {
+                    localAmount = it
+                    callbacks.onAmountChange(it)
+                },
                 label = { Text("Amount") },
                 modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Currency (read-only)
             OutlinedTextField(
-                value = currency,
+                value = localCurrency,
                 onValueChange = {},
                 label = { Text("Currency") },
                 readOnly = true,
@@ -202,29 +196,34 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Comment field
             OutlinedTextField(
-                value = comment,
-                onValueChange = { comment = it },
+                value = localComment,
+                onValueChange = {
+                    localComment = it
+                    callbacks.onCommentChange(it)
+                },
                 label = { Text("Comment") },
                 modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_COMMENT_FIELD)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Buttons
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = {
-                        transfer?.let {
-                            val parsedAmount = parseTransferMoneyInput(amount) ?: it.amount
+                        state.existingTransfer?.let {
+                            val parsedAmount = parseTransferMoneyInputContent(localAmount) ?: it.amount
                             val updatedTransfer = it.copy(
-                                sourceAccount = sourceAccountName,
-                                destinationAccount = destAccountName,
+                                sourceAccount = localSourceAccountName,
+                                destinationAccount = localDestAccountName,
                                 amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
-                                currency = currency,
-                                date = date,
-                                comment = comment
+                                currency = localCurrency,
+                                date = state.date,
+                                comment = localComment
                             )
-                            viewModel.updateTransfer(updatedTransfer)
+                            callbacks.onSave(updatedTransfer)
                         }
                     },
                     modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_TRANSFER_SAVE)
@@ -232,7 +231,7 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                     Text("Save")
                 }
                 Button(
-                    onClick = { showDialog = true },
+                    onClick = { showDeleteDialog = true },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                     modifier = Modifier.weight(1f).padding(start = 8.dp).testTag(TestTags.EDIT_TRANSFER_DELETE)
                 ) {
@@ -241,26 +240,25 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
             }
         }
     }
-    }
 
-    if (showDialog) {
+    // Delete confirmation dialog
+    if (showDeleteDialog && state.existingTransfer != null) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = { showDeleteDialog = false },
             title = { Text("Delete Transfer") },
             text = { Text("Are you sure you want to delete this transfer?") },
             confirmButton = {
                 Button(
                     onClick = {
-                        transfer?.let { viewModel.deleteTransfer(it) }
-                        showDialog = false
-                        navController.popBackStack()
+                        callbacks.onDelete(state.existingTransfer)
+                        showDeleteDialog = false
                     }
                 ) {
                     Text("Yes")
                 }
             },
             dismissButton = {
-                Button(onClick = { showDialog = false }) {
+                Button(onClick = { showDeleteDialog = false }) {
                     Text("No")
                 }
             }
@@ -270,54 +268,40 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
 
 /**
  * Parses a money input string handling both dot and comma decimal separators.
- * Supports formats like: "1234.56", "1,234.56", "1234,56", "1.234,56"
- * Returns a BigDecimal or null if parsing fails.
  */
-private fun parseTransferMoneyInput(input: String): BigDecimal? {
+internal fun parseTransferMoneyInputContent(input: String): BigDecimal? {
     if (input.isBlank()) return null
-    
+
     val cleaned = input.trim()
-    
-    // Determine which format is used based on the last separator
     val lastDotIndex = cleaned.lastIndexOf('.')
     val lastCommaIndex = cleaned.lastIndexOf(',')
-    
+
     val normalizedString = when {
-        // No separators - just digits
         lastDotIndex == -1 && lastCommaIndex == -1 -> cleaned
-        // Only dots - could be decimal or thousand separator
         lastCommaIndex == -1 -> {
-            // If there's only one dot and it has 1-2 digits after it, treat as decimal
             val afterDot = cleaned.length - lastDotIndex - 1
             if (cleaned.count { it == '.' } == 1 && afterDot <= 2) {
-                cleaned // e.g., "1234.56"
+                cleaned
             } else {
-                // Multiple dots or > 2 digits after = thousand separators, remove them
-                cleaned.replace(".", "") // e.g., "1.234.567" -> "1234567"
+                cleaned.replace(".", "")
             }
         }
-        // Only commas - could be decimal or thousand separator
         lastDotIndex == -1 -> {
-            // If there's only one comma and it has 1-2 digits after it, treat as decimal
             val afterComma = cleaned.length - lastCommaIndex - 1
             if (cleaned.count { it == ',' } == 1 && afterComma <= 2) {
-                cleaned.replace(',', '.') // e.g., "1234,56" -> "1234.56"
+                cleaned.replace(',', '.')
             } else {
-                // Multiple commas or > 2 digits after = thousand separators, remove them
-                cleaned.replace(",", "") // e.g., "1,234,567" -> "1234567"
+                cleaned.replace(",", "")
             }
         }
-        // Both dot and comma present
         lastDotIndex > lastCommaIndex -> {
-            // Dot is the decimal separator (US format: 1,234.56)
-            cleaned.replace(",", "") // Remove thousand separators
+            cleaned.replace(",", "")
         }
         else -> {
-            // Comma is the decimal separator (EU format: 1.234,56)
             cleaned.replace(".", "").replace(',', '.')
         }
     }
-    
+
     return try {
         BigDecimal(normalizedString).setScale(2, RoundingMode.HALF_UP)
     } catch (e: NumberFormatException) {
