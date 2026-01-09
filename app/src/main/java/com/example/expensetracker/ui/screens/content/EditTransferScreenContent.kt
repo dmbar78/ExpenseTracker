@@ -1,8 +1,10 @@
 package com.example.expensetracker.ui.screens.content
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -29,7 +31,9 @@ data class EditTransferState(
     val date: Long = System.currentTimeMillis(),
     val comment: String = "",
     val existingTransfer: TransferHistory? = null,
-    val isEditMode: Boolean = transferId > 0
+    val isEditMode: Boolean = transferId > 0,
+    val sourceAccountError: Boolean = false,
+    val destAccountError: Boolean = false
 )
 
 /**
@@ -66,6 +70,10 @@ fun EditTransferScreenContent(
     var localAmount by remember(state.amount) { mutableStateOf(state.amount) }
     var localCurrency by remember(state.currency) { mutableStateOf(state.currency) }
     var localComment by remember(state.comment) { mutableStateOf(state.comment) }
+    
+    // Track error states locally so they can be cleared on selection
+    var showSourceError by remember(state.sourceAccountError) { mutableStateOf(state.sourceAccountError) }
+    var showDestError by remember(state.destAccountError) { mutableStateOf(state.destAccountError) }
 
     LazyColumn(modifier = modifier.padding(16.dp).testTag(TestTags.EDIT_TRANSFER_ROOT)) {
         item {
@@ -112,7 +120,12 @@ fun EditTransferScreenContent(
                     label = { Text("From") },
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isSourceAccountDropdownExpanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_SOURCE_VALUE)
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                        .testTag(TestTags.EDIT_TRANSFER_SOURCE_VALUE)
+                        .then(if (showSourceError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
+                    isError = showSourceError
                 )
                 ExposedDropdownMenu(
                     expanded = isSourceAccountDropdownExpanded,
@@ -124,6 +137,7 @@ fun EditTransferScreenContent(
                             onClick = {
                                 localSourceAccountName = accountItem.name
                                 localCurrency = accountItem.currency
+                                showSourceError = false // Clear error on selection
                                 isSourceAccountDropdownExpanded = false
                                 callbacks.onSourceAccountSelect(accountItem)
                             },
@@ -131,6 +145,14 @@ fun EditTransferScreenContent(
                         )
                     }
                 }
+            }
+            if (showSourceError) {
+                Text(
+                    "Source account not found. Please select a valid account.",
+                    color = Color.Red,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND)
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -147,7 +169,12 @@ fun EditTransferScreenContent(
                     label = { Text("To") },
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDestAccountDropdownExpanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_DESTINATION_VALUE)
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                        .testTag(TestTags.EDIT_TRANSFER_DESTINATION_VALUE)
+                        .then(if (showDestError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
+                    isError = showDestError
                 )
                 ExposedDropdownMenu(
                     expanded = isDestAccountDropdownExpanded,
@@ -158,6 +185,7 @@ fun EditTransferScreenContent(
                             text = { Text(accountItem.name) },
                             onClick = {
                                 localDestAccountName = accountItem.name
+                                showDestError = false // Clear error on selection
                                 isDestAccountDropdownExpanded = false
                                 callbacks.onDestAccountSelect(accountItem)
                             },
@@ -165,6 +193,14 @@ fun EditTransferScreenContent(
                         )
                     }
                 }
+            }
+            if (showDestError) {
+                Text(
+                    "Destination account not found. Please select a valid account.",
+                    color = Color.Red,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_ERROR_DEST_NOT_FOUND)
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))

@@ -2,9 +2,11 @@ package com.example.expensetracker.ui.screens
 
 import android.app.DatePickerDialog
 import android.widget.DatePicker
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -25,12 +27,26 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navController: NavController) {
+fun EditTransferScreen(
+    transferId: Int,
+    viewModel: ExpenseViewModel,
+    navController: NavController,
+    initialSourceAccountName: String? = null,
+    initialDestAccountName: String? = null,
+    initialAmount: BigDecimal? = null,
+    initialTransferDateMillis: Long = 0L,
+    initialSourceAccountError: Boolean = false,
+    initialDestAccountError: Boolean = false
+) {
     var showDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     val isEditMode = transferId > 0
+    
+    // Track whether errors should be shown (for voice prefill scenario)
+    var showSourceError by remember { mutableStateOf(initialSourceAccountError) }
+    var showDestError by remember { mutableStateOf(initialDestAccountError) }
 
     LaunchedEffect(transferId) {
         if (isEditMode) {
@@ -55,11 +71,23 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
     val transfer by viewModel.selectedTransfer.collectAsState()
     val accounts by viewModel.allAccounts.collectAsState()
 
-    var sourceAccountName by remember { mutableStateOf("") }
-    var destAccountName by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf("") }
-    var currency by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(System.currentTimeMillis()) }
+    // Initialize state with prefill values if provided (for voice recognition prefill)
+    var sourceAccountName by remember { mutableStateOf(initialSourceAccountName ?: "") }
+    var destAccountName by remember { mutableStateOf(initialDestAccountName ?: "") }
+    var amount by remember { mutableStateOf(initialAmount?.toPlainString() ?: "") }
+    // Currency: empty if source missing, will be set from source account selection
+    // If only dest is missing, get currency from source account (case-insensitive lookup)
+    var currency by remember { 
+        mutableStateOf(
+            if (initialSourceAccountName != null && !initialSourceAccountError) {
+                // Source account exists, will be resolved to proper currency in LaunchedEffect
+                ""
+            } else {
+                ""
+            }
+        )
+    }
+    var date by remember { mutableStateOf(if (initialTransferDateMillis > 0) initialTransferDateMillis else System.currentTimeMillis()) }
     var comment by remember { mutableStateOf("") }
 
     var isSourceAccountDropdownExpanded by remember { mutableStateOf(false) }
@@ -88,6 +116,16 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                 currency = it.currency
                 date = it.date
                 comment = it.comment ?: ""
+            }
+        }
+    }
+    
+    // For voice prefill: resolve currency from source account if source is valid
+    LaunchedEffect(accounts, initialSourceAccountName, initialSourceAccountError) {
+        if (!isEditMode && initialSourceAccountName != null && !initialSourceAccountError && accounts.isNotEmpty()) {
+            val sourceAccount = accounts.find { it.name.equals(initialSourceAccountName, ignoreCase = true) }
+            if (sourceAccount != null) {
+                currency = sourceAccount.currency
             }
         }
     }
@@ -130,7 +168,12 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                     label = { Text("From") },
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isSourceAccountDropdownExpanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_SOURCE_VALUE)
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                        .testTag(TestTags.EDIT_TRANSFER_SOURCE_VALUE)
+                        .then(if (showSourceError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
+                    isError = showSourceError
                 )
                 ExposedDropdownMenu(
                     expanded = isSourceAccountDropdownExpanded,
@@ -142,12 +185,21 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                             onClick = {
                                 sourceAccountName = accountItem.name
                                 currency = accountItem.currency
+                                showSourceError = false // Clear error on selection
                                 isSourceAccountDropdownExpanded = false
                             },
                             modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + "source_" + accountItem.id)
                         )
                     }
                 }
+            }
+            if (showSourceError) {
+                Text(
+                    "Source account not found. Please select a valid account.",
+                    color = Color.Red,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND)
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -163,7 +215,12 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                     label = { Text("To") },
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDestAccountDropdownExpanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_DESTINATION_VALUE)
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                        .testTag(TestTags.EDIT_TRANSFER_DESTINATION_VALUE)
+                        .then(if (showDestError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
+                    isError = showDestError
                 )
                 ExposedDropdownMenu(
                     expanded = isDestAccountDropdownExpanded,
@@ -174,12 +231,21 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                             text = { Text(accountItem.name) },
                             onClick = {
                                 destAccountName = accountItem.name
+                                showDestError = false // Clear error on selection
                                 isDestAccountDropdownExpanded = false
                             },
                             modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + "dest_" + accountItem.id)
                         )
                     }
                 }
+            }
+            if (showDestError) {
+                Text(
+                    "Destination account not found. Please select a valid account.",
+                    color = Color.Red,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_ERROR_DEST_NOT_FOUND)
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -227,12 +293,30 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                             scope.launch { snackbarHostState.showSnackbar("Please select both accounts.") }
                             return@Button
                         }
+                        
+                        // Case-insensitive account validation
+                        val resolvedSourceAccount = accounts.find { it.name.equals(sourceAccountName, ignoreCase = true) }
+                        val resolvedDestAccount = accounts.find { it.name.equals(destAccountName, ignoreCase = true) }
+                        
+                        if (resolvedSourceAccount == null) {
+                            showSourceError = true
+                            scope.launch { snackbarHostState.showSnackbar("Source account not found. Please select a valid account.") }
+                            return@Button
+                        }
+                        if (resolvedDestAccount == null) {
+                            showDestError = true
+                            scope.launch { snackbarHostState.showSnackbar("Destination account not found. Please select a valid account.") }
+                            return@Button
+                        }
+                        
                         val parsedAmount = parseTransferMoneyInput(amount)
                         if (parsedAmount == null || parsedAmount <= BigDecimal.ZERO) {
                             scope.launch { snackbarHostState.showSnackbar("Please enter a valid amount.") }
                             return@Button
                         }
-                        if (sourceAccountName == destAccountName) {
+                        
+                        // Case-insensitive same-account check using canonical names
+                        if (resolvedSourceAccount.name.equals(resolvedDestAccount.name, ignoreCase = true)) {
                             scope.launch { snackbarHostState.showSnackbar("Source and destination accounts must be different.") }
                             return@Button
                         }
@@ -240,10 +324,10 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                         if (isEditMode) {
                             transfer?.let {
                                 val updatedTransfer = it.copy(
-                                    sourceAccount = sourceAccountName,
-                                    destinationAccount = destAccountName,
+                                    sourceAccount = resolvedSourceAccount.name,
+                                    destinationAccount = resolvedDestAccount.name,
                                     amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
-                                    currency = currency,
+                                    currency = resolvedSourceAccount.currency,
                                     date = date,
                                     comment = comment
                                 )
@@ -251,10 +335,10 @@ fun EditTransferScreen(transferId: Int, viewModel: ExpenseViewModel, navControll
                             }
                         } else {
                             val newTransfer = TransferHistory(
-                                sourceAccount = sourceAccountName,
-                                destinationAccount = destAccountName,
+                                sourceAccount = resolvedSourceAccount.name,
+                                destinationAccount = resolvedDestAccount.name,
                                 amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
-                                currency = currency,
+                                currency = resolvedSourceAccount.currency,
                                 date = date,
                                 comment = comment
                             )

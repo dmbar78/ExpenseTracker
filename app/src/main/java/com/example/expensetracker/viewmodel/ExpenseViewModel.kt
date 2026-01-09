@@ -144,7 +144,21 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val destAccount = accounts.find { it.name.equals(parsedTransfer.destAccountName, ignoreCase = true) }
 
         if (sourceAccount == null || destAccount == null) {
-            _voiceRecognitionState.value = VoiceRecognitionState.TransferAccountsNotFound(parsedTransfer, accounts)
+            val sourceError = sourceAccount == null
+            val destError = destAccount == null
+            // Use canonical DB names (correct casing) when found, otherwise show parsed text so user sees what was recognized
+            val sourceName = if (sourceError) parsedTransfer.sourceAccountName else sourceAccount.name
+            val destName = if (destError) parsedTransfer.destAccountName else destAccount.name
+            
+            _navigateTo.send(
+                "editTransfer/0" +
+                    "?sourceAccountName=${Uri.encode(sourceName)}" +
+                    "&destAccountName=${Uri.encode(destName)}" +
+                    "&amount=${Uri.encode(parsedTransfer.amount.toPlainString())}" +
+                    "&transferDateMillis=${parsedTransfer.transferDate}" +
+                    "&sourceAccountError=$sourceError" +
+                    "&destAccountError=$destError"
+            )
             return
         }
 
@@ -223,12 +237,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private fun formatDate(millis: Long): String {
         val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
         return sdf.format(Date(millis))
-    }
-
-    fun reprocessTransfer(parsedTransfer: ParsedTransfer) {
-        viewModelScope.launch { 
-            processParsedTransfer(parsedTransfer)
-        }
     }
 
     private fun parseTransfer(input: String): ParsedTransfer? {

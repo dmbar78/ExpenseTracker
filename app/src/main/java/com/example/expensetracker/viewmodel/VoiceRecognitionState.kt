@@ -1,7 +1,5 @@
 package com.example.expensetracker.viewmodel
 
-import com.example.expensetracker.data.Account
-import com.example.expensetracker.data.Category
 import java.math.BigDecimal
 
 // Data class for parsed expense/income
@@ -26,7 +24,6 @@ data class ParsedTransfer(
 sealed class VoiceRecognitionState {
     object Idle : VoiceRecognitionState()
     data class RecognitionFailed(val message: String) : VoiceRecognitionState()
-    data class TransferAccountsNotFound(val parsedTransfer: ParsedTransfer, val availableAccounts: List<Account>) : VoiceRecognitionState()
     data class TransferCurrencyMismatch(val message: String) : VoiceRecognitionState()
     data class SameAccountTransfer(val message: String) : VoiceRecognitionState()
     data class Success(val message: String) : VoiceRecognitionState()

@@ -47,21 +47,14 @@ object TestTags {
     const val EDIT_TRANSFER_COMMENT_FIELD = "editTransfer_commentField"
     const val EDIT_TRANSFER_SAVE = "editTransfer_save"
     const val EDIT_TRANSFER_DELETE = "editTransfer_delete"
+    const val EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND = "editTransfer_error_sourceNotFound"
+    const val EDIT_TRANSFER_ERROR_DEST_NOT_FOUND = "editTransfer_error_destNotFound"
 
     // VoiceRecognitionDialogs
     const val VOICE_DIALOG_RECOGNITION_FAILED = "voiceDialog_recognitionFailed"
-    const val VOICE_DIALOG_TRANSFER_ACCOUNTS_NOT_FOUND = "voiceDialog_transferAccountsNotFound"
     const val VOICE_DIALOG_CURRENCY_MISMATCH = "voiceDialog_currencyMismatch"
     const val VOICE_DIALOG_SAME_ACCOUNT = "voiceDialog_sameAccount"
     const val VOICE_DIALOG_SUCCESS = "voiceDialog_success"
-    const val VOICE_DIALOG_SOURCE_DROPDOWN = "voiceDialog_sourceDropdown"
-    const val VOICE_DIALOG_SOURCE_VALUE = "voiceDialog_sourceValue"
-    const val VOICE_DIALOG_DESTINATION_DROPDOWN = "voiceDialog_destinationDropdown"
-    const val VOICE_DIALOG_DESTINATION_VALUE = "voiceDialog_destinationValue"
-    const val VOICE_DIALOG_SAVE = "voiceDialog_save"
-    const val VOICE_DIALOG_CANCEL = "voiceDialog_cancel"
-    const val VOICE_DIALOG_ERROR_SOURCE_NOT_FOUND = "voiceDialog_error_sourceNotFound"
-    const val VOICE_DIALOG_ERROR_DEST_NOT_FOUND = "voiceDialog_error_destNotFound"
 
     // Global Create Menu (+ button)
     const val GLOBAL_CREATE_MENU = "globalCreate_menu"

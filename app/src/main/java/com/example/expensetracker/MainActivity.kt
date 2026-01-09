@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                VoiceRecognitionDialogs(viewModel = viewModel, navController = navController)
+                VoiceRecognitionDialogs(viewModel = viewModel)
 
                 ModalNavigationDrawer(
                     drawerState = drawerState,

@@ -1,0 +1,13 @@
+## Plan: Replace Transfer Disambiguation Dialog With EditTransfer Prefill
+
+Deprecate the voice-only transfer disambiguation dialog and instead route voice transfers with missing accounts into `EditTransferScreen` (create-mode) with the parsed values prefilled and per-field “account not found” errors (like `EditExpenseScreen`). This makes transfer voice handling consistent with expense voice handling: missing entities become “fix it in the edit screen” rather than a dedicated dialog. Preserve mic/voice activation behavior; only change the “missing accounts” resolution path and related tests.
+
+### Steps
+1. Remove dialog/state plumbing in `VoiceRecognitionDialogs.kt` and the `VoiceRecognitionState` sealed class file (where `TransferAccountsNotFound` is defined) by deprecating/removing `TransferAccountDisambiguationDialog` and `VoiceRecognitionState.TransferAccountsNotFound`.
+2. Update `ExpenseViewModel.processParsedTransfer` to mirror `processParsedExpense` behavior: compute `sourceError`/`destError`, then `_navigateTo.send("editTransfer/0?...")` instead of setting a voice state.
+3. Extend the transfer destination route in `NavGraph.kt` so `editTransfer/{transferId}` supports optional query params: `sourceAccountName`, `destAccountName`, `amount`, `transferDateMillis`, `comment`, `sourceError`, `destError`.
+4. Add create-mode prefill + error UI to `EditTransferScreen.kt`: introduce `rememberSaveable` state for `sourceAccountName`, `destAccountName`, `amount`, `date`, `currency`, and error flags; show red border + “account not found” message per field (replicate the `if (accountError)` pattern from `EditExpenseScreen.kt`). If one of the accounts is correctly identified, canonicalize casing when the account exists (like expense does) to avoid validation edge cases.
+5. Implement the currency rules in `EditTransferScreen` initialization/updates: if source missing (or both missing) set currency empty/blank; if only destination missing and source is valid, set currency from source account; keep currency read-only like today.
+6. Update tests: replace the “Flow 18 transfer disambiguation dialog” tests in `VoiceFlowContentTest.kt` with tests that validate the new behavior (prefill + per-field errors) and adjust any other tests that reference `VOICE_DIALOG_TRANSFER_ACCOUNTS_NOT_FOUND` tags/state.
+7. remove `transferAccountNotFound/...` destination in `NavGraph.kt`
+8. For validation in `EditTransferScreen`: `sourceAccountName == destAccountName` do it with `equals(ignoreCase = true)` to match DB matching rules.

@@ -10,7 +10,6 @@ import com.example.expensetracker.data.Category
 import com.example.expensetracker.data.Expense
 import com.example.expensetracker.data.TransferHistory
 import com.example.expensetracker.ui.screens.content.*
-import com.example.expensetracker.viewmodel.ParsedTransfer
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -395,87 +394,95 @@ class VoiceFlowContentTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CURRENCY_VALUE).assertTextContains("EUR")
     }
 
-    // --- Flow 18: Transfer with both accounts unknown - dialog content test ---
+    // --- Flow 18: Transfer with both accounts unknown - shows errors in EditTransferScreen ---
     @Test
-    fun flow18_transferBothAccountsUnknown_showsBothErrorsInDialog() {
-        val parsedTransfer = ParsedTransfer(
+    fun flow18_transferBothAccountsUnknown_showsBothErrorsInEditScreen() {
+        val state = EditTransferState(
+            transferId = 0,
             sourceAccountName = "unknown1",
             destAccountName = "unknown2",
-            amount = BigDecimal("50"),
-            transferDate = jan1_2026
-        )
-
-        val dialogState = TransferDisambiguationState(
-            parsedTransfer = parsedTransfer,
-            accounts = testAccounts,
-            sourceNotFound = true,
-            destNotFound = true
+            amount = "50",
+            currency = "",
+            date = jan1_2026,
+            sourceAccountError = true,
+            destAccountError = true
         )
 
         composeTestRule.setContent {
-            TransferDisambiguationDialogContent(
-                state = dialogState,
-                callbacks = TransferDisambiguationCallbacks()
+            EditTransferScreenContent(
+                state = state,
+                accounts = testAccounts,
+                callbacks = EditTransferCallbacks()
             )
         }
 
         // Verify both error messages are shown
-        composeTestRule.onNodeWithTag(TestTags.VOICE_DIALOG_ERROR_SOURCE_NOT_FOUND).assertExists()
-        composeTestRule.onNodeWithTag(TestTags.VOICE_DIALOG_ERROR_DEST_NOT_FOUND).assertExists()
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND).assertExists()
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_ERROR_DEST_NOT_FOUND).assertExists()
 
         // Verify prefilled values
-        composeTestRule.onNodeWithTag(TestTags.VOICE_DIALOG_SOURCE_VALUE).assertTextContains("unknown1")
-        composeTestRule.onNodeWithTag(TestTags.VOICE_DIALOG_DESTINATION_VALUE).assertTextContains("unknown2")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SOURCE_VALUE).assertTextContains("unknown1")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DESTINATION_VALUE).assertTextContains("unknown2")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).assertTextContains("50")
     }
 
-    // --- Flow 18 continued: Select accounts clears errors and Save invokes callback ---
+    // --- Flow 18 continued: Select accounts clears errors ---
     @Test
-    fun flow18_selectAccountsAndSave_callbackWithResolvedAccounts() {
-        var saveSource: String? = null
-        var saveDest: String? = null
+    fun flow18_selectAccountsClearsErrors() {
+        var selectedSourceAccount: Account? = null
+        var selectedDestAccount: Account? = null
 
-        val parsedTransfer = ParsedTransfer(
+        val state = EditTransferState(
+            transferId = 0,
             sourceAccountName = "unknown1",
             destAccountName = "unknown2",
-            amount = BigDecimal("50"),
-            transferDate = jan1_2026
+            amount = "50",
+            currency = "",
+            date = jan1_2026,
+            sourceAccountError = true,
+            destAccountError = true
         )
 
-        val dialogState = TransferDisambiguationState(
-            parsedTransfer = parsedTransfer,
-            accounts = testAccounts,
-            sourceNotFound = true,
-            destNotFound = true
-        )
-
-        val callbacks = TransferDisambiguationCallbacks(
-            onSave = { source, dest ->
-                saveSource = source
-                saveDest = dest
-            }
+        val callbacks = EditTransferCallbacks(
+            onSourceAccountSelect = { selectedSourceAccount = it },
+            onDestAccountSelect = { selectedDestAccount = it }
         )
 
         composeTestRule.setContent {
-            TransferDisambiguationDialogContent(
-                state = dialogState,
+            EditTransferScreenContent(
+                state = state,
+                accounts = testAccounts,
                 callbacks = callbacks
             )
         }
 
+        // Source error is shown initially
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND).assertExists()
+
         // Select source account (Test2, id=3)
-        composeTestRule.onNodeWithTag(TestTags.VOICE_DIALOG_SOURCE_DROPDOWN).performClick()
-        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "dialog_source_3").performClick()
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SOURCE_DROPDOWN).performClick()
+        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "source_3").performClick()
+
+        // Verify callback invoked
+        assertNotNull("Source account select callback should be invoked", selectedSourceAccount)
+        assertEquals("Test2", selectedSourceAccount!!.name)
+
+        // After selection, source error should be cleared
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND).assertDoesNotExist()
+
+        // Dest error still shown
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_ERROR_DEST_NOT_FOUND).assertExists()
 
         // Select dest account (Test3, id=4)
-        composeTestRule.onNodeWithTag(TestTags.VOICE_DIALOG_DESTINATION_DROPDOWN).performClick()
-        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "dialog_dest_4").performClick()
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DESTINATION_DROPDOWN).performClick()
+        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "dest_4").performClick()
 
-        // Click Save
-        composeTestRule.onNodeWithTag(TestTags.VOICE_DIALOG_SAVE).performClick()
+        // Verify callback invoked
+        assertNotNull("Dest account select callback should be invoked", selectedDestAccount)
+        assertEquals("Test3", selectedDestAccount!!.name)
 
-        // Verify callback invoked with resolved account names
-        assertEquals("Test2", saveSource)
-        assertEquals("Test3", saveDest)
+        // After selection, dest error should be cleared
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_ERROR_DEST_NOT_FOUND).assertDoesNotExist()
     }
 
     // --- AddCategory content test ---

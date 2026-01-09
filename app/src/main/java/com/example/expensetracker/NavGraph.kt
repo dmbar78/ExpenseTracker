@@ -91,22 +91,37 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             )
         }
         composable(
-            route = "editTransfer/{transferId}",
-            arguments = listOf(navArgument("transferId") { type = NavType.IntType })
-        ) {
-            val transferId = it.arguments?.getInt("transferId") ?: 0
-            EditTransferScreen(transferId = transferId, viewModel = viewModel, navController = navController)
-        }
-        composable(
-            route = "transferAccountNotFound/{sourceAccountName}/{destAccountName}",
+            route = "editTransfer/{transferId}?sourceAccountName={sourceAccountName}&destAccountName={destAccountName}&amount={amount}&transferDateMillis={transferDateMillis}&sourceAccountError={sourceAccountError}&destAccountError={destAccountError}",
             arguments = listOf(
-                navArgument("sourceAccountName") { type = NavType.StringType },
-                navArgument("destAccountName") { type = NavType.StringType }
+                navArgument("transferId") { type = NavType.IntType },
+                navArgument("sourceAccountName") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("destAccountName") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("amount") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("transferDateMillis") { type = NavType.LongType; defaultValue = 0L },
+                navArgument("sourceAccountError") { type = NavType.BoolType; defaultValue = false },
+                navArgument("destAccountError") { type = NavType.BoolType; defaultValue = false }
             )
         ) {
-            val sourceAccountName = it.arguments?.getString("sourceAccountName") ?: ""
-            val destAccountName = it.arguments?.getString("destAccountName") ?: ""
-            TransferAccountNotFoundScreen(viewModel = viewModel, navController = navController, sourceAccountName = sourceAccountName, destAccountName = destAccountName)
+            val transferId = it.arguments?.getInt("transferId") ?: 0
+            val sourceAccountName = it.arguments?.getString("sourceAccountName")
+            val destAccountName = it.arguments?.getString("destAccountName")
+            val amountStr = it.arguments?.getString("amount")
+            val amount = amountStr?.let { str -> runCatching { BigDecimal(str) }.getOrNull() }
+            val transferDateMillis = it.arguments?.getLong("transferDateMillis") ?: 0L
+            val sourceAccountError = it.arguments?.getBoolean("sourceAccountError") ?: false
+            val destAccountError = it.arguments?.getBoolean("destAccountError") ?: false
+            
+            EditTransferScreen(
+                transferId = transferId,
+                viewModel = viewModel,
+                navController = navController,
+                initialSourceAccountName = sourceAccountName,
+                initialDestAccountName = destAccountName,
+                initialAmount = amount,
+                initialTransferDateMillis = transferDateMillis,
+                initialSourceAccountError = sourceAccountError,
+                initialDestAccountError = destAccountError
+            )
         }
     }
 }
