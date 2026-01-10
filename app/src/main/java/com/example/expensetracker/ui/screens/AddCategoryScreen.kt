@@ -1,23 +1,28 @@
 package com.example.expensetracker.ui.screens
 
-import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
-import com.example.expensetracker.ui.TestTags
 import androidx.navigation.NavController
-import com.example.expensetracker.data.Category
+import com.example.expensetracker.ui.screens.content.AddCategoryCallbacks
+import com.example.expensetracker.ui.screens.content.AddCategoryScreenContent
+import com.example.expensetracker.ui.screens.content.AddCategoryState
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.flow.collectLatest
 
+/**
+ * Thin wrapper for AddCategoryScreen.
+ * - Collects errorFlow and navigateBackFlow from ViewModel
+ * - Handles savedStateHandle result passing for createdCategoryName
+ * - Delegates all UI rendering to AddCategoryScreenContent
+ */
 @Composable
 fun AddCategoryScreen(viewModel: ExpenseViewModel, navController: NavController, categoryName: String?) {
-    var name by remember { mutableStateOf(categoryName ?: "") }
+    // Track the current category name for savedStateHandle result passing
+    var currentName by remember { mutableStateOf(categoryName ?: "") }
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
+    // Collect error flow and show error dialog
     LaunchedEffect(Unit) {
         viewModel.errorFlow.collectLatest { message ->
             errorMessage = message
@@ -25,14 +30,16 @@ fun AddCategoryScreen(viewModel: ExpenseViewModel, navController: NavController,
         }
     }
 
+    // Collect navigate back signal and pass result via savedStateHandle
     LaunchedEffect(Unit) {
         viewModel.navigateBackFlow.collectLatest { 
             // Pass the new category name back to the previous screen
-            navController.previousBackStackEntry?.savedStateHandle?.set("createdCategoryName", name)
+            navController.previousBackStackEntry?.savedStateHandle?.set("createdCategoryName", currentName)
             navController.popBackStack()
         }
     }
 
+    // Error dialog (side-effect owned by wrapper)
     if (showErrorDialog) {
         AlertDialog(
             onDismissRequest = { showErrorDialog = false },
@@ -46,24 +53,12 @@ fun AddCategoryScreen(viewModel: ExpenseViewModel, navController: NavController,
         )
     }
 
-    Column(modifier = Modifier.padding(16.dp).testTag(TestTags.ADD_CATEGORY_ROOT)) {
-        Text("Add Category", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Category Name") },
-            modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_CATEGORY_NAME_FIELD)
+    // Delegate UI to Content composable
+    AddCategoryScreenContent(
+        state = AddCategoryState(categoryName = currentName),
+        callbacks = AddCategoryCallbacks(
+            onNameChange = { currentName = it },
+            onSave = { category -> viewModel.insertCategory(category) }
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = {
-                val newCategory = Category(name = name)
-                viewModel.insertCategory(newCategory)
-            },
-            modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_CATEGORY_SAVE)
-        ) {
-            Text("Save")
-        }
-    }
+    )
 }

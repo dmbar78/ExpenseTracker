@@ -278,10 +278,12 @@ fun EditExpenseScreenContent(
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = {
-                        // Validation
+                        // Validation with case-insensitive matching
                         var isValid = true
-                        val newAccountError = localAccountName.isBlank() || accounts.find { it.name == localAccountName } == null
-                        val newCategoryError = localCategory.isBlank() || categories.find { it.name == localCategory } == null
+                        val resolvedAccount = accounts.find { it.name.equals(localAccountName, ignoreCase = true) }
+                        val resolvedCategory = categories.find { it.name.equals(localCategory, ignoreCase = true) }
+                        val newAccountError = localAccountName.isBlank() || resolvedAccount == null
+                        val newCategoryError = localCategory.isBlank() || resolvedCategory == null
                         val parsedAmount = parseMoneyInputContent(localAmount)
                         val newAmountError = parsedAmount == null || parsedAmount <= BigDecimal.ZERO
 
@@ -303,22 +305,22 @@ fun EditExpenseScreenContent(
                             return@Button
                         }
 
-                        if (parsedAmount != null) {
+                        if (parsedAmount != null && resolvedAccount != null && resolvedCategory != null) {
                             val expenseToSave = if (state.expenseId > 0 && state.existingExpense != null) {
                                 state.existingExpense.copy(
-                                    account = localAccountName,
+                                    account = resolvedAccount.name, // Use canonical name
                                     amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
-                                    category = localCategory,
-                                    currency = localCurrency,
+                                    category = resolvedCategory.name, // Use canonical name
+                                    currency = resolvedAccount.currency,
                                     expenseDate = state.expenseDate,
                                     comment = localComment
                                 )
                             } else {
                                 Expense(
-                                    account = localAccountName,
+                                    account = resolvedAccount.name, // Use canonical name
                                     amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
-                                    category = localCategory,
-                                    currency = localCurrency,
+                                    category = resolvedCategory.name, // Use canonical name
+                                    currency = resolvedAccount.currency,
                                     expenseDate = state.expenseDate,
                                     type = state.type,
                                     comment = localComment

@@ -1,31 +1,28 @@
 package com.example.expensetracker.ui.screens
 
 import android.app.DatePickerDialog
-import android.widget.DatePicker
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
-import com.example.expensetracker.ui.TestTags
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.expensetracker.data.Expense
+import com.example.expensetracker.ui.screens.content.EditExpenseCallbacks
+import com.example.expensetracker.ui.screens.content.EditExpenseScreenContent
+import com.example.expensetracker.ui.screens.content.EditExpenseState
 import com.example.expensetracker.viewmodel.ExpenseViewModel
+import kotlinx.coroutines.flow.collectLatest
 import java.math.BigDecimal
-import java.math.RoundingMode
-import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Thin wrapper for EditExpenseScreen.
+ * - Maps navigation args to state
+ * - Collects from ViewModel flows (selectedExpense, accounts, categories, navigateBackFlow)
+ * - Handles savedStateHandle result for createdCategoryName
+ * - Manages DatePickerDialog side-effect
+ * - Delegates all UI rendering to EditExpenseScreenContent
+ * - Pops only on successful save (via navigateBackFlow)
+ */
 @Composable
 fun EditExpenseScreen(
     expenseId: Int,
@@ -39,8 +36,6 @@ fun EditExpenseScreen(
     initialAccountError: Boolean = false,
     initialCategoryError: Boolean = false
 ) {
-    var showDialog by remember { mutableStateOf(false) }
-
     // Retrieve the result from AddCategoryScreen if available
     val createdCategoryName = navController.currentBackStackEntry
         ?.savedStateHandle
@@ -72,10 +67,6 @@ fun EditExpenseScreen(
     // Error states using rememberSaveable
     var accountError by rememberSaveable { mutableStateOf(initialAccountError) }
     var categoryError by rememberSaveable { mutableStateOf(initialCategoryError) }
-    var amountError by rememberSaveable { mutableStateOf(false) }
-
-    var isAccountDropdownExpanded by remember { mutableStateOf(false) }
-    var isCategoryDropdownExpanded by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
@@ -178,310 +169,64 @@ fun EditExpenseScreen(
         }
     }
 
-    LazyColumn(modifier = Modifier.padding(16.dp)) {
-        item {
-            val headerText = if (expenseId > 0) "Edit $type" else "Add $type"
-            Text(headerText, style = MaterialTheme.typography.headlineSmall)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Box(modifier = Modifier.fillMaxWidth().clickable { datePickerDialog.show() }.testTag(TestTags.EDIT_EXPENSE_DATE_FIELD)) {
-                OutlinedTextField(
-                    value = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(expenseDate),
-                    onValueChange = {},
-                    label = { Text("Date") },
-                    readOnly = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = false,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                        disabledBorderColor = MaterialTheme.colorScheme.outline,
-                        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            ExposedDropdownMenuBox(
-                expanded = isAccountDropdownExpanded,
-                onExpandedChange = { isAccountDropdownExpanded = !isAccountDropdownExpanded },
-                modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN)
-            ) {
-                OutlinedTextField(
-                    value = accountName,
-                    onValueChange = {},
-                    label = { Text("Account") },
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isAccountDropdownExpanded) },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                        .testTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE)
-                        .then(if (accountError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
-                    isError = accountError
-                )
-                ExposedDropdownMenu(
-                    expanded = isAccountDropdownExpanded,
-                    onDismissRequest = { isAccountDropdownExpanded = false }
-                ) {
-                    accounts.forEach { accountItem ->
-                        DropdownMenuItem(
-                            text = { Text(accountItem.name) },
-                            onClick = {
-                                accountName = accountItem.name
-                                currency = accountItem.currency
-                                accountError = false // Clear error on selection
-                                isAccountDropdownExpanded = false
-                            },
-                            modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + accountItem.id)
-                        )
-                    }
-                }
-            }
-            if (accountError) {
-                Text("Account not found. Please select a valid account.", color = Color.Red, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND))
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = amount,
-                onValueChange = { 
-                    amount = it
-                    amountError = false
-                },
-                label = { Text("Amount") },
-                modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD),
-                isError = amountError
-            )
-            if (amountError) {
-                Text("Amount cannot be empty.", color = Color.Red, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_AMOUNT))
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            ExposedDropdownMenuBox(
-                expanded = isCategoryDropdownExpanded,
-                onExpandedChange = { isCategoryDropdownExpanded = !isCategoryDropdownExpanded },
-                modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN)
-            ) {
-                OutlinedTextField(
-                    value = category,
-                    onValueChange = {},
-                    label = { Text("Category") },
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryDropdownExpanded) },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                        .testTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE)
-                        .then(if (categoryError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
-                    isError = categoryError
-                )
-                ExposedDropdownMenu(
-                    expanded = isCategoryDropdownExpanded,
-                    onDismissRequest = { isCategoryDropdownExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Create New...") },
-                        onClick = {
-                            isCategoryDropdownExpanded = false
-                            navController.navigate("addCategory?categoryName=$category")
-                        },
-                        modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_CATEGORY_CREATE_NEW)
-                    )
-                    Divider()
-                    categories.forEach { categoryItem ->
-                        DropdownMenuItem(
-                            text = { Text(categoryItem.name) },
-                            onClick = {
-                                category = categoryItem.name
-                                categoryError = false // Clear error on selection
-                                isCategoryDropdownExpanded = false
-                            },
-                            modifier = Modifier.testTag(TestTags.CATEGORY_OPTION_PREFIX + categoryItem.id)
-                        )
-                    }
-                }
-            }
-             if (categoryError) {
-                Text("Category not found. Please select a valid category.", color = Color.Red, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_CATEGORY_NOT_FOUND))
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = currency,
-                onValueChange = {},
-                label = { Text("Currency") },
-                readOnly = true,
-                modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_CURRENCY_VALUE),
-                enabled = false,
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                    disabledBorderColor = MaterialTheme.colorScheme.outline,
-                    disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = comment,
-                onValueChange = { comment = it },
-                label = { Text("Comment") },
-                modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Button(
-                    onClick = {
-                        // Validation
-                        var isValid = true
-                        if (accountName.isBlank() || accounts.find { it.name == accountName } == null) {
-                            accountError = true
-                            isValid = false
-                        }
-                        if (category.isBlank() || categories.find { it.name == category } == null) {
-                            categoryError = true
-                            isValid = false
-                        }
-                        val parsedAmount = parseMoneyInput(amount)
-                        if (parsedAmount == null || parsedAmount <= BigDecimal.ZERO) {
-                            amountError = true
-                            isValid = false
-                        }
-
-                        if (isValid && parsedAmount != null) {
-                            val expenseToSave = if (expenseId > 0 && expense != null) {
-                                expense!!.copy(
-                                    account = accountName,
-                                    amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
-                                    category = category,
-                                    currency = currency,
-                                    expenseDate = expenseDate,
-                                    comment = comment
-                                )
-                            } else {
-                                // Create new expense
-                                 Expense(
-                                    account = accountName,
-                                    amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
-                                    category = category,
-                                    currency = currency,
-                                    expenseDate = expenseDate,
-                                    type = type, // Use current type
-                                    comment = comment
-                                )
-                            }
-                            
-                            if (expenseId > 0) {
-                                viewModel.updateExpense(expenseToSave)
-                            } else {
-                                viewModel.insertExpense(expenseToSave)
-                            }
-                            navController.popBackStack()
-                        }
-                    },
-                    modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_EXPENSE_SAVE)
-                ) {
-                    Text("Save")
-                }
-                if (expenseId > 0) {
-                    Button(
-                        onClick = { showDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                        modifier = Modifier.weight(1f).padding(start = 8.dp).testTag(TestTags.EDIT_EXPENSE_DELETE)
-                    ) {
-                        Text("Delete")
-                    }
-                }
-            }
+    // Listen for navigateBackFlow to pop after successful save
+    LaunchedEffect(Unit) {
+        viewModel.navigateBackFlow.collectLatest {
+            navController.popBackStack()
         }
     }
 
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = { Text("Delete $type") }, // Dynamic deletion title
-            text = { Text("Are you sure you want to delete this $type?") }, // Dynamic deletion text
-            confirmButton = {
-                Button(
-                    onClick = {
-                        expense?.let { viewModel.deleteExpense(it) }
-                        showDialog = false
-                        navController.popBackStack()
-                    }
-                ) {
-                    Text("Yes")
-                }
+    // Delegate UI to Content composable
+    EditExpenseScreenContent(
+        state = EditExpenseState(
+            expenseId = expenseId,
+            amount = amount,
+            accountName = accountName,
+            category = category,
+            currency = currency,
+            expenseDate = expenseDate,
+            comment = comment,
+            type = type,
+            accountError = accountError,
+            categoryError = categoryError,
+            amountError = false,
+            existingExpense = if (expenseId > 0) expense else null
+        ),
+        accounts = accounts,
+        categories = categories,
+        callbacks = EditExpenseCallbacks(
+            onAmountChange = { amount = it },
+            onAccountSelect = { selectedAccount ->
+                accountName = selectedAccount.name
+                currency = selectedAccount.currency
+                accountError = false
             },
-            dismissButton = {
-                Button(onClick = { showDialog = false }) {
-                    Text("No")
+            onCategorySelect = { selectedCategory ->
+                category = selectedCategory.name
+                categoryError = false
+            },
+            onCreateNewCategory = { currentCategoryText ->
+                navController.navigate("addCategory?categoryName=$currentCategoryText")
+            },
+            onDateClick = { datePickerDialog.show() },
+            onCommentChange = { comment = it },
+            onSave = { expenseToSave ->
+                if (expenseId > 0) {
+                    viewModel.updateExpense(expenseToSave)
+                } else {
+                    viewModel.insertExpense(expenseToSave)
                 }
+                // Don't pop here - wait for navigateBackFlow
+            },
+            onDelete = { expenseToDelete ->
+                viewModel.deleteExpense(expenseToDelete)
+                navController.popBackStack()
+            },
+            onValidationFailed = { accError, catError, amtError ->
+                accountError = accError
+                categoryError = catError
+                // amountError handled locally in Content
             }
         )
-    }
-}
-
-/**
- * Parses a money input string handling both dot and comma decimal separators.
- * Supports formats like: "1234.56", "1,234.56", "1234,56", "1.234,56"
- * Returns a BigDecimal or null if parsing fails.
- */
-private fun parseMoneyInput(input: String): BigDecimal? {
-    if (input.isBlank()) return null
-    
-    val cleaned = input.trim()
-    
-    // Determine which format is used based on the last separator
-    val lastDotIndex = cleaned.lastIndexOf('.')
-    val lastCommaIndex = cleaned.lastIndexOf(',')
-    
-    val normalizedString = when {
-        // No separators - just digits
-        lastDotIndex == -1 && lastCommaIndex == -1 -> cleaned
-        // Only dots - could be decimal or thousand separator
-        lastCommaIndex == -1 -> {
-            // If there's only one dot and it has 1-2 digits after it, treat as decimal
-            val afterDot = cleaned.length - lastDotIndex - 1
-            if (cleaned.count { it == '.' } == 1 && afterDot <= 2) {
-                cleaned // e.g., "1234.56"
-            } else {
-                // Multiple dots or > 2 digits after = thousand separators, remove them
-                cleaned.replace(".", "") // e.g., "1.234.567" -> "1234567"
-            }
-        }
-        // Only commas - could be decimal or thousand separator
-        lastDotIndex == -1 -> {
-            // If there's only one comma and it has 1-2 digits after it, treat as decimal
-            val afterComma = cleaned.length - lastCommaIndex - 1
-            if (cleaned.count { it == ',' } == 1 && afterComma <= 2) {
-                cleaned.replace(',', '.') // e.g., "1234,56" -> "1234.56"
-            } else {
-                // Multiple commas or > 2 digits after = thousand separators, remove them
-                cleaned.replace(",", "") // e.g., "1,234,567" -> "1234567"
-            }
-        }
-        // Both dot and comma present
-        lastDotIndex > lastCommaIndex -> {
-            // Dot is the decimal separator (US format: 1,234.56)
-            cleaned.replace(",", "") // Remove thousand separators
-        }
-        else -> {
-            // Comma is the decimal separator (EU format: 1.234,56)
-            cleaned.replace(".", "").replace(',', '.')
-        }
-    }
-    
-    return try {
-        BigDecimal(normalizedString).setScale(2, RoundingMode.HALF_UP)
-    } catch (e: NumberFormatException) {
-        null
-    }
+    )
 }

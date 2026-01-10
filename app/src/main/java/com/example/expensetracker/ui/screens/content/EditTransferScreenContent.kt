@@ -46,7 +46,8 @@ data class EditTransferCallbacks(
     val onDateClick: () -> Unit = {},
     val onCommentChange: (String) -> Unit = {},
     val onSave: (TransferHistory) -> Unit = {},
-    val onDelete: (TransferHistory) -> Unit = {}
+    val onDelete: (TransferHistory) -> Unit = {},
+    val onShowSnackbar: (String) -> Unit = {} // Callback to show snackbar messages (owned by wrapper)
 )
 
 /**
@@ -253,33 +254,60 @@ fun EditTransferScreenContent(
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = {
+                        // Validate inputs
+                        if (localSourceAccountName.isBlank() || localDestAccountName.isBlank()) {
+                            callbacks.onShowSnackbar("Please select both accounts.")
+                            return@Button
+                        }
+                        
+                        // Case-insensitive account validation
+                        val resolvedSourceAccount = accounts.find { it.name.equals(localSourceAccountName, ignoreCase = true) }
+                        val resolvedDestAccount = accounts.find { it.name.equals(localDestAccountName, ignoreCase = true) }
+                        
+                        if (resolvedSourceAccount == null) {
+                            showSourceError = true
+                            callbacks.onShowSnackbar("Source account not found. Please select a valid account.")
+                            return@Button
+                        }
+                        if (resolvedDestAccount == null) {
+                            showDestError = true
+                            callbacks.onShowSnackbar("Destination account not found. Please select a valid account.")
+                            return@Button
+                        }
+                        
                         val parsedAmount = parseTransferMoneyInputContent(localAmount)
-                        if (parsedAmount != null && parsedAmount > BigDecimal.ZERO &&
-                            localSourceAccountName.isNotBlank() && localDestAccountName.isNotBlank() &&
-                            localSourceAccountName != localDestAccountName
-                        ) {
-                            if (state.isEditMode && state.existingTransfer != null) {
-                                val updatedTransfer = state.existingTransfer.copy(
-                                    sourceAccount = localSourceAccountName,
-                                    destinationAccount = localDestAccountName,
-                                    amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
-                                    currency = localCurrency,
-                                    date = state.date,
-                                    comment = localComment
-                                )
-                                callbacks.onSave(updatedTransfer)
-                            } else {
-                                // Create mode - new transfer
-                                val newTransfer = TransferHistory(
-                                    sourceAccount = localSourceAccountName,
-                                    destinationAccount = localDestAccountName,
-                                    amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
-                                    currency = localCurrency,
-                                    date = state.date,
-                                    comment = localComment
-                                )
-                                callbacks.onSave(newTransfer)
-                            }
+                        if (parsedAmount == null || parsedAmount <= BigDecimal.ZERO) {
+                            callbacks.onShowSnackbar("Please enter a valid amount.")
+                            return@Button
+                        }
+                        
+                        // Case-insensitive same-account check using canonical names
+                        if (resolvedSourceAccount.name.equals(resolvedDestAccount.name, ignoreCase = true)) {
+                            callbacks.onShowSnackbar("Source and destination accounts must be different.")
+                            return@Button
+                        }
+                        
+                        if (state.isEditMode && state.existingTransfer != null) {
+                            val updatedTransfer = state.existingTransfer.copy(
+                                sourceAccount = resolvedSourceAccount.name, // Use canonical name
+                                destinationAccount = resolvedDestAccount.name, // Use canonical name
+                                amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
+                                currency = resolvedSourceAccount.currency,
+                                date = state.date,
+                                comment = localComment
+                            )
+                            callbacks.onSave(updatedTransfer)
+                        } else {
+                            // Create mode - new transfer
+                            val newTransfer = TransferHistory(
+                                sourceAccount = resolvedSourceAccount.name, // Use canonical name
+                                destinationAccount = resolvedDestAccount.name, // Use canonical name
+                                amount = parsedAmount.setScale(2, RoundingMode.HALF_UP),
+                                currency = resolvedSourceAccount.currency,
+                                date = state.date,
+                                comment = localComment
+                            )
+                            callbacks.onSave(newTransfer)
                         }
                     },
                     modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_TRANSFER_SAVE)
