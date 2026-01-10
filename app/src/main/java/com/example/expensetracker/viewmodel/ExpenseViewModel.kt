@@ -366,6 +366,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun insertExpense(expense: Expense) = viewModelScope.launch {
         try {
             ledgerRepository.addExpense(expense)
+            _navigateBackChannel.send(Unit)
         } catch (e: IllegalStateException) {
             _errorChannel.send(e.message ?: "Failed to add expense.")
         }
@@ -374,6 +375,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun updateExpense(expense: Expense) = viewModelScope.launch {
         try {
             ledgerRepository.updateExpense(expense)
+            _navigateBackChannel.send(Unit)
         } catch (e: IllegalStateException) {
             _errorChannel.send(e.message ?: "Failed to update expense.")
         }
