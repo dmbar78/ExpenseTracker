@@ -133,7 +133,16 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 return@launch
             }
             
-            _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed("Couldn't recognize input: '$spokenText'. Please repeat in the format: Expense from/Income to <Account> <Amount> Category <Category> or Transfer from <Source Account> to <Destination Account> <Amount>")
+            _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed("""Couldn't recognize input: '$spokenText'. Please repeat in one of the formats (example values used):
+            1. Expense from AccountName 50 Category Food (optional date if not today).
+            2. Income to AccountName 50 Category Salary (optional date if not today).
+            3. Transfer from SourceAccountName to DestinationAccountName 50 (optional date if not today).
+            
+            Optional date format can be:
+            - January 1
+            - January 1st
+            - 1st of January.""")
+
         }
     }
 
