@@ -357,13 +357,17 @@ fun EditExpenseScreenContent(
                     onClick = {
                         callbacks.onDelete(state.existingExpense)
                         showDeleteDialog = false
-                    }
+                    },
+                    modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_DELETE_CONFIRM)
                 ) {
                     Text("Yes")
                 }
             },
             dismissButton = {
-                Button(onClick = { showDeleteDialog = false }) {
+                Button(
+                    onClick = { showDeleteDialog = false },
+                    modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_DELETE_DISMISS)
+                ) {
                     Text("No")
                 }
             }

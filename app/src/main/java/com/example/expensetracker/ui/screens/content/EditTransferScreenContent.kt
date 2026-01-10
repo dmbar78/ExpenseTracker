@@ -338,13 +338,17 @@ fun EditTransferScreenContent(
                     onClick = {
                         callbacks.onDelete(state.existingTransfer)
                         showDeleteDialog = false
-                    }
+                    },
+                    modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_DELETE_CONFIRM)
                 ) {
                     Text("Yes")
                 }
             },
             dismissButton = {
-                Button(onClick = { showDeleteDialog = false }) {
+                Button(
+                    onClick = { showDeleteDialog = false },
+                    modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_DELETE_DISMISS)
+                ) {
                     Text("No")
                 }
             }

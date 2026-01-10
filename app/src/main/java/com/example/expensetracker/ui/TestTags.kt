@@ -18,6 +18,8 @@ object TestTags {
     const val EDIT_EXPENSE_COMMENT_FIELD = "editExpense_commentField"
     const val EDIT_EXPENSE_SAVE = "editExpense_save"
     const val EDIT_EXPENSE_DELETE = "editExpense_delete"
+    const val EDIT_EXPENSE_DELETE_CONFIRM = "editExpense_deleteConfirm"
+    const val EDIT_EXPENSE_DELETE_DISMISS = "editExpense_deleteDismiss"
     const val EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND = "editExpense_error_accountNotFound"
     const val EDIT_EXPENSE_ERROR_CATEGORY_NOT_FOUND = "editExpense_error_categoryNotFound"
     const val EDIT_EXPENSE_ERROR_AMOUNT = "editExpense_error_amount"
@@ -47,6 +49,8 @@ object TestTags {
     const val EDIT_TRANSFER_COMMENT_FIELD = "editTransfer_commentField"
     const val EDIT_TRANSFER_SAVE = "editTransfer_save"
     const val EDIT_TRANSFER_DELETE = "editTransfer_delete"
+    const val EDIT_TRANSFER_DELETE_CONFIRM = "editTransfer_deleteConfirm"
+    const val EDIT_TRANSFER_DELETE_DISMISS = "editTransfer_deleteDismiss"
     const val EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND = "editTransfer_error_sourceNotFound"
     const val EDIT_TRANSFER_ERROR_DEST_NOT_FOUND = "editTransfer_error_destNotFound"
 

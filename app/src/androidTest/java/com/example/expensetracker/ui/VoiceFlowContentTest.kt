@@ -51,6 +51,37 @@ class VoiceFlowContentTest {
         cal.timeInMillis
     }
 
+    // --- Helper: Scroll to a node inside a LazyColumn before clicking ---
+    private fun scrollToAndClick(rootTag: String, targetTag: String) {
+        composeTestRule.onNodeWithTag(rootTag).performScrollToNode(hasTestTag(targetTag))
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag(targetTag).performClick()
+    }
+
+    // --- Helper: Open dropdown, wait for option, then click it ---
+    private fun selectDropdownOption(
+        rootTag: String,
+        dropdownTag: String,
+        optionTag: String
+    ) {
+        // In landscape the dropdown anchor may be below the fold.
+        composeTestRule.onNodeWithTag(rootTag).performScrollToNode(hasTestTag(dropdownTag))
+        composeTestRule.waitForIdle()
+
+        // Material3 ExposedDropdownMenu can expose semantics only in the unmerged tree.
+        composeTestRule.onNodeWithTag(dropdownTag, useUnmergedTree = true).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            composeTestRule
+                .onAllNodesWithTag(optionTag, useUnmergedTree = true)
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag(optionTag, useUnmergedTree = true).performClick()
+        composeTestRule.waitForIdle()
+    }
+
     // --- Flow 2: Expense with known account + known category ---
     @Test
     fun flow2_expenseWithKnownAccountAndCategory_saveCallbackInvoked() {
@@ -91,8 +122,8 @@ class VoiceFlowContentTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND).assertDoesNotExist()
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ERROR_CATEGORY_NOT_FOUND).assertDoesNotExist()
 
-        // Click Save
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        // Scroll to and click Save (landscape-safe)
+        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
 
         // Verify callback invoked with correct args
         assertNotNull("Save callback should be invoked", savedExpense)
@@ -187,8 +218,8 @@ class VoiceFlowContentTest {
             )
         }
 
-        // Click Save
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        // Scroll to and click Save (landscape-safe)
+        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
 
         // Verify callback invoked with Income type
         assertNotNull("Save callback should be invoked", savedExpense)
@@ -240,8 +271,8 @@ class VoiceFlowContentTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).performTextClearance()
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).performTextInput("50")
 
-        // Click Save
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        // Scroll to and click Save (landscape-safe)
+        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
 
         // Verify callback invoked with updated amount
         assertNotNull("Save callback should be invoked", savedExpense)
@@ -292,11 +323,14 @@ class VoiceFlowContentTest {
         // Delete button should exist for existing expense
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_DELETE).assertExists()
 
-        // Click Delete
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_DELETE).performClick()
+        // Scroll to and click Delete (landscape-safe)
+        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_DELETE)
 
-        // Confirm in dialog
-        composeTestRule.onNodeWithText("Yes").performClick()
+        // Wait for and click confirm in dialog (using stable test tag)
+        composeTestRule.waitUntil(timeoutMillis = 3000) {
+            composeTestRule.onAllNodesWithTag(TestTags.EDIT_EXPENSE_DELETE_CONFIRM).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_DELETE_CONFIRM).performClick()
 
         // Verify delete callback invoked
         assertNotNull("Delete callback should be invoked", deletedExpense)
@@ -459,9 +493,12 @@ class VoiceFlowContentTest {
         // Source error is shown initially
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND).assertExists()
 
-        // Select source account (Test2, id=3)
-        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SOURCE_DROPDOWN).performClick()
-        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "source_3").performClick()
+        // Select source account (Test2, id=3) - landscape-safe dropdown interaction
+        selectDropdownOption(
+            rootTag = TestTags.EDIT_TRANSFER_ROOT,
+            dropdownTag = TestTags.EDIT_TRANSFER_SOURCE_DROPDOWN,
+            optionTag = TestTags.ACCOUNT_OPTION_PREFIX + "source_3"
+        )
 
         // Verify callback invoked
         assertNotNull("Source account select callback should be invoked", selectedSourceAccount)
@@ -473,9 +510,12 @@ class VoiceFlowContentTest {
         // Dest error still shown
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_ERROR_DEST_NOT_FOUND).assertExists()
 
-        // Select dest account (Test3, id=4)
-        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DESTINATION_DROPDOWN).performClick()
-        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "dest_4").performClick()
+        // Select dest account (Test3, id=4) - landscape-safe dropdown interaction
+        selectDropdownOption(
+            rootTag = TestTags.EDIT_TRANSFER_ROOT,
+            dropdownTag = TestTags.EDIT_TRANSFER_DESTINATION_DROPDOWN,
+            optionTag = TestTags.ACCOUNT_OPTION_PREFIX + "dest_4"
+        )
 
         // Verify callback invoked
         assertNotNull("Dest account select callback should be invoked", selectedDestAccount)
@@ -550,11 +590,14 @@ class VoiceFlowContentTest {
             )
         }
 
-        // Click Delete
-        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DELETE).performClick()
+        // Scroll to and click Delete (landscape-safe)
+        scrollToAndClick(TestTags.EDIT_TRANSFER_ROOT, TestTags.EDIT_TRANSFER_DELETE)
 
-        // Confirm
-        composeTestRule.onNodeWithText("Yes").performClick()
+        // Wait for and click confirm in dialog (using stable test tag)
+        composeTestRule.waitUntil(timeoutMillis = 3000) {
+            composeTestRule.onAllNodesWithTag(TestTags.EDIT_TRANSFER_DELETE_CONFIRM).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DELETE_CONFIRM).performClick()
 
         // Verify callback
         assertNotNull("Delete callback should be invoked", deletedTransfer)
@@ -602,8 +645,8 @@ class VoiceFlowContentTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).performTextClearance()
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).performTextInput("75")
 
-        // Click Save
-        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SAVE).performClick()
+        // Scroll to and click Save (landscape-safe)
+        scrollToAndClick(TestTags.EDIT_TRANSFER_ROOT, TestTags.EDIT_TRANSFER_SAVE)
 
         // Verify callback
         assertNotNull("Save callback should be invoked", savedTransfer)
@@ -646,19 +689,25 @@ class VoiceFlowContentTest {
         // Delete button should NOT exist in create mode
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DELETE).assertDoesNotExist()
 
-        // Select source account (Test2, id=3)
-        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SOURCE_DROPDOWN).performClick()
-        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "source_3").performClick()
+        // Select source account (Test2, id=3) - landscape-safe dropdown
+        selectDropdownOption(
+            rootTag = TestTags.EDIT_TRANSFER_ROOT,
+            dropdownTag = TestTags.EDIT_TRANSFER_SOURCE_DROPDOWN,
+            optionTag = TestTags.ACCOUNT_OPTION_PREFIX + "source_3"
+        )
 
-        // Select dest account (Test3, id=4)
-        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DESTINATION_DROPDOWN).performClick()
-        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "dest_4").performClick()
+        // Select dest account (Test3, id=4) - landscape-safe dropdown
+        selectDropdownOption(
+            rootTag = TestTags.EDIT_TRANSFER_ROOT,
+            dropdownTag = TestTags.EDIT_TRANSFER_DESTINATION_DROPDOWN,
+            optionTag = TestTags.ACCOUNT_OPTION_PREFIX + "dest_4"
+        )
 
         // Enter amount
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).performTextInput("100")
 
-        // Click Save
-        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SAVE).performClick()
+        // Scroll to and click Save (landscape-safe)
+        scrollToAndClick(TestTags.EDIT_TRANSFER_ROOT, TestTags.EDIT_TRANSFER_SAVE)
 
         // Verify callback invoked with new transfer
         assertNotNull("Save callback should be invoked", savedTransfer)
@@ -733,19 +782,25 @@ class VoiceFlowContentTest {
             )
         }
 
-        // Select account (Test1, id=2)
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN).performClick()
-        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "2").performClick()
+        // Select account (Test1, id=2) - landscape-safe dropdown
+        selectDropdownOption(
+            rootTag = TestTags.EDIT_EXPENSE_ROOT,
+            dropdownTag = TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN,
+            optionTag = TestTags.ACCOUNT_OPTION_PREFIX + "2"
+        )
 
         // Enter amount
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).performTextInput("50")
 
-        // Select category (default, id=1)
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN).performClick()
-        composeTestRule.onNodeWithTag(TestTags.CATEGORY_OPTION_PREFIX + "1").performClick()
+        // Select category (default, id=1) - landscape-safe dropdown
+        selectDropdownOption(
+            rootTag = TestTags.EDIT_EXPENSE_ROOT,
+            dropdownTag = TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN,
+            optionTag = TestTags.CATEGORY_OPTION_PREFIX + "1"
+        )
 
-        // Click Save
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        // Scroll to and click Save (landscape-safe)
+        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
 
         // Verify callback invoked
         assertNotNull("Save callback should be invoked", savedExpense)
@@ -785,19 +840,25 @@ class VoiceFlowContentTest {
             )
         }
 
-        // Select account
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN).performClick()
-        composeTestRule.onNodeWithTag(TestTags.ACCOUNT_OPTION_PREFIX + "2").performClick()
+        // Select account - landscape-safe dropdown
+        selectDropdownOption(
+            rootTag = TestTags.EDIT_EXPENSE_ROOT,
+            dropdownTag = TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN,
+            optionTag = TestTags.ACCOUNT_OPTION_PREFIX + "2"
+        )
 
         // Enter amount
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).performTextInput("200")
 
-        // Select category
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN).performClick()
-        composeTestRule.onNodeWithTag(TestTags.CATEGORY_OPTION_PREFIX + "3").performClick()
+        // Select category - landscape-safe dropdown
+        selectDropdownOption(
+            rootTag = TestTags.EDIT_EXPENSE_ROOT,
+            dropdownTag = TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN,
+            optionTag = TestTags.CATEGORY_OPTION_PREFIX + "3"
+        )
 
-        // Click Save
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        // Scroll to and click Save (landscape-safe)
+        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
 
         // Verify callback invoked with Income type
         assertNotNull("Save callback should be invoked", savedExpense)
