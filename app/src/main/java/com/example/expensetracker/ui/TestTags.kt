@@ -14,6 +14,7 @@ object TestTags {
     const val EDIT_EXPENSE_CATEGORY_DROPDOWN = "editExpense_categoryDropdown"
     const val EDIT_EXPENSE_CATEGORY_VALUE = "editExpense_categoryValue"
     const val EDIT_EXPENSE_CATEGORY_CREATE_NEW = "editExpense_categoryCreateNew"
+    const val EDIT_EXPENSE_ACCOUNT_CREATE_NEW = "editExpense_accountCreateNew"
     const val EDIT_EXPENSE_CURRENCY_VALUE = "editExpense_currencyValue"
     const val EDIT_EXPENSE_COMMENT_FIELD = "editExpense_commentField"
     const val EDIT_EXPENSE_SAVE = "editExpense_save"
@@ -53,6 +54,8 @@ object TestTags {
     const val EDIT_TRANSFER_DELETE_DISMISS = "editTransfer_deleteDismiss"
     const val EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND = "editTransfer_error_sourceNotFound"
     const val EDIT_TRANSFER_ERROR_DEST_NOT_FOUND = "editTransfer_error_destNotFound"
+    const val EDIT_TRANSFER_SOURCE_CREATE_NEW = "editTransfer_sourceCreateNew"
+    const val EDIT_TRANSFER_DEST_CREATE_NEW = "editTransfer_destCreateNew"
 
     // VoiceRecognitionDialogs
     const val VOICE_DIALOG_RECOGNITION_FAILED = "voiceDialog_recognitionFailed"

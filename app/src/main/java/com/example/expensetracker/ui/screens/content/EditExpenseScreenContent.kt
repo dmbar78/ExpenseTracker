@@ -46,6 +46,7 @@ data class EditExpenseState(
 data class EditExpenseCallbacks(
     val onAmountChange: (String) -> Unit = {},
     val onAccountSelect: (Account) -> Unit = {},
+    val onCreateNewAccount: (currentAccountText: String) -> Unit = {},
     val onCategorySelect: (Category) -> Unit = {},
     val onCreateNewCategory: (currentCategoryText: String) -> Unit = {},
     val onDateClick: () -> Unit = {},
@@ -150,6 +151,16 @@ fun EditExpenseScreenContent(
                             modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + accountItem.id)
                         )
                     }
+                    // "Create New..." option
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text("Create New…") },
+                        onClick = {
+                            isAccountDropdownExpanded = false
+                            callbacks.onCreateNewAccount(localAccountName)
+                        },
+                        modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ACCOUNT_CREATE_NEW)
+                    )
                 }
             }
             if (localAccountError) {

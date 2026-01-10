@@ -21,8 +21,12 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
         composable("accounts") {
             AccountsScreen(viewModel = viewModel, navController = navController)
         }
-        composable("addAccount") {
-            AddAccountScreen(viewModel = viewModel, navController = navController)
+        composable(
+            route = "addAccount?accountName={accountName}",
+            arguments = listOf(navArgument("accountName") { type = NavType.StringType; nullable = true })
+        ) {
+            val accountName = it.arguments?.getString("accountName")
+            AddAccountScreen(viewModel = viewModel, navController = navController, accountName = accountName)
         }
         composable(
             route = "editAccount/{accountId}",

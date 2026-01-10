@@ -46,6 +46,12 @@ fun EditExpenseScreen(
         ?.getLiveData<String>("createdCategoryName")
         ?.observeAsState()
 
+    // Retrieve the result from AddAccountScreen if available
+    val createdAccountName = navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getLiveData<String>("createdAccountName")
+        ?.observeAsState()
+
     // Only load from DB if it's an existing expense (ID > 0)
     LaunchedEffect(expenseId) {
         if (expenseId > 0) {
@@ -119,6 +125,21 @@ fun EditExpenseScreen(
             categoryError = false // Clear error since we have a valid category now
             // Clear the result so it doesn't re-trigger if we navigate back and forth
             navController.currentBackStackEntry?.savedStateHandle?.remove<String>("createdCategoryName")
+        }
+    }
+
+    // Update account if a new one was created
+    LaunchedEffect(createdAccountName?.value) {
+        createdAccountName?.value?.let { newAccountName ->
+            accountName = newAccountName
+            accountError = false // Clear error since we have a valid account now
+            // Try to resolve currency from the new account
+            val newAccount = accounts.find { it.name.equals(newAccountName, ignoreCase = true) }
+            if (newAccount != null) {
+                currency = newAccount.currency
+            }
+            // Clear the result so it doesn't re-trigger if we navigate back and forth
+            navController.currentBackStackEntry?.savedStateHandle?.remove<String>("createdAccountName")
         }
     }
 
@@ -222,6 +243,9 @@ fun EditExpenseScreen(
                 accountName = selectedAccount.name
                 currency = selectedAccount.currency
                 accountError = false
+            },
+            onCreateNewAccount = { currentAccountText ->
+                navController.navigate("addAccount?accountName=$currentAccountText")
             },
             onCategorySelect = { selectedCategory ->
                 category = selectedCategory.name

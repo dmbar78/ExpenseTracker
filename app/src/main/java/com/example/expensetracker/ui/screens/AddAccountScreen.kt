@@ -16,9 +16,13 @@ import kotlinx.coroutines.flow.collectLatest
  * - Delegates all UI rendering to AddAccountScreenContent
  */
 @Composable
-fun AddAccountScreen(viewModel: ExpenseViewModel, navController: NavController) {
+fun AddAccountScreen(
+    viewModel: ExpenseViewModel,
+    navController: NavController,
+    accountName: String? = null
+) {
     // Track the current account name for savedStateHandle result passing
-    var currentName by remember { mutableStateOf("") }
+    var currentName by remember { mutableStateOf(accountName ?: "") }
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 

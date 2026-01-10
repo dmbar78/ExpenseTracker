@@ -5,6 +5,7 @@ import android.widget.DatePicker
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
@@ -64,6 +65,15 @@ fun EditTransferScreen(
         }
     }
 
+    // Observe result from AddAccountScreen (Create New Account flow)
+    val createdAccountNameState = navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getLiveData<String>("createdAccountName")
+        ?.observeAsState()
+    
+    // Track which dropdown triggered the create flow
+    var lastCreateNewTarget by remember { mutableStateOf("") } // "source" or "dest"
+
     // Collect error messages from ViewModel and show as Snackbar
     LaunchedEffect(Unit) {
         viewModel.errorFlow.collect { message ->
@@ -119,6 +129,29 @@ fun EditTransferScreen(
             }
         }
     }
+    
+    // When a new account is created via "Create New...", set it as the selected account
+    LaunchedEffect(createdAccountNameState?.value) {
+        val newName = createdAccountNameState?.value
+        if (!newName.isNullOrEmpty()) {
+            if (lastCreateNewTarget == "source") {
+                sourceAccountName = newName
+                showSourceError = false
+                // Resolve currency from the newly created account
+                val createdAccount = accounts.find { it.name.equals(newName, ignoreCase = true) }
+                if (createdAccount != null) {
+                    currency = createdAccount.currency
+                }
+            } else if (lastCreateNewTarget == "dest") {
+                destAccountName = newName
+                showDestError = false
+            }
+            // Clear the result so it doesn't re-trigger
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.remove<String>("createdAccountName")
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -145,9 +178,17 @@ fun EditTransferScreen(
                     currency = selectedAccount.currency
                     showSourceError = false
                 },
+                onCreateNewSourceAccount = { currentSourceText ->
+                    lastCreateNewTarget = "source"
+                    navController.navigate("addAccount?accountName=$currentSourceText")
+                },
                 onDestAccountSelect = { selectedAccount ->
                     destAccountName = selectedAccount.name
                     showDestError = false
+                },
+                onCreateNewDestAccount = { currentDestText ->
+                    lastCreateNewTarget = "dest"
+                    navController.navigate("addAccount?accountName=$currentDestText")
                 },
                 onAmountChange = { amount = it },
                 onDateClick = { datePickerDialog.show() },

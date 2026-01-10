@@ -1,0 +1,13 @@
+## Plan: Add “Create New…” For Accounts
+
+Add a “Create New…” item to the Account dropdown(s) (EditExpense: Account; EditTransfer: From/To) that navigates to an AddAccount screen with optional `accountName` prefill, then returns the created account name to the originating screen via `savedStateHandle`, mirroring the existing Category create-new flow. Update the *Content composables and Compose UI tests the same way the category “Create New…” tests work today, without changing existing account option test tags.
+
+### Steps
+1. Extend AddAccount navigation route to accept optional `accountName` and return `createdAccountName` in [app/src/main/java/com/example/expensetracker/NavGraph.kt](../../app/src/main/java/com/example/expensetracker/NavGraph.kt) and [app/src/main/java/com/example/expensetracker/ui/screens/AddAccountScreen.kt](../../app/src/main/java/com/example/expensetracker/ui/screens/AddAccountScreen.kt).
+2. Mirror AddCategory’s result-handling: listen for `createdAccountName`, apply it, and `remove()` it in [app/src/main/java/com/example/expensetracker/ui/screens/EditExpenseScreen.kt](../../app/src/main/java/com/example/expensetracker/ui/screens/EditExpenseScreen.kt) and [app/src/main/java/com/example/expensetracker/ui/screens/EditTransferScreen.kt](../../app/src/main/java/com/example/expensetracker/ui/screens/EditTransferScreen.kt).
+3. Add “Create New…” dropdown items + callbacks in content composables: [app/src/main/java/com/example/expensetracker/ui/screens/content/EditExpenseScreenContent.kt](../../app/src/main/java/com/example/expensetracker/ui/screens/content/EditExpenseScreenContent.kt) and [app/src/main/java/com/example/expensetracker/ui/screens/content/EditTransferScreenContent.kt](../../app/src/main/java/com/example/expensetracker/ui/screens/content/EditTransferScreenContent.kt).
+4. Add new stable test tags for the account create-new items in [app/src/main/java/com/example/expensetracker/ui/TestTags.kt](../../app/src/main/java/com/example/expensetracker/ui/TestTags.kt), keeping existing `ACCOUNT_OPTION_PREFIX + id` tags unchanged.
+5. Update/add Compose UI content tests mirroring the category create-new test pattern in [app/src/androidTest/java/com/example/expensetracker/ui/VoiceFlowContentTest.kt](../../app/src/androidTest/java/com/example/expensetracker/ui/VoiceFlowContentTest.kt).
+6. Result key naming: use `createdAccountName`.
+7. EditTransfer ambiguity: two callbacks (`onCreateNewSourceAccount`, `onCreateNewDestAccount`)
+8. Prefill semantics: pass current dropdown text (even if invalid) to `addAccount?accountName=...`, same as category passes `categoryName`.
