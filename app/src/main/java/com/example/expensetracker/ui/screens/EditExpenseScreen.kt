@@ -1,9 +1,12 @@
 package com.example.expensetracker.ui.screens
 
 import android.app.DatePickerDialog
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import com.example.expensetracker.ui.screens.content.EditExpenseCallbacks
@@ -17,11 +20,12 @@ import java.util.*
 /**
  * Thin wrapper for EditExpenseScreen.
  * - Maps navigation args to state
- * - Collects from ViewModel flows (selectedExpense, accounts, categories, navigateBackFlow)
+ * - Owns SnackbarHostState for error and success messages
+ * - Collects from ViewModel flows (selectedExpense, accounts, categories, errorFlow, navigateBackFlow)
  * - Handles savedStateHandle result for createdCategoryName
  * - Manages DatePickerDialog side-effect
  * - Delegates all UI rendering to EditExpenseScreenContent
- * - Pops only on successful save (via navigateBackFlow)
+ * - Shows success snackbar then pops on successful save (via navigateBackFlow)
  */
 @Composable
 fun EditExpenseScreen(
@@ -52,6 +56,10 @@ fun EditExpenseScreen(
     val expense by viewModel.selectedExpense.collectAsState()
     val accounts by viewModel.allAccounts.collectAsState()
     val categories by viewModel.allCategories.collectAsState()
+
+    // Snackbar state for error and success messages
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     // State variables using rememberSaveable to persist across navigation
     var amount by rememberSaveable { mutableStateOf(initialAmount?.toPlainString() ?: "") }
@@ -169,15 +177,29 @@ fun EditExpenseScreen(
         }
     }
 
-    // Listen for navigateBackFlow to pop after successful save
+    // Collect error messages from ViewModel and show as Snackbar
+    LaunchedEffect(Unit) {
+        viewModel.errorFlow.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
+    // Listen for navigateBackFlow - show success snackbar then pop
     LaunchedEffect(Unit) {
         viewModel.navigateBackFlow.collectLatest {
+            val message = if (expenseId > 0) "$type updated" else "$type created"
+            snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
             navController.popBackStack()
         }
     }
 
-    // Delegate UI to Content composable
-    EditExpenseScreenContent(
+    // Wrap content in Scaffold with SnackbarHost
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        // Delegate UI to Content composable
+        EditExpenseScreenContent(
+            modifier = Modifier.padding(paddingValues),
         state = EditExpenseState(
             expenseId = expenseId,
             amount = amount,
@@ -228,5 +250,6 @@ fun EditExpenseScreen(
                 // amountError handled locally in Content
             }
         )
-    )
+        )
+    }
 }

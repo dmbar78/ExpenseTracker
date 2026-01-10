@@ -55,9 +55,11 @@ fun EditTransferScreen(
         }
     }
 
-    // Listen for navigation back signal (successful save)
+    // Listen for navigation back signal (successful save) - show snackbar then pop
     LaunchedEffect(Unit) {
         viewModel.navigateBackFlow.collectLatest {
+            val message = if (isEditMode) "Transfer updated" else "Transfer created"
+            snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
             navController.popBackStack()
         }
     }
