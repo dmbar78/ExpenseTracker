@@ -80,6 +80,9 @@ dependencies {
     kapt(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
 
+    // DataStore for filter persistence
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
     // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:21.2.0")
 

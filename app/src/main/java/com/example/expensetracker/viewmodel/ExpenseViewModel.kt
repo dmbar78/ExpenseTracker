@@ -28,6 +28,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val currencyRepository: CurrencyRepository
     private val transferHistoryRepository: TransferHistoryRepository
     private val ledgerRepository: LedgerRepository
+    private val filterPreferences: FilterPreferences
 
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab
@@ -38,6 +39,15 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val allCategories: StateFlow<List<Category>>
     val allCurrencies: StateFlow<List<Currency>>
     val allTransfers: StateFlow<List<TransferHistory>>
+    
+    // Filter state
+    private val _filterState = MutableStateFlow(FilterState())
+    val filterState: StateFlow<FilterState> = _filterState.asStateFlow()
+    
+    // Filtered lists for HomeScreen
+    val filteredExpenses: StateFlow<List<Expense>>
+    val filteredIncomes: StateFlow<List<Expense>>
+    val filteredTransfers: StateFlow<List<TransferHistory>>
 
     // For voice recognition state
     private val _voiceRecognitionState = MutableStateFlow<VoiceRecognitionState>(VoiceRecognitionState.Idle)
@@ -84,6 +94,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         currencyRepository = CurrencyRepository(database.currencyDao())
         transferHistoryRepository = TransferHistoryRepository(database.transferHistoryDao())
         ledgerRepository = LedgerRepository(database.ledgerDao())
+        filterPreferences = FilterPreferences(application)
 
         allExpenses = expenseRepository.getExpensesByType("Expense").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allIncomes = expenseRepository.getExpensesByType("Income").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -91,6 +102,28 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         allCategories = categoryRepository.allCategories.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allCurrencies = currencyRepository.allCurrencies.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allTransfers = transferHistoryRepository.allTransfers.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        
+        // Derive filtered expenses from allExpenses + filterState
+        filteredExpenses = combine(allExpenses, _filterState) { expenses, filter ->
+            applyExpenseFilters(expenses, filter)
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        
+        // Derive filtered incomes from allIncomes + filterState
+        filteredIncomes = combine(allIncomes, _filterState) { incomes, filter ->
+            applyExpenseFilters(incomes, filter)
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        
+        // Derive filtered transfers from allTransfers + filterState
+        filteredTransfers = combine(allTransfers, _filterState) { transfers, filter ->
+            applyTransferFilters(transfers, filter)
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        
+        // Load persisted filter state
+        viewModelScope.launch {
+            filterPreferences.filterState.collect { savedState ->
+                _filterState.value = savedState
+            }
+        }
 
         // Pre-populate currencies
         viewModelScope.launch {
@@ -116,6 +149,153 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun loadCategory(categoryId: Int) { _selectedCategoryId.value = categoryId }
     fun loadExpense(expenseId: Int) { _selectedExpenseId.value = expenseId }
     fun loadTransfer(transferId: Int) { _selectedTransferId.value = transferId }
+
+    // ==================== Filter Methods ====================
+    
+    /**
+     * Apply filters to expenses/incomes based on current FilterState.
+     */
+    private fun applyExpenseFilters(expenses: List<Expense>, filter: FilterState): List<Expense> {
+        var result = expenses
+        
+        // Apply time filter
+        val timeRange = filter.timeFilter.toDateRange()
+        if (timeRange != null) {
+            result = result.filter { it.expenseDate in timeRange.first..timeRange.second }
+        }
+        
+        // Apply account filter
+        filter.expenseIncomeAccount?.let { account ->
+            result = result.filter { it.account.equals(account, ignoreCase = true) }
+        }
+        
+        // Apply category filter
+        filter.category?.let { category ->
+            result = result.filter { it.category.equals(category, ignoreCase = true) }
+        }
+        
+        return result
+    }
+    
+    /**
+     * Apply filters to transfers based on current FilterState.
+     */
+    private fun applyTransferFilters(transfers: List<TransferHistory>, filter: FilterState): List<TransferHistory> {
+        var result = transfers
+        
+        // Apply time filter
+        val timeRange = filter.timeFilter.toDateRange()
+        if (timeRange != null) {
+            result = result.filter { it.date in timeRange.first..timeRange.second }
+        }
+        
+        // Apply source account filter
+        filter.transferSourceAccount?.let { source ->
+            result = result.filter { it.sourceAccount.equals(source, ignoreCase = true) }
+        }
+        
+        // Apply destination account filter
+        filter.transferDestAccount?.let { dest ->
+            result = result.filter { it.destinationAccount.equals(dest, ignoreCase = true) }
+        }
+        
+        return result
+    }
+    
+    /**
+     * Set the time filter and persist.
+     */
+    fun setTimeFilter(timeFilter: TimeFilter) {
+        val newState = _filterState.value.copy(timeFilter = timeFilter)
+        _filterState.value = newState
+        viewModelScope.launch { filterPreferences.saveFilterState(newState) }
+    }
+    
+    /**
+     * Set the expense/income account filter and persist.
+     */
+    fun setExpenseIncomeAccountFilter(account: String?) {
+        val newState = _filterState.value.copy(expenseIncomeAccount = account)
+        _filterState.value = newState
+        viewModelScope.launch { filterPreferences.saveFilterState(newState) }
+    }
+    
+    /**
+     * Set the category filter and persist.
+     */
+    fun setCategoryFilter(category: String?) {
+        val newState = _filterState.value.copy(category = category)
+        _filterState.value = newState
+        viewModelScope.launch { filterPreferences.saveFilterState(newState) }
+    }
+    
+    /**
+     * Set the transfer source account filter and persist.
+     */
+    fun setTransferSourceAccountFilter(account: String?) {
+        val newState = _filterState.value.copy(transferSourceAccount = account)
+        _filterState.value = newState
+        viewModelScope.launch { filterPreferences.saveFilterState(newState) }
+    }
+    
+    /**
+     * Set the transfer destination account filter and persist.
+     */
+    fun setTransferDestAccountFilter(account: String?) {
+        val newState = _filterState.value.copy(transferDestAccount = account)
+        _filterState.value = newState
+        viewModelScope.launch { filterPreferences.saveFilterState(newState) }
+    }
+    
+    /**
+     * Set both transfer account filters at once and persist.
+     */
+    fun setTransferAccountFilters(sourceAccount: String?, destAccount: String?) {
+        val newState = _filterState.value.copy(
+            transferSourceAccount = sourceAccount,
+            transferDestAccount = destAccount
+        )
+        _filterState.value = newState
+        viewModelScope.launch { filterPreferences.saveFilterState(newState) }
+    }
+    
+    /**
+     * Reset all filters.
+     */
+    fun resetAllFilters() {
+        _filterState.value = FilterState()
+        viewModelScope.launch { filterPreferences.clearAllFilters() }
+    }
+    
+    /**
+     * Reset only the time filter.
+     */
+    fun resetTimeFilter() {
+        setTimeFilter(TimeFilter.None)
+    }
+    
+    /**
+     * Reset only the expense/income account filter.
+     */
+    fun resetExpenseIncomeAccountFilter() {
+        setExpenseIncomeAccountFilter(null)
+    }
+    
+    /**
+     * Reset only the category filter.
+     */
+    fun resetCategoryFilter() {
+        setCategoryFilter(null)
+    }
+    
+    /**
+     * Reset only the transfer filters.
+     */
+    fun resetTransferFilters() {
+        setTransferAccountFilters(null, null)
+    }
+
+    // ==================== End Filter Methods ====================
 
     fun onVoiceRecognitionResult(spokenText: String) {
         viewModelScope.launch {
