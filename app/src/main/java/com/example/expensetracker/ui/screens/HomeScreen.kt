@@ -72,7 +72,18 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
             // Filter chips row (above tabs)
             FilterChipsRow(
                 filterState = filterState,
-                onTimeFilterClick = { showTimeFilterMenu = true },
+                onTimeFilterClick = {
+                    // Open the appropriate picker based on current time filter type
+                    when (filterState.timeFilter) {
+                        is TimeFilter.Day -> showDayPicker = true
+                        is TimeFilter.Week -> showWeekPicker = true
+                        is TimeFilter.Month -> showMonthPicker = true
+                        is TimeFilter.Year -> showYearPicker = true
+                        is TimeFilter.Period -> showPeriodPicker = true
+                        is TimeFilter.AllTime -> showPeriodPicker = true
+                        is TimeFilter.None -> showTimeFilterMenu = true
+                    }
+                },
                 onAccountFilterClick = { showAccountDialog = true },
                 onCategoryFilterClick = { showCategoryDialog = true },
                 onTransferFilterClick = { showTransferDialog = true },
