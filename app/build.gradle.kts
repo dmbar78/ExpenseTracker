@@ -10,6 +10,24 @@ android {
     namespace = "com.example.expensetracker"
     compileSdk = 36
 
+    flavorDimensions += "env"
+
+    productFlavors {
+        create("dev") {
+            dimension = "env"
+            // Install and use this variant for your day-to-day testing.
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+        }
+
+        create("uitest") {
+            dimension = "env"
+            // Run instrumented tests against this variant to avoid touching your real install/data.
+            applicationIdSuffix = ".uitest"
+            versionNameSuffix = "-uitest"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.example.expensetracker"
         minSdk = 34
@@ -22,8 +40,8 @@ android {
 
     buildTypes {
         debug {
-                applicationIdSuffix = ".debug"
-                versionNameSuffix = "-debug"
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
         }
 
         release {
@@ -72,6 +90,7 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation("androidx.navigation:navigation-testing:2.7.7")
+    androidTestImplementation("androidx.test:rules:1.5.0")
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 

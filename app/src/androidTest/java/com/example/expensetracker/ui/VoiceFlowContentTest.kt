@@ -1,9 +1,11 @@
 package com.example.expensetracker.ui
 
+import android.Manifest
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.rule.GrantPermissionRule
 import com.example.expensetracker.MainActivity
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Category
@@ -873,6 +875,13 @@ class VoiceFlowContentTest {
 @RunWith(AndroidJUnit4::class)
 class PlusMenuWiringTest {
 
+    @get:Rule
+    val permissionRule: GrantPermissionRule =
+        GrantPermissionRule.grant(
+            Manifest.permission.RECORD_AUDIO
+            // add others if your app requests them
+        )
+    
     @get:Rule
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
