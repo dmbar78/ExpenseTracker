@@ -188,24 +188,22 @@ fun DayPickerDialog(
     // Use current selection or today
     currentSelection?.let { calendar.timeInMillis = it }
     
-    var selectedDate by remember { mutableStateOf(currentSelection) }
-    
     DisposableEffect(Unit) {
         val dialog = DatePickerDialog(
             context,
-            { _, year, month, dayOfMonth ->
-                val cal = Calendar.getInstance()
-                cal.set(year, month, dayOfMonth, 0, 0, 0)
-                cal.set(Calendar.MILLISECOND, 0)
-                selectedDate = cal.timeInMillis
-            },
+            null, // We handle confirmation via custom OK button
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
         )
         
         dialog.setButton(DatePickerDialog.BUTTON_POSITIVE, "OK") { _, _ ->
-            selectedDate?.let { onConfirm(it) } ?: onCancel()
+            // Read the selected date directly from the DatePicker widget
+            val picker = dialog.datePicker
+            val cal = Calendar.getInstance()
+            cal.set(picker.year, picker.month, picker.dayOfMonth, 0, 0, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            onConfirm(cal.timeInMillis)
         }
         dialog.setButton(DatePickerDialog.BUTTON_NEGATIVE, "Cancel") { _, _ ->
             onCancel()
