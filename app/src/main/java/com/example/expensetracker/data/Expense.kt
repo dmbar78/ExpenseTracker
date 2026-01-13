@@ -14,5 +14,13 @@ data class Expense(
     val category: String,
     val expenseDate: Long = System.currentTimeMillis(),
     val type: String, // "Expense" or "Income"
-    val comment: String? = null
+    val comment: String? = null,
+    
+    // Currency conversion snapshot fields (nullable for legacy data migration)
+    /** The default currency code at the time this expense was created */
+    val originalDefaultCurrencyCode: String? = null,
+    /** Exchange rate from expense currency to originalDefaultCurrency at expense date */
+    val exchangeRateToOriginalDefault: BigDecimal? = null,
+    /** Amount expressed in originalDefaultCurrencyCode (amount * exchangeRateToOriginalDefault) */
+    val amountInOriginalDefault: BigDecimal? = null
 )

@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Expense::class, Account::class, Category::class, Currency::class, Keyword::class, TransferHistory::class], version = 12, exportSchema = false)
+@Database(entities = [Expense::class, Account::class, Category::class, Currency::class, Keyword::class, TransferHistory::class, ExchangeRate::class], version = 13, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -19,6 +19,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun keywordDao(): KeywordDao
     abstract fun transferHistoryDao(): TransferHistoryDao
     abstract fun ledgerDao(): LedgerDao
+    abstract fun exchangeRateDao(): ExchangeRateDao
 
     companion object {
         @Volatile
@@ -91,6 +92,42 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 12 to 13: Add exchange rates table and snapshot fields to expenses/transfers.
+         * - Creates exchange_rates table for currency pair rates by date
+         * - Adds originalDefaultCurrencyCode, exchangeRateToOriginalDefault, amountInOriginalDefault to expenses
+         * - Adds originalDefaultCurrencyCode, exchangeRateToOriginalDefault, amountInOriginalDefault to transfer_history
+         * Legacy rows will have NULL values for new columns (to be filled by reconciliation).
+         */
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create exchange_rates table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS exchange_rates (
+                        date INTEGER NOT NULL,
+                        baseCurrencyCode TEXT NOT NULL,
+                        quoteCurrencyCode TEXT NOT NULL,
+                        rate TEXT NOT NULL,
+                        PRIMARY KEY (date, baseCurrencyCode, quoteCurrencyCode)
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_exchange_rates_baseCurrencyCode_quoteCurrencyCode_date 
+                    ON exchange_rates (baseCurrencyCode, quoteCurrencyCode, date)
+                """.trimIndent())
+                
+                // Add new columns to expenses table
+                database.execSQL("ALTER TABLE expenses ADD COLUMN originalDefaultCurrencyCode TEXT")
+                database.execSQL("ALTER TABLE expenses ADD COLUMN exchangeRateToOriginalDefault TEXT")
+                database.execSQL("ALTER TABLE expenses ADD COLUMN amountInOriginalDefault TEXT")
+                
+                // Add new columns to transfer_history table
+                database.execSQL("ALTER TABLE transfer_history ADD COLUMN originalDefaultCurrencyCode TEXT")
+                database.execSQL("ALTER TABLE transfer_history ADD COLUMN exchangeRateToOriginalDefault TEXT")
+                database.execSQL("ALTER TABLE transfer_history ADD COLUMN amountInOriginalDefault TEXT")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -98,8 +135,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "expense_database"
                 )
-                .addMigrations(MIGRATION_11_12)
-                .build()
+                .addMigrations(MIGRATION_11_12, MIGRATION_12_13)                .build()
                 INSTANCE = instance
                 instance
             }

@@ -29,6 +29,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val transferHistoryRepository: TransferHistoryRepository
     private val ledgerRepository: LedgerRepository
     private val filterPreferences: FilterPreferences
+    private val userPreferences: UserPreferences
+    private val exchangeRateRepository: ExchangeRateRepository
 
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab
@@ -39,6 +41,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val allCategories: StateFlow<List<Category>>
     val allCurrencies: StateFlow<List<Currency>>
     val allTransfers: StateFlow<List<TransferHistory>>
+    
+    // Default currency
+    private val _defaultCurrencyCode = MutableStateFlow(UserPreferences.INITIAL_DEFAULT_CURRENCY)
+    val defaultCurrencyCode: StateFlow<String> = _defaultCurrencyCode.asStateFlow()
     
     // Filter state
     private val _filterState = MutableStateFlow(FilterState())
@@ -95,6 +101,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         transferHistoryRepository = TransferHistoryRepository(database.transferHistoryDao())
         ledgerRepository = LedgerRepository(database.ledgerDao())
         filterPreferences = FilterPreferences(application)
+        userPreferences = UserPreferences(application)
+        exchangeRateRepository = ExchangeRateRepository(database.exchangeRateDao())
 
         allExpenses = expenseRepository.getExpensesByType("Expense").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allIncomes = expenseRepository.getExpensesByType("Income").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -122,6 +130,13 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             filterPreferences.filterState.collect { savedState ->
                 _filterState.value = savedState
+            }
+        }
+        
+        // Load persisted default currency
+        viewModelScope.launch {
+            userPreferences.defaultCurrencyCode.collect { currencyCode ->
+                _defaultCurrencyCode.value = currencyCode
             }
         }
 
@@ -296,6 +311,160 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // ==================== End Filter Methods ====================
+    
+    // ==================== Currency/Exchange Rate Methods ====================
+    
+    /**
+     * Set the default currency and persist.
+     */
+    fun setDefaultCurrency(currencyCode: String) {
+        _defaultCurrencyCode.value = currencyCode
+        viewModelScope.launch { userPreferences.setDefaultCurrencyCode(currencyCode) }
+    }
+    
+    /**
+     * Get the exchange rate for a currency pair on a specific date.
+     * Returns null if the rate is not available.
+     */
+    suspend fun getExchangeRate(baseCurrency: String, quoteCurrency: String, date: Long): BigDecimal? {
+        return exchangeRateRepository.getRateOrNull(baseCurrency, quoteCurrency, date)
+    }
+    
+    /**
+     * Check if all required rates are available for calculating totals.
+     * Returns true if all expenses/transfers can be converted to the current default currency.
+     */
+    suspend fun hasAllRatesForTotals(
+        expenses: List<Expense>,
+        transfers: List<TransferHistory>,
+        currentDefault: String
+    ): Boolean {
+        // Check expenses
+        for (expense in expenses) {
+            val originalDefault = expense.originalDefaultCurrencyCode
+            if (originalDefault == null) {
+                // Legacy expense without snapshot - need rate from currency to current default
+                if (!exchangeRateRepository.hasRate(expense.currency, currentDefault, expense.expenseDate)) {
+                    return false
+                }
+            } else if (originalDefault != currentDefault) {
+                // Need rebase rate from originalDefault to currentDefault
+                if (!exchangeRateRepository.hasRate(originalDefault, currentDefault, expense.expenseDate)) {
+                    return false
+                }
+            }
+            // If originalDefault == currentDefault and snapshot exists, no rate needed
+        }
+        
+        // Check transfers
+        for (transfer in transfers) {
+            val originalDefault = transfer.originalDefaultCurrencyCode
+            if (originalDefault == null) {
+                if (!exchangeRateRepository.hasRate(transfer.currency, currentDefault, transfer.date)) {
+                    return false
+                }
+            } else if (originalDefault != currentDefault) {
+                if (!exchangeRateRepository.hasRate(originalDefault, currentDefault, transfer.date)) {
+                    return false
+                }
+            }
+        }
+        
+        return true
+    }
+    
+    /**
+     * Calculate total for expenses in the current default currency.
+     * Returns null if any required rate is missing.
+     */
+    suspend fun calculateExpensesTotal(expenses: List<Expense>, currentDefault: String): BigDecimal? {
+        var total = BigDecimal.ZERO
+        
+        for (expense in expenses) {
+            val amountInDefault = getAmountInCurrentDefault(
+                amount = expense.amount,
+                currency = expense.currency,
+                date = expense.expenseDate,
+                originalDefaultCurrency = expense.originalDefaultCurrencyCode,
+                amountInOriginalDefault = expense.amountInOriginalDefault,
+                currentDefault = currentDefault
+            ) ?: return null
+            
+            total = total.add(amountInDefault)
+        }
+        
+        return total
+    }
+    
+    /**
+     * Calculate total for transfers in the current default currency.
+     * Returns null if any required rate is missing.
+     */
+    suspend fun calculateTransfersTotal(transfers: List<TransferHistory>, currentDefault: String): BigDecimal? {
+        var total = BigDecimal.ZERO
+        
+        for (transfer in transfers) {
+            val amountInDefault = getAmountInCurrentDefault(
+                amount = transfer.amount,
+                currency = transfer.currency,
+                date = transfer.date,
+                originalDefaultCurrency = transfer.originalDefaultCurrencyCode,
+                amountInOriginalDefault = transfer.amountInOriginalDefault,
+                currentDefault = currentDefault
+            ) ?: return null
+            
+            total = total.add(amountInDefault)
+        }
+        
+        return total
+    }
+    
+    /**
+     * Convert an amount to the current default currency.
+     * Uses snapshot if available, otherwise fetches rate.
+     * Returns null if required rate is missing.
+     */
+    private suspend fun getAmountInCurrentDefault(
+        amount: BigDecimal,
+        currency: String,
+        date: Long,
+        originalDefaultCurrency: String?,
+        amountInOriginalDefault: BigDecimal?,
+        currentDefault: String
+    ): BigDecimal? {
+        // If transaction is already in current default currency
+        if (currency == currentDefault) {
+            return amount
+        }
+        
+        // If we have a snapshot and the original default matches current default
+        if (amountInOriginalDefault != null && originalDefaultCurrency == currentDefault) {
+            return amountInOriginalDefault
+        }
+        
+        // If we have a snapshot but need to rebase to different current default
+        if (amountInOriginalDefault != null && originalDefaultCurrency != null) {
+            val rebaseRate = exchangeRateRepository.getRateOrNull(originalDefaultCurrency, currentDefault, date)
+                ?: return null
+            return amountInOriginalDefault.multiply(rebaseRate)
+        }
+        
+        // No snapshot - convert directly from transaction currency to current default
+        val rate = exchangeRateRepository.getRateOrNull(currency, currentDefault, date)
+            ?: return null
+        return amount.multiply(rate)
+    }
+    
+    /**
+     * Get the exchange rate for converting an account balance to the current default currency.
+     * Uses today's date for the rate lookup.
+     */
+    suspend fun getAccountConversionRate(accountCurrency: String, currentDefault: String): BigDecimal? {
+        if (accountCurrency == currentDefault) return BigDecimal.ONE
+        return exchangeRateRepository.getRateOrNull(accountCurrency, currentDefault, System.currentTimeMillis())
+    }
+    
+    // ==================== End Currency/Exchange Rate Methods ====================
 
     fun onVoiceRecognitionResult(spokenText: String) {
         viewModelScope.launch {

@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Money
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalDrawerSheet
@@ -51,6 +52,13 @@ fun AppDrawer(
             label = { Text("Currencies") },
             selected = navController.currentDestination?.route == "currencies",
             onClick = { navController.navigate("currencies"); scope.launch { drawerState.close() } },
+            modifier = Modifier.padding(8.dp)
+        )
+        NavigationDrawerItem(
+            icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+            label = { Text("Settings") },
+            selected = navController.currentDestination?.route == "settings",
+            onClick = { navController.navigate("settings"); scope.launch { drawerState.close() } },
             modifier = Modifier.padding(8.dp)
         )
     }

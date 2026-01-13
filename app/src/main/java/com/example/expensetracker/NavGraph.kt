@@ -58,6 +58,9 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
         composable("addCurrency") {
             AddCurrencyScreen(viewModel = viewModel, navController = navController)
         }
+        composable("settings") {
+            SettingsScreen(viewModel = viewModel, navController = navController)
+        }
         composable(
             route = "editExpense/{expenseId}?accountName={accountName}&amount={amount}&categoryName={categoryName}&type={type}&expenseDateMillis={expenseDateMillis}&accountError={accountError}&categoryError={categoryError}",
             arguments = listOf(

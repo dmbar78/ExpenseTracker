@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -38,6 +41,15 @@ import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+
+/**
+ * Represents the state of a total calculation.
+ */
+sealed class TotalState {
+    data object Loading : TotalState()
+    data class Success(val total: BigDecimal, val currencyCode: String) : TotalState()
+    data object RateMissing : TotalState()
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -54,6 +66,45 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
     val filteredExpenses by viewModel.filteredExpenses.collectAsState()
     val filteredIncomes by viewModel.filteredIncomes.collectAsState()
     val filteredTransfers by viewModel.filteredTransfers.collectAsState()
+    
+    // Default currency for totals
+    val defaultCurrency by viewModel.defaultCurrencyCode.collectAsState()
+    
+    // Totals state
+    var expensesTotal by remember { mutableStateOf<TotalState>(TotalState.Loading) }
+    var incomesTotal by remember { mutableStateOf<TotalState>(TotalState.Loading) }
+    var transfersTotal by remember { mutableStateOf<TotalState>(TotalState.Loading) }
+    
+    // Calculate totals when data or default currency changes
+    LaunchedEffect(filteredExpenses, defaultCurrency) {
+        expensesTotal = TotalState.Loading
+        val total = viewModel.calculateExpensesTotal(filteredExpenses, defaultCurrency)
+        expensesTotal = if (total != null) {
+            TotalState.Success(total, defaultCurrency)
+        } else {
+            TotalState.RateMissing
+        }
+    }
+    
+    LaunchedEffect(filteredIncomes, defaultCurrency) {
+        incomesTotal = TotalState.Loading
+        val total = viewModel.calculateExpensesTotal(filteredIncomes, defaultCurrency)
+        incomesTotal = if (total != null) {
+            TotalState.Success(total, defaultCurrency)
+        } else {
+            TotalState.RateMissing
+        }
+    }
+    
+    LaunchedEffect(filteredTransfers, defaultCurrency) {
+        transfersTotal = TotalState.Loading
+        val total = viewModel.calculateTransfersTotal(filteredTransfers, defaultCurrency)
+        transfersTotal = if (total != null) {
+            TotalState.Success(total, defaultCurrency)
+        } else {
+            TotalState.RateMissing
+        }
+    }
     
     // Dialog states
     var showMainFilterMenu by remember { mutableStateOf(false) }
@@ -103,9 +154,18 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
             Spacer(modifier = Modifier.height(16.dp))
 
             when (selectedTabIndex) {
-                0 -> TransactionList(filteredExpenses, navController)
-                1 -> TransactionList(filteredIncomes, navController)
-                2 -> TransfersTab(filteredTransfers, navController)
+                0 -> {
+                    TotalHeader(totalState = expensesTotal)
+                    TransactionList(filteredExpenses, navController)
+                }
+                1 -> {
+                    TotalHeader(totalState = incomesTotal)
+                    TransactionList(filteredIncomes, navController)
+                }
+                2 -> {
+                    TotalHeader(totalState = transfersTotal)
+                    TransfersTab(filteredTransfers, navController)
+                }
             }
         }
         
@@ -286,6 +346,44 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
             },
             onCancel = { showCategoryDialog = false }
         )
+    }
+}
+
+/**
+ * Displays the total amount header above transaction lists.
+ */
+@Composable
+private fun TotalHeader(totalState: TotalState) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        when (totalState) {
+            is TotalState.Loading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(4.dp),
+                    strokeWidth = 2.dp
+                )
+            }
+            is TotalState.Success -> {
+                Text(
+                    text = "Total: ${formatMoney(totalState.total)} ${totalState.currencyCode}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center
+                )
+            }
+            is TotalState.RateMissing -> {
+                Text(
+                    text = "Total unavailable (missing rates)",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
     }
 }
 
