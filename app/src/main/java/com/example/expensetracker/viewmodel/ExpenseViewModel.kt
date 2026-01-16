@@ -102,7 +102,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         ledgerRepository = LedgerRepository(database.ledgerDao())
         filterPreferences = FilterPreferences(application)
         userPreferences = UserPreferences(application)
-        exchangeRateRepository = ExchangeRateRepository(database.exchangeRateDao())
+        exchangeRateRepository = ExchangeRateRepository(
+            database.exchangeRateDao(),
+            FrankfurterRatesProvider()
+        )
 
         allExpenses = expenseRepository.getExpensesByType("Expense").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allIncomes = expenseRepository.getExpensesByType("Income").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
