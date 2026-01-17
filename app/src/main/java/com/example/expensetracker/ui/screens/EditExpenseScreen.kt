@@ -14,6 +14,7 @@ import com.example.expensetracker.ui.screens.content.EditExpenseScreenContent
 import com.example.expensetracker.ui.screens.content.EditExpenseState
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.util.*
 
@@ -209,7 +210,18 @@ fun EditExpenseScreen(
     LaunchedEffect(Unit) {
         viewModel.navigateBackFlow.collectLatest {
             val message = if (expenseId > 0) "$type updated" else "$type created"
-            snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
+            //snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    duration = SnackbarDuration.Short
+                )
+            }
+
+           //  navController.previousBackStackEntry
+           //     ?.savedStateHandle
+           //     ?.set("snackbarMessage", message)
+
             navController.popBackStack()
         }
     }

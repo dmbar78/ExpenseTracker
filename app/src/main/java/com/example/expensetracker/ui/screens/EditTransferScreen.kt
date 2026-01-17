@@ -60,7 +60,14 @@ fun EditTransferScreen(
     LaunchedEffect(Unit) {
         viewModel.navigateBackFlow.collectLatest {
             val message = if (isEditMode) "Transfer updated" else "Transfer created"
-            snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
+
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    duration = SnackbarDuration.Short
+                )
+            }
+            
             navController.popBackStack()
         }
     }
