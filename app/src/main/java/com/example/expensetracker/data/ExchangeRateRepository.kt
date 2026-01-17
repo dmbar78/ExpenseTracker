@@ -200,6 +200,91 @@ class ExchangeRateRepository(
     fun getAllRates(): Flow<List<ExchangeRate>> = exchangeRateDao.getAllRates()
     
     /**
+     * Get the most recent rate for a currency pair on or before the given date.
+     * Uses EUR pivot derivation if direct rate is not found.
+     * Returns null if no rate is available.
+     */
+    suspend fun getMostRecentRateOnOrBefore(baseCurrency: String, quoteCurrency: String, date: Long): BigDecimal? {
+        if (baseCurrency == quoteCurrency) return BigDecimal.ONE
+        
+        val normalizedDate = normalizeToStartOfDay(date)
+        
+        // Try direct lookup first
+        val direct = exchangeRateDao.getMostRecentRate(normalizedDate, baseCurrency, quoteCurrency)
+        if (direct != null) return direct.rate
+        
+        // Try EUR pivot derivation from most recent EUR rates
+        return deriveMostRecentRateFromEurPivot(baseCurrency, quoteCurrency, normalizedDate)
+    }
+    
+    /**
+     * Derive the most recent rate using EUR pivot (on or before date).
+     */
+    private suspend fun deriveMostRecentRateFromEurPivot(
+        baseCurrency: String,
+        quoteCurrency: String,
+        normalizedDate: Long
+    ): BigDecimal? {
+        // EUR → X (direct lookup)
+        if (baseCurrency == PIVOT_CURRENCY) {
+            val cached = exchangeRateDao.getMostRecentRate(normalizedDate, PIVOT_CURRENCY, quoteCurrency)
+            return cached?.rate
+        }
+        
+        // X → EUR (inverse of EUR→X)
+        if (quoteCurrency == PIVOT_CURRENCY) {
+            val cached = exchangeRateDao.getMostRecentRate(normalizedDate, PIVOT_CURRENCY, baseCurrency)
+            if (cached != null) {
+                return BigDecimal.ONE.divide(cached.rate, RATE_SCALE, RoundingMode.HALF_UP)
+            }
+            return null
+        }
+        
+        // A → B: need both EUR→A and EUR→B (most recent on or before)
+        val eurToBase = exchangeRateDao.getMostRecentRate(normalizedDate, PIVOT_CURRENCY, baseCurrency)?.rate
+        val eurToQuote = exchangeRateDao.getMostRecentRate(normalizedDate, PIVOT_CURRENCY, quoteCurrency)?.rate
+        
+        if (eurToBase != null && eurToQuote != null) {
+            return eurToQuote.divide(eurToBase, RATE_SCALE, RoundingMode.HALF_UP)
+        }
+        
+        return null
+    }
+    
+    /**
+     * Check if EUR pivot rate exists for a currency on or before date.
+     * This is used for default currency guard check.
+     */
+    suspend fun hasEurPivotOnOrBefore(quoteCurrency: String, date: Long): Boolean {
+        if (quoteCurrency == PIVOT_CURRENCY) return true
+        val normalizedDate = normalizeToStartOfDay(date)
+        return exchangeRateDao.getMostRecentRate(normalizedDate, PIVOT_CURRENCY, quoteCurrency) != null
+    }
+    
+    /**
+     * Try to fetch EUR pivot rate for a currency from the provider.
+     * Returns true if rate was fetched and stored, false otherwise.
+     */
+    suspend fun fetchAndStoreEurPivot(quoteCurrency: String, date: Long): Boolean {
+        if (quoteCurrency == PIVOT_CURRENCY) return true
+        
+        val normalizedDate = normalizeToStartOfDay(date)
+        val fetched = ratesProvider.fetchRate(PIVOT_CURRENCY, quoteCurrency, normalizedDate)
+        if (fetched != null) {
+            exchangeRateDao.insertOrUpdate(
+                ExchangeRate(
+                    date = normalizedDate,
+                    baseCurrencyCode = PIVOT_CURRENCY,
+                    quoteCurrencyCode = quoteCurrency,
+                    rate = fetched
+                )
+            )
+            return true
+        }
+        return false
+    }
+    
+    /**
      * Reconcile rates needed for expenses and transfers.
      * 
      * Uses batched fetching: groups missing rates by day, fetches all EUR→X rates for each day

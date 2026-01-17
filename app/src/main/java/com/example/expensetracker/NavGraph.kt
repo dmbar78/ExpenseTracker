@@ -56,7 +56,14 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             CurrenciesScreen(viewModel = viewModel, navController = navController)
         }
         composable("addCurrency") {
-            AddCurrencyScreen(viewModel = viewModel, navController = navController)
+            AddCurrencyScreen(currencyId = 0, viewModel = viewModel, navController = navController)
+        }
+        composable(
+            route = "editCurrency/{currencyId}",
+            arguments = listOf(navArgument("currencyId") { type = NavType.IntType })
+        ) {
+            val currencyId = it.arguments?.getInt("currencyId") ?: 0
+            AddCurrencyScreen(currencyId = currencyId, viewModel = viewModel, navController = navController)
         }
         composable("settings") {
             SettingsScreen(viewModel = viewModel, navController = navController)

@@ -1,5 +1,6 @@
 package com.example.expensetracker.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -7,7 +8,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.expensetracker.data.Currency
@@ -16,8 +16,7 @@ import com.example.expensetracker.viewmodel.ExpenseViewModel
 @Composable
 fun CurrenciesScreen(viewModel: ExpenseViewModel, navController: NavController) {
     val currencies by viewModel.allCurrencies.collectAsState()
-    var showDialog by remember { mutableStateOf(false) }
-    var currencyToDelete by remember { mutableStateOf<Currency?>(null) }
+    val defaultCurrencyCode by viewModel.defaultCurrencyCode.collectAsState()
 
     Column(modifier = Modifier.padding(16.dp)) {
         Row(
@@ -36,48 +35,52 @@ fun CurrenciesScreen(viewModel: ExpenseViewModel, navController: NavController) 
             Text("No currencies yet. Tap 'Create New' to add one.")
         } else {
             LazyColumn {
-                items(currencies) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("${it.name} (${it.code})")
-                        Button(
-                            onClick = { 
-                                currencyToDelete = it
-                                showDialog = true 
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-                        ) {
-                            Text("Delete")
-                        }
-                    }
+                items(currencies) { currency ->
+                    CurrencyRow(
+                        currency = currency,
+                        isDefault = currency.code == defaultCurrencyCode,
+                        onClick = { navController.navigate("editCurrency/${currency.id}") }
+                    )
                 }
             }
         }
     }
+}
 
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = { Text("Delete Currency") },
-            text = { Text("Are you sure you want to delete this currency?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        currencyToDelete?.let { viewModel.deleteCurrency(it) }
-                        showDialog = false
-                    }
-                ) {
-                    Text("Yes")
-                }
-            },
-            dismissButton = {
-                Button(onClick = { showDialog = false }) {
-                    Text("No")
+@Composable
+private fun CurrencyRow(
+    currency: Currency,
+    isDefault: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "${currency.name} (${currency.code})",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                if (isDefault) {
+                    Text(
+                        text = "Default",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
-        )
+        }
     }
 }

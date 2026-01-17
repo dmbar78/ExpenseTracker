@@ -90,6 +90,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         if (transferId == null) flowOf(null) else transferHistoryRepository.getTransferById(transferId)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
+    private val _selectedCurrencyId = MutableStateFlow<Int?>(null)
+    val selectedCurrency: StateFlow<Currency?> = _selectedCurrencyId.flatMapLatest { currencyId ->
+        if (currencyId == null) flowOf(null) else currencyRepository.getCurrencyById(currencyId)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
+
     var pendingParsedData: Any? = null
 
     init {
@@ -167,6 +172,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun loadCategory(categoryId: Int) { _selectedCategoryId.value = categoryId }
     fun loadExpense(expenseId: Int) { _selectedExpenseId.value = expenseId }
     fun loadTransfer(transferId: Int) { _selectedTransferId.value = transferId }
+    fun loadCurrency(currencyId: Int) { _selectedCurrencyId.value = currencyId }
 
     // ==================== Filter Methods ====================
     
@@ -331,6 +337,76 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
      */
     suspend fun getExchangeRate(baseCurrency: String, quoteCurrency: String, date: Long): BigDecimal? {
         return exchangeRateRepository.getRateOrNull(baseCurrency, quoteCurrency, date)
+    }
+    
+    /**
+     * Get the latest (most recent on or before today) rate for displaying "1 currency = X default".
+     * Returns formatted string or null if no rate available.
+     */
+    suspend fun getLatestRateDisplay(currencyCode: String): String? {
+        val defaultCurrency = _defaultCurrencyCode.value
+        if (currencyCode == defaultCurrency) return null
+        
+        val today = System.currentTimeMillis()
+        val rate = exchangeRateRepository.getMostRecentRateOnOrBefore(currencyCode, defaultCurrency, today)
+        return rate?.let { "1 $currencyCode = ${it.setScale(4, RoundingMode.HALF_UP)} $defaultCurrency" }
+    }
+    
+    /**
+     * Check if EUR pivot rate exists for a currency (for default currency guard).
+     * First tries cache, then attempts a fetch from provider.
+     * Returns true if pivot exists or was successfully fetched.
+     */
+    suspend fun ensureEurPivotExists(currencyCode: String): Boolean {
+        if (currencyCode == "EUR") return true
+        
+        val today = System.currentTimeMillis()
+        
+        // Check cache first
+        if (exchangeRateRepository.hasEurPivotOnOrBefore(currencyCode, today)) {
+            return true
+        }
+        
+        // Try to fetch from provider
+        return exchangeRateRepository.fetchAndStoreEurPivot(currencyCode, today)
+    }
+    
+    /**
+     * Set a manual EUR pivot rate for a currency.
+     * Used when no pivot is available from the provider.
+     */
+    suspend fun setManualEurPivot(currencyCode: String, eurToX: BigDecimal) {
+        val today = System.currentTimeMillis()
+        exchangeRateRepository.setRate("EUR", currencyCode, today, eurToX)
+    }
+    
+    /**
+     * Set a manual exchange rate override for a currency to the current default currency.
+     * This stores the appropriate EUR pivot row so cross-rate derivations remain consistent.
+     */
+    suspend fun setManualRateOverride(currencyCode: String, currencyToDefaultRate: BigDecimal) {
+        val defaultCurrency = _defaultCurrencyCode.value
+        val today = System.currentTimeMillis()
+        
+        if (defaultCurrency == "EUR") {
+            // Store directly as EUR → currency
+            val eurToCurrency = BigDecimal.ONE.divide(currencyToDefaultRate, 10, RoundingMode.HALF_UP)
+            exchangeRateRepository.setRate("EUR", currencyCode, today, eurToCurrency)
+        } else {
+            // Need to compute EUR → currency from the chain:
+            // currency → default rate given
+            // We need EUR → currency
+            // If we have EUR → default, then EUR → currency = (EUR → default) * (default → currency)
+            // where default → currency = 1 / currencyToDefaultRate
+            val eurToDefault = exchangeRateRepository.getMostRecentRateOnOrBefore("EUR", defaultCurrency, today)
+            if (eurToDefault != null) {
+                val eurToCurrency = eurToDefault.divide(currencyToDefaultRate, 10, RoundingMode.HALF_UP)
+                exchangeRateRepository.setRate("EUR", currencyCode, today, eurToCurrency)
+            } else {
+                // Fallback: store the direct rate (less ideal but better than nothing)
+                exchangeRateRepository.setRate(currencyCode, defaultCurrency, today, currencyToDefaultRate)
+            }
+        }
     }
     
     /**

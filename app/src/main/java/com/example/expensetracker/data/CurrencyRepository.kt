@@ -6,6 +6,8 @@ class CurrencyRepository(private val currencyDao: CurrencyDao) {
 
     val allCurrencies: Flow<List<Currency>> = currencyDao.getAllCurrencies()
 
+    fun getCurrencyById(id: Int): Flow<Currency?> = currencyDao.getCurrencyById(id)
+
     suspend fun insert(currency: Currency) {
         currencyDao.insert(currency)
     }
