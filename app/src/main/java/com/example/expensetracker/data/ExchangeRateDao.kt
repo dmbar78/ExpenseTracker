@@ -38,6 +38,20 @@ interface ExchangeRateDao {
     suspend fun getMostRecentRate(date: Long, baseCurrencyCode: String, quoteCurrencyCode: String): ExchangeRate?
     
     /**
+     * Get the earliest rate for a currency pair (on or after the given date).
+     * Useful as fallback when no historical rate exists but a future rate was manually entered.
+     */
+    @Query("""
+        SELECT * FROM exchange_rates 
+        WHERE baseCurrencyCode = :baseCurrencyCode 
+        AND quoteCurrencyCode = :quoteCurrencyCode 
+        AND date >= :date
+        ORDER BY date ASC
+        LIMIT 1
+    """)
+    suspend fun getEarliestRateOnOrAfter(date: Long, baseCurrencyCode: String, quoteCurrencyCode: String): ExchangeRate?
+    
+    /**
      * Insert or replace an exchange rate.
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)

@@ -501,6 +501,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     /**
      * Convert an amount to the current default currency.
      * Uses snapshot if available, otherwise fetches rate.
+     * Uses "most recent on or before" rate lookup to handle missing exact-day rates.
      * Returns null if required rate is missing.
      */
     private suspend fun getAmountInCurrentDefault(
@@ -523,24 +524,25 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         
         // If we have a snapshot but need to rebase to different current default
         if (amountInOriginalDefault != null && originalDefaultCurrency != null) {
-            val rebaseRate = exchangeRateRepository.getRateOrNull(originalDefaultCurrency, currentDefault, date)
+            val rebaseRate = exchangeRateRepository.getMostRecentRateOnOrBefore(originalDefaultCurrency, currentDefault, date)
                 ?: return null
             return amountInOriginalDefault.multiply(rebaseRate)
         }
         
         // No snapshot - convert directly from transaction currency to current default
-        val rate = exchangeRateRepository.getRateOrNull(currency, currentDefault, date)
+        val rate = exchangeRateRepository.getMostRecentRateOnOrBefore(currency, currentDefault, date)
             ?: return null
         return amount.multiply(rate)
     }
     
     /**
      * Get the exchange rate for converting an account balance to the current default currency.
-     * Uses today's date for the rate lookup.
+     * Uses "most recent on or before today" to handle cases where exact-day rates
+     * are not available (e.g., weekends, holidays, or manual overrides from earlier dates).
      */
     suspend fun getAccountConversionRate(accountCurrency: String, currentDefault: String): BigDecimal? {
         if (accountCurrency == currentDefault) return BigDecimal.ONE
-        return exchangeRateRepository.getRateOrNull(accountCurrency, currentDefault, System.currentTimeMillis())
+        return exchangeRateRepository.getMostRecentRateOnOrBefore(accountCurrency, currentDefault, System.currentTimeMillis())
     }
     
     // ==================== End Currency/Exchange Rate Methods ====================
