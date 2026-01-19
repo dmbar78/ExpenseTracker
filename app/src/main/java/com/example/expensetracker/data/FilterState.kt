@@ -149,7 +149,10 @@ data class FilterState(
     val transferSourceAccount: String? = null,
     
     /** Destination account filter for Transfers tab (null = no filter) */
-    val transferDestAccount: String? = null
+    val transferDestAccount: String? = null,
+    
+    /** Free-text query filter for comment/keyword search (null = no filter) */
+    val textQuery: String? = null
 ) {
     /** Returns true if any filter is active */
     fun hasActiveFilters(): Boolean {
@@ -157,7 +160,8 @@ data class FilterState(
                 expenseIncomeAccount != null ||
                 category != null ||
                 transferSourceAccount != null ||
-                transferDestAccount != null
+                transferDestAccount != null ||
+                textQuery != null
     }
     
     /** Returns true if time filter is active */
@@ -171,6 +175,9 @@ data class FilterState(
     
     /** Returns true if any transfer filter is active */
     fun hasTransferFilter(): Boolean = transferSourceAccount != null || transferDestAccount != null
+    
+    /** Returns true if text query filter is active */
+    fun hasTextQueryFilter(): Boolean = textQuery != null
 }
 
 /**

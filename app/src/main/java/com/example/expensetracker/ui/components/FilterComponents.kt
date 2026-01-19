@@ -58,7 +58,7 @@ fun FilterIconButton(
 // ==================== Main Filter Menu ====================
 
 /**
- * Main filter popup menu with options: Time, Account, Transfer From/To, Category, Reset All.
+ * Main filter popup menu with options: Time, Account, Transfer From/To, Category, Comment/Keyword, Reset All.
  */
 @Composable
 fun FilterMainMenu(
@@ -68,6 +68,7 @@ fun FilterMainMenu(
     onAccountClick: () -> Unit,
     onTransferClick: () -> Unit,
     onCategoryClick: () -> Unit,
+    onTextQueryClick: () -> Unit,
     onResetAll: () -> Unit
 ) {
     DropdownMenu(
@@ -100,6 +101,13 @@ fun FilterMainMenu(
             onClick = {
                 onDismiss()
                 onCategoryClick()
+            }
+        )
+        DropdownMenuItem(
+            text = { Text("Comment/Keyword") },
+            onClick = {
+                onDismiss()
+                onTextQueryClick()
             }
         )
         HorizontalDivider()
@@ -1066,7 +1074,80 @@ fun CategoryFilterDialog(
     }
 }
 
-// ==================== Filter Chips Row ====================
+// ==================== Text Query Filter Dialog ====================
+
+/**
+ * Dialog for entering a free-text query to filter by comment/keyword.
+ * OK with empty text acts as Cancel.
+ */
+@Composable
+fun TextQueryFilterDialog(
+    currentQuery: String?,
+    onConfirm: (String) -> Unit,
+    onReset: () -> Unit,
+    onCancel: () -> Unit
+) {
+    var queryText by remember { mutableStateOf(currentQuery ?: "") }
+    
+    Dialog(onDismissRequest = onCancel) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Search Comment/Keyword",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(
+                    value = queryText,
+                    onValueChange = { queryText = it },
+                    label = { Text("Search text") },
+                    placeholder = { Text("Enter text to search...") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(onClick = onReset) {
+                        Text("Reset", color = MaterialTheme.colorScheme.error)
+                    }
+                    Row {
+                        TextButton(onClick = onCancel) {
+                            Text("Cancel")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(onClick = {
+                            val trimmed = queryText.trim()
+                            if (trimmed.isNotEmpty()) {
+                                onConfirm(trimmed)
+                            } else {
+                                // OK with empty text acts as Cancel
+                                onCancel()
+                            }
+                        }) {
+                            Text("OK")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==================== Filter Chips Row ======================================
 
 /**
  * Row of filter chips showing active filters.
@@ -1078,10 +1159,12 @@ fun FilterChipsRow(
     onAccountFilterClick: () -> Unit,
     onCategoryFilterClick: () -> Unit,
     onTransferFilterClick: () -> Unit,
+    onTextQueryFilterClick: () -> Unit,
     onClearTimeFilter: () -> Unit,
     onClearAccountFilter: () -> Unit,
     onClearCategoryFilter: () -> Unit,
     onClearTransferFilter: () -> Unit,
+    onClearTextQueryFilter: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (!filterState.hasActiveFilters()) return
@@ -1140,6 +1223,17 @@ fun FilterChipsRow(
                     label = label,
                     onClick = onTransferFilterClick,
                     onClear = onClearTransferFilter
+                )
+            }
+        }
+        
+        // Text query filter chip
+        if (filterState.hasTextQueryFilter()) {
+            item {
+                FilterChip(
+                    label = "Search: ${filterState.textQuery}",
+                    onClick = onTextQueryFilterClick,
+                    onClear = onClearTextQueryFilter
                 )
             }
         }

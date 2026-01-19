@@ -37,6 +37,10 @@ interface KeywordDao {
     """)
     suspend fun getKeywordIdsForExpense(expenseId: Int): List<Int>
 
+    // Get all expense-keyword cross references (for building lookup maps)
+    @Query("SELECT * FROM expense_keyword_cross_ref")
+    fun getAllExpenseKeywordCrossRefs(): Flow<List<ExpenseKeywordCrossRef>>
+
     // Insert a single link
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertExpenseKeywordCrossRef(crossRef: ExpenseKeywordCrossRef)

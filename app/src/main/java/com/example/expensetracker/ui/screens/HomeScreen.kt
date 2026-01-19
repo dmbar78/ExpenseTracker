@@ -117,6 +117,7 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
     var showAccountDialog by remember { mutableStateOf(false) }
     var showTransferDialog by remember { mutableStateOf(false) }
     var showCategoryDialog by remember { mutableStateOf(false) }
+    var showTextQueryDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -138,10 +139,12 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                 onAccountFilterClick = { showAccountDialog = true },
                 onCategoryFilterClick = { showCategoryDialog = true },
                 onTransferFilterClick = { showTransferDialog = true },
+                onTextQueryFilterClick = { showTextQueryDialog = true },
                 onClearTimeFilter = { viewModel.resetTimeFilter() },
                 onClearAccountFilter = { viewModel.resetExpenseIncomeAccountFilter() },
                 onClearCategoryFilter = { viewModel.resetCategoryFilter() },
-                onClearTransferFilter = { viewModel.resetTransferFilters() }
+                onClearTransferFilter = { viewModel.resetTransferFilters() },
+                onClearTextQueryFilter = { viewModel.resetTextQueryFilter() }
             )
             
             TabRow(selectedTabIndex = selectedTabIndex) {
@@ -188,6 +191,7 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                 onAccountClick = { showAccountDialog = true },
                 onTransferClick = { showTransferDialog = true },
                 onCategoryClick = { showCategoryDialog = true },
+                onTextQueryClick = { showTextQueryDialog = true },
                 onResetAll = { viewModel.resetAllFilters() }
             )
             
@@ -345,6 +349,22 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                 showCategoryDialog = false
             },
             onCancel = { showCategoryDialog = false }
+        )
+    }
+    
+    // Text query filter dialog
+    if (showTextQueryDialog) {
+        TextQueryFilterDialog(
+            currentQuery = filterState.textQuery,
+            onConfirm = { query ->
+                viewModel.setTextQueryFilter(query)
+                showTextQueryDialog = false
+            },
+            onReset = {
+                viewModel.resetTextQueryFilter()
+                showTextQueryDialog = false
+            },
+            onCancel = { showTextQueryDialog = false }
         )
     }
 }

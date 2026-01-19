@@ -32,6 +32,9 @@ class FilterPreferences(private val context: Context) {
         private val TRANSFER_SOURCE_ACCOUNT = stringPreferencesKey("transfer_source_account")
         private val TRANSFER_DEST_ACCOUNT = stringPreferencesKey("transfer_dest_account")
         
+        // Text query filter key
+        private val TEXT_QUERY = stringPreferencesKey("text_query")
+        
         // Time filter type values
         private const val TYPE_NONE = "none"
         private const val TYPE_DAY = "day"
@@ -67,7 +70,8 @@ class FilterPreferences(private val context: Context) {
             expenseIncomeAccount = prefs[EXPENSE_INCOME_ACCOUNT],
             category = prefs[CATEGORY],
             transferSourceAccount = prefs[TRANSFER_SOURCE_ACCOUNT],
-            transferDestAccount = prefs[TRANSFER_DEST_ACCOUNT]
+            transferDestAccount = prefs[TRANSFER_DEST_ACCOUNT],
+            textQuery = prefs[TEXT_QUERY]
         )
     }
     
@@ -135,6 +139,12 @@ class FilterPreferences(private val context: Context) {
                 prefs[TRANSFER_DEST_ACCOUNT] = state.transferDestAccount
             } else {
                 prefs.remove(TRANSFER_DEST_ACCOUNT)
+            }
+            
+            if (state.textQuery != null) {
+                prefs[TEXT_QUERY] = state.textQuery
+            } else {
+                prefs.remove(TEXT_QUERY)
             }
         }
     }

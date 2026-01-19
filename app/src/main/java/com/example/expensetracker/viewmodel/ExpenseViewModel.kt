@@ -124,14 +124,24 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         allTransfers = transferHistoryRepository.allTransfers.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allKeywords = keywordDao.getAllKeywords().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         
-        // Derive filtered expenses from allExpenses + filterState
-        filteredExpenses = combine(allExpenses, _filterState) { expenses, filter ->
-            applyExpenseFilters(expenses, filter)
+        // Build a map of expenseId -> list of keyword names for text query filtering
+        val expenseKeywordNamesMap: StateFlow<Map<Int, List<String>>> = combine(
+            keywordDao.getAllExpenseKeywordCrossRefs(),
+            keywordDao.getAllKeywords()
+        ) { crossRefs, keywords ->
+            val keywordIdToName = keywords.associate { it.id to it.name }
+            crossRefs.groupBy { it.expenseId }
+                .mapValues { (_, refs) -> refs.mapNotNull { keywordIdToName[it.keywordId] } }
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+        
+        // Derive filtered expenses from allExpenses + filterState + keyword names
+        filteredExpenses = combine(allExpenses, _filterState, expenseKeywordNamesMap) { expenses, filter, keywordMap ->
+            applyExpenseFilters(expenses, filter, keywordMap)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         
-        // Derive filtered incomes from allIncomes + filterState
-        filteredIncomes = combine(allIncomes, _filterState) { incomes, filter ->
-            applyExpenseFilters(incomes, filter)
+        // Derive filtered incomes from allIncomes + filterState + keyword names
+        filteredIncomes = combine(allIncomes, _filterState, expenseKeywordNamesMap) { incomes, filter, keywordMap ->
+            applyExpenseFilters(incomes, filter, keywordMap)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         
         // Derive filtered transfers from allTransfers + filterState
@@ -199,8 +209,13 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     
     /**
      * Apply filters to expenses/incomes based on current FilterState.
+     * @param keywordNamesMap Map of expenseId to list of keyword names for text query matching
      */
-    private fun applyExpenseFilters(expenses: List<Expense>, filter: FilterState): List<Expense> {
+    private fun applyExpenseFilters(
+        expenses: List<Expense>,
+        filter: FilterState,
+        keywordNamesMap: Map<Int, List<String>>
+    ): List<Expense> {
         var result = expenses
         
         // Apply time filter
@@ -217,6 +232,16 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         // Apply category filter
         filter.category?.let { category ->
             result = result.filter { it.category.equals(category, ignoreCase = true) }
+        }
+        
+        // Apply text query filter (matches comment or any keyword name)
+        filter.textQuery?.let { query ->
+            val lowerQuery = query.lowercase()
+            result = result.filter { expense ->
+                val commentMatches = expense.comment?.lowercase()?.contains(lowerQuery) == true
+                val keywordMatches = keywordNamesMap[expense.id]?.any { it.lowercase().contains(lowerQuery) } == true
+                commentMatches || keywordMatches
+            }
         }
         
         return result
@@ -242,6 +267,14 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         // Apply destination account filter
         filter.transferDestAccount?.let { dest ->
             result = result.filter { it.destinationAccount.equals(dest, ignoreCase = true) }
+        }
+        
+        // Apply text query filter (matches comment only - transfers have no keywords)
+        filter.textQuery?.let { query ->
+            val lowerQuery = query.lowercase()
+            result = result.filter { transfer ->
+                transfer.comment?.lowercase()?.contains(lowerQuery) == true
+            }
         }
         
         return result
@@ -338,6 +371,22 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
      */
     fun resetTransferFilters() {
         setTransferAccountFilters(null, null)
+    }
+    
+    /**
+     * Set the text query filter (comment/keyword search) and persist.
+     */
+    fun setTextQueryFilter(query: String?) {
+        val newState = _filterState.value.copy(textQuery = query)
+        _filterState.value = newState
+        viewModelScope.launch { filterPreferences.saveFilterState(newState) }
+    }
+    
+    /**
+     * Reset only the text query filter.
+     */
+    fun resetTextQueryFilter() {
+        setTextQueryFilter(null)
     }
 
     // ==================== End Filter Methods ====================
