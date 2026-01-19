@@ -138,6 +138,20 @@ fun EditExpenseScreenContent(
                     expanded = isAccountDropdownExpanded,
                     onDismissRequest = { isAccountDropdownExpanded = false }
                 ) {
+                    // "Create New..." option
+                    DropdownMenuItem(
+                        text = { Text("Create New…") },
+                        onClick = {
+                            isAccountDropdownExpanded = false
+                            callbacks.onCreateNewAccount(localAccountName)
+                        },
+                        modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ACCOUNT_CREATE_NEW)
+                    )
+
+                    if (accounts.isNotEmpty()) {
+                        HorizontalDivider()
+                    }
+
                     accounts.forEach { accountItem ->
                         DropdownMenuItem(
                             text = { Text(accountItem.name) },
@@ -151,16 +165,6 @@ fun EditExpenseScreenContent(
                             modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + accountItem.id)
                         )
                     }
-                    // "Create New..." option
-                    HorizontalDivider()
-                    DropdownMenuItem(
-                        text = { Text("Create New…") },
-                        onClick = {
-                            isAccountDropdownExpanded = false
-                            callbacks.onCreateNewAccount(localAccountName)
-                        },
-                        modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ACCOUNT_CREATE_NEW)
-                    )
                 }
             }
             if (localAccountError) {

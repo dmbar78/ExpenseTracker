@@ -134,6 +134,20 @@ fun EditTransferScreenContent(
                     expanded = isSourceAccountDropdownExpanded,
                     onDismissRequest = { isSourceAccountDropdownExpanded = false }
                 ) {
+                    // "Create New..." option
+                    DropdownMenuItem(
+                        text = { Text("Create New…") },
+                        onClick = {
+                            isSourceAccountDropdownExpanded = false
+                            callbacks.onCreateNewSourceAccount(localSourceAccountName)
+                        },
+                        modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_SOURCE_CREATE_NEW)
+                    )
+
+                    if (accounts.isNotEmpty()) {
+                        HorizontalDivider()
+                    }
+
                     accounts.forEach { accountItem ->
                         DropdownMenuItem(
                             text = { Text(accountItem.name) },
@@ -147,16 +161,6 @@ fun EditTransferScreenContent(
                             modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + "source_" + accountItem.id)
                         )
                     }
-                    // "Create New..." option
-                    HorizontalDivider()
-                    DropdownMenuItem(
-                        text = { Text("Create New…") },
-                        onClick = {
-                            isSourceAccountDropdownExpanded = false
-                            callbacks.onCreateNewSourceAccount(localSourceAccountName)
-                        },
-                        modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_SOURCE_CREATE_NEW)
-                    )
                 }
             }
             if (showSourceError) {
@@ -193,6 +197,20 @@ fun EditTransferScreenContent(
                     expanded = isDestAccountDropdownExpanded,
                     onDismissRequest = { isDestAccountDropdownExpanded = false }
                 ) {
+                    // "Create New..." option
+                    DropdownMenuItem(
+                        text = { Text("Create New…") },
+                        onClick = {
+                            isDestAccountDropdownExpanded = false
+                            callbacks.onCreateNewDestAccount(localDestAccountName)
+                        },
+                        modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_DEST_CREATE_NEW)
+                    )
+
+                    if (accounts.isNotEmpty()) {
+                        HorizontalDivider()
+                    }
+
                     accounts.forEach { accountItem ->
                         DropdownMenuItem(
                             text = { Text(accountItem.name) },
@@ -205,16 +223,6 @@ fun EditTransferScreenContent(
                             modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + "dest_" + accountItem.id)
                         )
                     }
-                    // "Create New..." option
-                    HorizontalDivider()
-                    DropdownMenuItem(
-                        text = { Text("Create New…") },
-                        onClick = {
-                            isDestAccountDropdownExpanded = false
-                            callbacks.onCreateNewDestAccount(localDestAccountName)
-                        },
-                        modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_DEST_CREATE_NEW)
-                    )
                 }
             }
             if (showDestError) {
