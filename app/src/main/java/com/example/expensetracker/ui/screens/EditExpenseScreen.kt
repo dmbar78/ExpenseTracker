@@ -63,6 +63,7 @@ fun EditExpenseScreen(
     val expense by viewModel.selectedExpense.collectAsState()
     val accounts by viewModel.allAccounts.collectAsState()
     val categories by viewModel.allCategories.collectAsState()
+    val keywords by viewModel.allKeywords.collectAsState()
 
     // Snackbar state for error and success messages
     val snackbarHostState = remember { SnackbarHostState() }
@@ -82,6 +83,16 @@ fun EditExpenseScreen(
     // Error states using rememberSaveable
     var accountError by rememberSaveable { mutableStateOf(initialAccountError) }
     var categoryError by rememberSaveable { mutableStateOf(initialCategoryError) }
+    
+    // Selected keywords state
+    var selectedKeywordIds by rememberSaveable { mutableStateOf(emptySet<Int>()) }
+    
+    // Load keywords for existing expense
+    LaunchedEffect(expenseId) {
+        if (expenseId > 0) {
+            selectedKeywordIds = viewModel.getKeywordIdsForExpense(expenseId)
+        }
+    }
 
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
@@ -245,10 +256,12 @@ fun EditExpenseScreen(
             accountError = accountError,
             categoryError = categoryError,
             amountError = false,
-            existingExpense = if (expenseId > 0) expense else null
+            existingExpense = if (expenseId > 0) expense else null,
+            selectedKeywordIds = selectedKeywordIds
         ),
         accounts = accounts,
         categories = categories,
+        keywords = keywords,
         callbacks = EditExpenseCallbacks(
             onAmountChange = { amount = it },
             onAccountSelect = { selectedAccount ->
@@ -276,6 +289,14 @@ fun EditExpenseScreen(
                 }
                 // Don't pop here - wait for navigateBackFlow
             },
+            onSaveWithKeywords = { expenseToSave, keywordIds ->
+                if (expenseId > 0) {
+                    viewModel.updateExpenseWithKeywords(expenseToSave, keywordIds)
+                } else {
+                    viewModel.insertExpenseWithKeywords(expenseToSave, keywordIds)
+                }
+                // Don't pop here - wait for navigateBackFlow
+            },
             onDelete = { expenseToDelete ->
                 viewModel.deleteExpense(expenseToDelete)
                 navController.popBackStack()
@@ -284,6 +305,9 @@ fun EditExpenseScreen(
                 accountError = accError
                 categoryError = catError
                 // amountError handled locally in Content
+            },
+            onCreateKeyword = { name ->
+                viewModel.insertKeyword(name)
             }
         )
         )

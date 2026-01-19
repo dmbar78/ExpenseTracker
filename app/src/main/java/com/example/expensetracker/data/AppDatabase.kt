@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Expense::class, Account::class, Category::class, Currency::class, Keyword::class, TransferHistory::class, ExchangeRate::class], version = 13, exportSchema = false)
+@Database(entities = [Expense::class, Account::class, Category::class, Currency::class, Keyword::class, TransferHistory::class, ExchangeRate::class, ExpenseKeywordCrossRef::class], version = 14, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -128,6 +128,43 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 13 to 14: Add expense-keyword join table and update keywords table.
+         * - Creates expense_keyword_cross_ref table for many-to-many expense-keyword relationships
+         * - Recreates keywords table with unique index and NOCASE collation on name
+         */
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create expense_keyword_cross_ref table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS expense_keyword_cross_ref (
+                        expenseId INTEGER NOT NULL,
+                        keywordId INTEGER NOT NULL,
+                        PRIMARY KEY (expenseId, keywordId),
+                        FOREIGN KEY (expenseId) REFERENCES expenses(id) ON DELETE CASCADE,
+                        FOREIGN KEY (keywordId) REFERENCES keywords(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_expense_keyword_cross_ref_expenseId ON expense_keyword_cross_ref (expenseId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_expense_keyword_cross_ref_keywordId ON expense_keyword_cross_ref (keywordId)")
+
+                // Recreate keywords table with unique index and NOCASE collation
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS keywords_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL COLLATE NOCASE
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    INSERT OR IGNORE INTO keywords_new (id, name)
+                    SELECT id, name FROM keywords
+                """.trimIndent())
+                database.execSQL("DROP TABLE keywords")
+                database.execSQL("ALTER TABLE keywords_new RENAME TO keywords")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_keywords_name ON keywords (name)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -135,7 +172,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "expense_database"
                 )
-                .addMigrations(MIGRATION_11_12, MIGRATION_12_13)                .build()
+                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)                .build()
                 INSTANCE = instance
                 instance
             }

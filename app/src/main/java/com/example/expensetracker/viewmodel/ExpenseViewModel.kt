@@ -32,6 +32,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val userPreferences: UserPreferences
     private val exchangeRateRepository: ExchangeRateRepository
 
+    private val keywordDao: KeywordDao
+
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab
 
@@ -41,6 +43,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val allCategories: StateFlow<List<Category>>
     val allCurrencies: StateFlow<List<Currency>>
     val allTransfers: StateFlow<List<TransferHistory>>
+    val allKeywords: StateFlow<List<Keyword>>
     
     // Default currency
     private val _defaultCurrencyCode = MutableStateFlow(UserPreferences.INITIAL_DEFAULT_CURRENCY)
@@ -111,6 +114,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             database.exchangeRateDao(),
             FrankfurterRatesProvider()
         )
+        keywordDao = database.keywordDao()
 
         allExpenses = expenseRepository.getExpensesByType("Expense").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allIncomes = expenseRepository.getExpensesByType("Income").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -118,6 +122,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         allCategories = categoryRepository.allCategories.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allCurrencies = currencyRepository.allCurrencies.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allTransfers = transferHistoryRepository.allTransfers.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        allKeywords = keywordDao.getAllKeywords().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         
         // Derive filtered expenses from allExpenses + filterState
         filteredExpenses = combine(allExpenses, _filterState) { expenses, filter ->
@@ -173,6 +178,22 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun loadExpense(expenseId: Int) { _selectedExpenseId.value = expenseId }
     fun loadTransfer(transferId: Int) { _selectedTransferId.value = transferId }
     fun loadCurrency(currencyId: Int) { _selectedCurrencyId.value = currencyId }
+
+    // ==================== Keyword Methods ====================
+
+    /**
+     * Get the keyword IDs associated with a specific expense (one-time lookup).
+     */
+    suspend fun getKeywordIdsForExpense(expenseId: Int): Set<Int> {
+        return keywordDao.getKeywordIdsForExpense(expenseId).toSet()
+    }
+
+    /**
+     * Insert a new keyword and return its ID.
+     */
+    suspend fun insertKeyword(name: String): Long {
+        return keywordDao.insert(Keyword(name = name))
+    }
 
     // ==================== Filter Methods ====================
     
@@ -811,9 +832,37 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * Insert a new expense with associated keywords.
+     */
+    fun insertExpenseWithKeywords(expense: Expense, keywordIds: Set<Int>) = viewModelScope.launch {
+        try {
+            val expenseId = ledgerRepository.addExpense(expense)
+            if (keywordIds.isNotEmpty()) {
+                keywordDao.setKeywordsForExpense(expenseId.toInt(), keywordIds)
+            }
+            _navigateBackChannel.send(Unit)
+        } catch (e: IllegalStateException) {
+            _errorChannel.send(e.message ?: "Failed to add expense.")
+        }
+    }
+
     fun updateExpense(expense: Expense) = viewModelScope.launch {
         try {
             ledgerRepository.updateExpense(expense)
+            _navigateBackChannel.send(Unit)
+        } catch (e: IllegalStateException) {
+            _errorChannel.send(e.message ?: "Failed to update expense.")
+        }
+    }
+
+    /**
+     * Update an existing expense with associated keywords.
+     */
+    fun updateExpenseWithKeywords(expense: Expense, keywordIds: Set<Int>) = viewModelScope.launch {
+        try {
+            ledgerRepository.updateExpense(expense)
+            keywordDao.setKeywordsForExpense(expense.id, keywordIds)
             _navigateBackChannel.send(Unit)
         } catch (e: IllegalStateException) {
             _errorChannel.send(e.message ?: "Failed to update expense.")

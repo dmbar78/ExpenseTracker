@@ -5,16 +5,22 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Category
 import com.example.expensetracker.data.Expense
+import com.example.expensetracker.data.Keyword
 import com.example.expensetracker.ui.TestTags
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
@@ -36,7 +42,8 @@ data class EditExpenseState(
     val accountError: Boolean = false,
     val categoryError: Boolean = false,
     val amountError: Boolean = false,
-    val existingExpense: Expense? = null
+    val existingExpense: Expense? = null,
+    val selectedKeywordIds: Set<Int> = emptySet()
 )
 
 /**
@@ -52,8 +59,10 @@ data class EditExpenseCallbacks(
     val onDateClick: () -> Unit = {},
     val onCommentChange: (String) -> Unit = {},
     val onSave: (Expense) -> Unit = {},
+    val onSaveWithKeywords: (Expense, Set<Int>) -> Unit = { _, _ -> },
     val onDelete: (Expense) -> Unit = {},
-    val onValidationFailed: (accountError: Boolean, categoryError: Boolean, amountError: Boolean) -> Unit = { _, _, _ -> }
+    val onValidationFailed: (accountError: Boolean, categoryError: Boolean, amountError: Boolean) -> Unit = { _, _, _ -> },
+    val onCreateKeyword: suspend (String) -> Long = { 0L }
 )
 
 /**
@@ -67,12 +76,16 @@ fun EditExpenseScreenContent(
     state: EditExpenseState,
     accounts: List<Account>,
     categories: List<Category>,
+    keywords: List<Keyword>,
     callbacks: EditExpenseCallbacks,
     modifier: Modifier = Modifier
 ) {
+    val coroutineScope = rememberCoroutineScope()
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isAccountDropdownExpanded by remember { mutableStateOf(false) }
     var isCategoryDropdownExpanded by remember { mutableStateOf(false) }
+    var isKeywordDropdownExpanded by remember { mutableStateOf(false) }
+    var showCreateKeywordDialog by remember { mutableStateOf(false) }
     
     // Local mutable state for form fields (copy from state initially)
     var localAmount by remember(state.amount) { mutableStateOf(state.amount) }
@@ -83,6 +96,11 @@ fun EditExpenseScreenContent(
     var localAccountError by remember(state.accountError) { mutableStateOf(state.accountError) }
     var localCategoryError by remember(state.categoryError) { mutableStateOf(state.categoryError) }
     var localAmountError by remember(state.amountError) { mutableStateOf(state.amountError) }
+    
+    // Keyword state
+    var localSelectedKeywordIds by remember(state.selectedKeywordIds) { mutableStateOf(state.selectedKeywordIds) }
+    var keywordQuery by remember { mutableStateOf("") }
+    var newKeywordName by remember { mutableStateOf("") }
 
     LazyColumn(modifier = modifier.padding(16.dp).testTag(TestTags.EDIT_EXPENSE_ROOT)) {
         item {
@@ -276,6 +294,97 @@ fun EditExpenseScreenContent(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Keywords section
+            Text("Keywords", style = MaterialTheme.typography.labelMedium)
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            // Selected keywords chips
+            if (localSelectedKeywordIds.isNotEmpty()) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    keywords.filter { it.id in localSelectedKeywordIds }.forEach { keyword ->
+                        KeywordChip(
+                            label = keyword.name,
+                            onRemove = { localSelectedKeywordIds = localSelectedKeywordIds - keyword.id }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            
+            // Keywords dropdown with search
+            ExposedDropdownMenuBox(
+                expanded = isKeywordDropdownExpanded,
+                onExpandedChange = { isKeywordDropdownExpanded = !isKeywordDropdownExpanded },
+                modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_KEYWORD_DROPDOWN)
+            ) {
+                OutlinedTextField(
+                    value = keywordQuery,
+                    onValueChange = { keywordQuery = it },
+                    label = { Text("Search or add keywords") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isKeywordDropdownExpanded) },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                        .testTag(TestTags.EDIT_EXPENSE_KEYWORD_SEARCH)
+                )
+                ExposedDropdownMenu(
+                    expanded = isKeywordDropdownExpanded,
+                    onDismissRequest = { isKeywordDropdownExpanded = false }
+                ) {
+                    // "Create New..." option
+                    DropdownMenuItem(
+                        text = { Text("Create New…") },
+                        onClick = {
+                            newKeywordName = keywordQuery
+                            showCreateKeywordDialog = true
+                        },
+                        modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_KEYWORD_CREATE_NEW)
+                    )
+                    
+                    // Build filtered + sorted keyword list: selected first, then matching by query
+                    val filteredKeywords = keywords
+                        .filter { keywordQuery.isBlank() || it.name.contains(keywordQuery, ignoreCase = true) }
+                        .sortedWith(compareByDescending<Keyword> { it.id in localSelectedKeywordIds }.thenBy { it.name })
+                    
+                    if (filteredKeywords.isNotEmpty()) {
+                        HorizontalDivider()
+                    }
+                    
+                    filteredKeywords.forEach { keyword ->
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Checkbox(
+                                        checked = keyword.id in localSelectedKeywordIds,
+                                        onCheckedChange = null // Handled by row click
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(keyword.name)
+                                }
+                            },
+                            onClick = {
+                                localSelectedKeywordIds = if (keyword.id in localSelectedKeywordIds) {
+                                    localSelectedKeywordIds - keyword.id
+                                } else {
+                                    localSelectedKeywordIds + keyword.id
+                                }
+                                // Don't close dropdown on selection
+                            },
+                            modifier = Modifier.testTag(TestTags.KEYWORD_OPTION_PREFIX + keyword.id)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Comment field
             OutlinedTextField(
                 value = localComment,
@@ -341,7 +450,7 @@ fun EditExpenseScreenContent(
                                     comment = localComment
                                 )
                             }
-                            callbacks.onSave(expenseToSave)
+                            callbacks.onSaveWithKeywords(expenseToSave, localSelectedKeywordIds)
                         }
                     },
                     modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_EXPENSE_SAVE)
@@ -387,6 +496,93 @@ fun EditExpenseScreenContent(
                 }
             }
         )
+    }
+    
+    // Create keyword dialog
+    if (showCreateKeywordDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreateKeywordDialog = false },
+            title = { Text("Create Keyword") },
+            text = {
+                OutlinedTextField(
+                    value = newKeywordName,
+                    onValueChange = { newKeywordName = it },
+                    label = { Text("Keyword name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_KEYWORD_NEW_NAME)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newKeywordName.isNotBlank()) {
+                            coroutineScope.launch {
+                                val newId = callbacks.onCreateKeyword(newKeywordName.trim())
+                                if (newId > 0) {
+                                    localSelectedKeywordIds = localSelectedKeywordIds + newId.toInt()
+                                }
+                                newKeywordName = ""
+                                keywordQuery = ""
+                                showCreateKeywordDialog = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_KEYWORD_CREATE_CONFIRM)
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { 
+                        showCreateKeywordDialog = false
+                        newKeywordName = ""
+                    },
+                    modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_KEYWORD_CREATE_DISMISS)
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+/**
+ * Chip displaying a selected keyword with a remove button.
+ */
+@Composable
+private fun KeywordChip(
+    label: String,
+    onRemove: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier.size(20.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Remove keyword",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
     }
 }
 

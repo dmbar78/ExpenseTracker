@@ -57,6 +57,14 @@ object TestTags {
     const val EDIT_TRANSFER_SOURCE_CREATE_NEW = "editTransfer_sourceCreateNew"
     const val EDIT_TRANSFER_DEST_CREATE_NEW = "editTransfer_destCreateNew"
 
+    // Keyword UI
+    const val EDIT_EXPENSE_KEYWORD_DROPDOWN = "editExpense_keywordDropdown"
+    const val EDIT_EXPENSE_KEYWORD_SEARCH = "editExpense_keywordSearch"
+    const val EDIT_EXPENSE_KEYWORD_CREATE_NEW = "editExpense_keywordCreateNew"
+    const val EDIT_EXPENSE_KEYWORD_NEW_NAME = "editExpense_keywordNewName"
+    const val EDIT_EXPENSE_KEYWORD_CREATE_CONFIRM = "editExpense_keywordCreateConfirm"
+    const val EDIT_EXPENSE_KEYWORD_CREATE_DISMISS = "editExpense_keywordCreateDismiss"
+
     // VoiceRecognitionDialogs
     const val VOICE_DIALOG_RECOGNITION_FAILED = "voiceDialog_recognitionFailed"
     const val VOICE_DIALOG_CURRENCY_MISMATCH = "voiceDialog_currencyMismatch"
@@ -74,4 +82,5 @@ object TestTags {
     const val ACCOUNT_OPTION_PREFIX = "accountOption_"
     const val CATEGORY_OPTION_PREFIX = "categoryOption_"
     const val CURRENCY_OPTION_PREFIX = "currencyOption_"
+    const val KEYWORD_OPTION_PREFIX = "keywordOption_"
 }
