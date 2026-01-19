@@ -200,9 +200,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     /**
      * Insert a new keyword and return its ID.
+     * Trims whitespace from name before insert.
      */
     suspend fun insertKeyword(name: String): Long {
-        return keywordDao.insert(Keyword(name = name))
+        return keywordDao.insert(Keyword(name = name.trim()))
     }
 
     // ==================== Filter Methods ====================
@@ -375,9 +376,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     
     /**
      * Set the text query filter (comment/keyword search) and persist.
+     * Trims whitespace; blank query is treated as null (no filter).
      */
     fun setTextQueryFilter(query: String?) {
-        val newState = _filterState.value.copy(textQuery = query)
+        val trimmed = query?.trim()?.takeIf { it.isNotEmpty() }
+        val newState = _filterState.value.copy(textQuery = trimmed)
         _filterState.value = newState
         viewModelScope.launch { filterPreferences.saveFilterState(newState) }
     }
@@ -942,15 +945,16 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     // Data-only version used internally (e.g. voice transfer) - no navigation
     private suspend fun updateAccountInternal(account: Account): Boolean {
-        if (account.name.isBlank() || account.currency.isBlank()) {
+        val trimmedAccount = account.copy(name = account.name.trim())
+        if (trimmedAccount.name.isBlank() || trimmedAccount.currency.isBlank()) {
             _errorChannel.send("Account Name and Currency cannot be empty.")
             return false
         }
         return try {
-            accountRepository.update(account)
+            accountRepository.update(trimmedAccount)
             true
         } catch (e: android.database.sqlite.SQLiteConstraintException) {
-            _errorChannel.send("Account with name '${account.name}' already exists.")
+            _errorChannel.send("Account with name '${trimmedAccount.name}' already exists.")
             false
         } catch (e: Exception) {
             _errorChannel.send("An unknown error occurred.")
@@ -959,15 +963,16 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun insertAccount(account: Account) = viewModelScope.launch {
-        if (account.name.isBlank() || account.currency.isBlank()) {
+        val trimmedAccount = account.copy(name = account.name.trim())
+        if (trimmedAccount.name.isBlank() || trimmedAccount.currency.isBlank()) {
             _errorChannel.send("Account Name and Currency cannot be empty.")
             return@launch
         }
         try {
-            accountRepository.insert(account)
+            accountRepository.insert(trimmedAccount)
             _navigateBackChannel.send(Unit)
         } catch (e: android.database.sqlite.SQLiteConstraintException) {
-            _errorChannel.send("Account with name '${account.name}' already exists.")
+            _errorChannel.send("Account with name '${trimmedAccount.name}' already exists.")
         } catch (e: Exception) {
             _errorChannel.send("An unknown error occurred.")
         }
@@ -980,45 +985,48 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun insertCategory(category: Category) = viewModelScope.launch {
-        if (category.name.isBlank()) {
+        val trimmedCategory = category.copy(name = category.name.trim())
+        if (trimmedCategory.name.isBlank()) {
             _errorChannel.send("Category Name cannot be empty.")
             return@launch
         }
         try {
-            categoryRepository.insert(category)
+            categoryRepository.insert(trimmedCategory)
             _navigateBackChannel.send(Unit)
         } catch (e: android.database.sqlite.SQLiteConstraintException) {
-            _errorChannel.send("Category with name '${category.name}' already exists.")
+            _errorChannel.send("Category with name '${trimmedCategory.name}' already exists.")
         } catch (e: Exception) {
             _errorChannel.send("An unknown error occurred.")
         }
     }
 
     fun updateCategory(category: Category) = viewModelScope.launch {
-        if (category.name.isBlank()) {
+        val trimmedCategory = category.copy(name = category.name.trim())
+        if (trimmedCategory.name.isBlank()) {
             _errorChannel.send("Category Name cannot be empty.")
             return@launch
         }
         try {
-            categoryRepository.update(category)
+            categoryRepository.update(trimmedCategory)
             _navigateBackChannel.send(Unit)
         } catch (e: android.database.sqlite.SQLiteConstraintException) {
-            _errorChannel.send("Category with name '${category.name}' already exists.")
+            _errorChannel.send("Category with name '${trimmedCategory.name}' already exists.")
         } catch (e: Exception) {
             _errorChannel.send("An unknown error occurred.")
         }
     }
 
     fun insertCurrency(currency: Currency) = viewModelScope.launch {
-        if (currency.code.isBlank() || currency.name.isBlank()) {
+        val trimmedCurrency = currency.copy(code = currency.code.trim(), name = currency.name.trim())
+        if (trimmedCurrency.code.isBlank() || trimmedCurrency.name.isBlank()) {
             _errorChannel.send("Code and Name cannot be empty.")
             return@launch
         }
         try {
-            currencyRepository.insert(currency)
+            currencyRepository.insert(trimmedCurrency)
             _navigateBackChannel.send(Unit)
         } catch (e: android.database.sqlite.SQLiteConstraintException) {
-            _errorChannel.send("Currency with code '${currency.code}' already exists.")
+            _errorChannel.send("Currency with code '${trimmedCurrency.code}' already exists.")
         } catch (e: Exception) {
             _errorChannel.send("An unknown error occurred.")
         }

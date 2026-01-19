@@ -346,8 +346,9 @@ fun EditExpenseScreenContent(
                     )
                     
                     // Build filtered + sorted keyword list: selected first, then matching by query
+                    val trimmedKeywordQuery = keywordQuery.trim()
                     val filteredKeywords = keywords
-                        .filter { keywordQuery.isBlank() || it.name.contains(keywordQuery, ignoreCase = true) }
+                        .filter { trimmedKeywordQuery.isBlank() || it.name.contains(trimmedKeywordQuery, ignoreCase = true) }
                         .sortedWith(compareByDescending<Keyword> { it.id in localSelectedKeywordIds }.thenBy { it.name })
                     
                     if (filteredKeywords.isNotEmpty()) {

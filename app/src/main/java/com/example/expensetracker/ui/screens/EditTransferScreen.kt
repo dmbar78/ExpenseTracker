@@ -67,7 +67,7 @@ fun EditTransferScreen(
                     duration = SnackbarDuration.Short
                 )
             }
-            
+
             navController.popBackStack()
         }
     }
@@ -187,7 +187,7 @@ fun EditTransferScreen(
                 },
                 onCreateNewSourceAccount = { currentSourceText ->
                     lastCreateNewTarget = "source"
-                    navController.navigate("addAccount?accountName=$currentSourceText")
+                    navController.navigate("addAccount?accountName=${currentSourceText.trim()}")
                 },
                 onDestAccountSelect = { selectedAccount ->
                     destAccountName = selectedAccount.name
@@ -195,7 +195,7 @@ fun EditTransferScreen(
                 },
                 onCreateNewDestAccount = { currentDestText ->
                     lastCreateNewTarget = "dest"
-                    navController.navigate("addAccount?accountName=$currentDestText")
+                    navController.navigate("addAccount?accountName=${currentDestText.trim()}")
                 },
                 onAmountChange = { amount = it },
                 onDateClick = { datePickerDialog.show() },

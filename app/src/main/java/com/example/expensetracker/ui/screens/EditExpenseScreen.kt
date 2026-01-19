@@ -270,14 +270,14 @@ fun EditExpenseScreen(
                 accountError = false
             },
             onCreateNewAccount = { currentAccountText ->
-                navController.navigate("addAccount?accountName=$currentAccountText")
+                navController.navigate("addAccount?accountName=${currentAccountText.trim()}")
             },
             onCategorySelect = { selectedCategory ->
                 category = selectedCategory.name
                 categoryError = false
             },
             onCreateNewCategory = { currentCategoryText ->
-                navController.navigate("addCategory?categoryName=$currentCategoryText")
+                navController.navigate("addCategory?categoryName=${currentCategoryText.trim()}")
             },
             onDateClick = { datePickerDialog.show() },
             onCommentChange = { comment = it },
