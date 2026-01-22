@@ -28,6 +28,7 @@ class BackupRestoreTest {
 
     private lateinit var database: AppDatabase
     private lateinit var backupRepository: BackupRepository
+    private lateinit var userPreferences: UserPreferences
 
     @Before
     fun setup() {
@@ -36,7 +37,8 @@ class BackupRestoreTest {
             .allowMainThreadQueries()
             .build()
         
-        backupRepository = BackupRepository(database)
+        userPreferences = UserPreferences(context)
+        backupRepository = BackupRepository(database, userPreferences)
     }
 
     @After
@@ -455,5 +457,61 @@ class BackupRestoreTest {
         database.categoryDao().insert(Category(name = "TestFood"))
         database.keywordDao().insert(Keyword(name = "testkeyword"))
         database.currencyDao().insert(Currency(code = "EUR", name = "Euro"))
+    }
+
+    @Test
+    fun export_includesDefaultCurrency() = runBlocking {
+        // Set a custom default currency
+        userPreferences.setDefaultCurrencyCode("USD")
+        
+        // Export backup
+        val backupData = backupRepository.exportBackupData()
+        
+        // Verify userPreferences is included with correct currency
+        assertNotNull(backupData.data.userPreferences)
+        assertEquals("USD", backupData.data.userPreferences?.defaultCurrencyCode)
+    }
+
+    @Test
+    fun restore_restoresDefaultCurrency() = runBlocking {
+        // Set initial currency
+        userPreferences.setDefaultCurrencyCode("EUR")
+        assertEquals("EUR", userPreferences.defaultCurrencyCode.first())
+        
+        // Create backup with different currency
+        val backupData = createSampleBackupData().copy(
+            data = createSampleBackupData().data.copy(
+                userPreferences = BackupUserPreferences(defaultCurrencyCode = "GBP")
+            )
+        )
+        
+        // Restore backup
+        val result = backupRepository.restoreBackupData(backupData)
+        
+        // Verify restore succeeded and currency was updated
+        assertTrue(result.isSuccess)
+        assertEquals("GBP", userPreferences.defaultCurrencyCode.first())
+    }
+
+    @Test
+    fun fullRoundTrip_preservesDefaultCurrency() = runBlocking {
+        // Set up database with data
+        setupDatabaseWithFullData()
+        userPreferences.setDefaultCurrencyCode("CHF")
+        
+        // Export
+        val exported = backupRepository.exportBackupData()
+        assertEquals("CHF", exported.data.userPreferences?.defaultCurrencyCode)
+        
+        // Change currency
+        userPreferences.setDefaultCurrencyCode("JPY")
+        assertEquals("JPY", userPreferences.defaultCurrencyCode.first())
+        
+        // Restore
+        val result = backupRepository.restoreBackupData(exported)
+        assertTrue(result.isSuccess)
+        
+        // Verify currency was restored to original value
+        assertEquals("CHF", userPreferences.defaultCurrencyCode.first())
     }
 }

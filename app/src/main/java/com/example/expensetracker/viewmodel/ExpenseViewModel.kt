@@ -116,7 +116,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             FrankfurterRatesProvider()
         )
         keywordDao = database.keywordDao()
-        backupRepository = BackupRepository(database)
+        backupRepository = BackupRepository(database, userPreferences)
 
         allExpenses = expenseRepository.getExpensesByType("Expense").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allIncomes = expenseRepository.getExpensesByType("Income").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())

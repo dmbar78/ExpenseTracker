@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonSyntaxException
+import kotlinx.coroutines.flow.first
 
 /**
  * Repository for backup and restore operations.
@@ -15,7 +16,8 @@ import com.google.gson.JsonSyntaxException
  * - Data validation before restore
  */
 class BackupRepository(
-    private val database: AppDatabase
+    private val database: AppDatabase,
+    private val userPreferences: UserPreferences
 ) {
     companion object {
         /** Current schema version for backups */
@@ -45,6 +47,9 @@ class BackupRepository(
         val exchangeRates = database.exchangeRateDao().getAllRatesOnce()
         val expenseKeywordCrossRefs = database.keywordDao().getAllCrossRefsOnce()
 
+        // Get current default currency from UserPreferences
+        val defaultCurrency = userPreferences.defaultCurrencyCode.first()
+
         val payload = BackupPayload(
             accounts = accounts,
             categories = categories,
@@ -54,7 +59,7 @@ class BackupRepository(
             currencies = currencies,
             exchangeRates = exchangeRates,
             expenseKeywordCrossRefs = expenseKeywordCrossRefs,
-            userPreferences = null // UserPreferences are stored in DataStore, not Room
+            userPreferences = BackupUserPreferences(defaultCurrencyCode = defaultCurrency)
         )
 
         val totalRecords = accounts.size + categories.size + keywords.size + 
@@ -116,6 +121,12 @@ class BackupRepository(
                 database.transferHistoryDao().insertAll(backupData.data.transferHistories)
                 database.keywordDao().insertAllCrossRefs(backupData.data.expenseKeywordCrossRefs)
             }
+            
+            // Restore user preferences (outside transaction as it's DataStore, not Room)
+            backupData.data.userPreferences?.let { prefs ->
+                userPreferences.setDefaultCurrencyCode(prefs.defaultCurrencyCode)
+            }
+            
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
