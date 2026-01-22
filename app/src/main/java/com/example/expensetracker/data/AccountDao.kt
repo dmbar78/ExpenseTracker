@@ -24,4 +24,14 @@ interface AccountDao {
 
     @Query("SELECT * FROM accounts WHERE id = :accountId")
     fun getAccountById(accountId: Int): Flow<Account>
+
+    // Backup/Restore operations
+    @Query("SELECT * FROM accounts ORDER BY id ASC")
+    suspend fun getAllAccountsOnce(): List<Account>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(accounts: List<Account>)
+
+    @Query("DELETE FROM accounts")
+    suspend fun deleteAll()
 }

@@ -1,5 +1,9 @@
 package com.example.expensetracker.ui.screens
 
+import android.content.Context
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -7,10 +11,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.expensetracker.data.Currency
+import com.example.expensetracker.viewmodel.BackupOperationState
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -21,8 +27,10 @@ fun SettingsScreen(
     viewModel: ExpenseViewModel,
     navController: NavController
 ) {
+    val context = LocalContext.current
     val currencies by viewModel.allCurrencies.collectAsState()
     val defaultCurrencyCode by viewModel.defaultCurrencyCode.collectAsState()
+    val backupState by viewModel.backupState.collectAsState()
     val scope = rememberCoroutineScope()
     
     var showCurrencyPicker by remember { mutableStateOf(false) }
@@ -33,6 +41,81 @@ fun SettingsScreen(
     var pivotRateInput by remember { mutableStateOf("") }
     var pendingCurrencyCode by remember { mutableStateOf("") }
     var isCheckingPivot by remember { mutableStateOf(false) }
+
+    // State for Restore Confirmation
+    var showRestoreConfirmation by remember { mutableStateOf(false) }
+    var pendingRestoreUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
+    // Launchers for Backup/Restore
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let { viewModel.exportBackup(it) }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            pendingRestoreUri = it
+            showRestoreConfirmation = true
+        }
+    }
+
+    // Handle Backup State
+    LaunchedEffect(backupState) {
+        when (val state = backupState) {
+            is BackupOperationState.Success -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                viewModel.resetBackupState()
+            }
+            is BackupOperationState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                viewModel.resetBackupState()
+            }
+            else -> {}
+        }
+    }
+
+    if (backupState is BackupOperationState.Loading) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Processing") },
+            text = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Please wait...")
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    // Restore Confirmation Dialog
+    if (showRestoreConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showRestoreConfirmation = false },
+            title = { Text("Confirm Restore") },
+            text = { Text("Restoring from backup will replace ALL existing data. This action cannot be undone.\n\nAre you sure you want to proceed?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingRestoreUri?.let { viewModel.importBackup(it) }
+                        showRestoreConfirmation = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Restore")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
     
     Column(
         modifier = Modifier
@@ -52,6 +135,33 @@ fun SettingsScreen(
             onClick = { 
                 selectedCurrency = defaultCurrencyCode
                 showCurrencyPicker = true 
+            }
+        )
+
+        // Data Management Section
+        Text(
+            text = "Data Management",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        SettingsItem(
+            title = "Export Backup",
+            value = "JSON",
+            onClick = {
+                val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                exportLauncher.launch("expense-tracker-backup-$timestamp.json")
+            }
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+
+        SettingsItem(
+            title = "Restore from Backup",
+            value = "Select File",
+            onClick = {
+                importLauncher.launch(arrayOf("application/json"))
             }
         )
     }

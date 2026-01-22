@@ -80,6 +80,12 @@ interface ExchangeRateDao {
      */
     @Query("DELETE FROM exchange_rates")
     suspend fun deleteAll()
+
+    /**
+     * Get all rates for backup (non-observable).
+     */
+    @Query("SELECT * FROM exchange_rates ORDER BY date ASC")
+    suspend fun getAllRatesOnce(): List<ExchangeRate>
     
     /**
      * Check if a rate exists for a specific date and pair.

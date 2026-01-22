@@ -31,6 +31,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val filterPreferences: FilterPreferences
     private val userPreferences: UserPreferences
     private val exchangeRateRepository: ExchangeRateRepository
+    private val backupRepository: BackupRepository
 
     private val keywordDao: KeywordDao
 
@@ -115,6 +116,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             FrankfurterRatesProvider()
         )
         keywordDao = database.keywordDao()
+        backupRepository = BackupRepository(database)
 
         allExpenses = expenseRepository.getExpensesByType("Expense").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allIncomes = expenseRepository.getExpensesByType("Income").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -1241,9 +1243,67 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         return Pair(trimmed, defaultMillis)
     }
 
-    /**
-     * Builds epoch millis for a given month (0-based) and day in the current year.
-     */
+    // ==================== Backup/Restore Methods ====================
+
+    private val _backupState = MutableStateFlow<BackupOperationState>(BackupOperationState.Idle)
+    val backupState: StateFlow<BackupOperationState> = _backupState.asStateFlow()
+
+    fun resetBackupState() {
+        _backupState.value = BackupOperationState.Idle
+    }
+
+    fun exportBackup(uri: Uri) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _backupState.value = BackupOperationState.Loading
+            try {
+                val backupData = backupRepository.exportBackupData()
+                val json = backupRepository.serializeToJson(backupData)
+
+                getApplication<Application>().contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.writer().use { writer ->
+                        writer.write(json)
+                    }
+                }
+                _backupState.value = BackupOperationState.Success("Backup exported successfully")
+            } catch (e: Exception) {
+                _backupState.value = BackupOperationState.Error("Export failed: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun importBackup(uri: Uri) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _backupState.value = BackupOperationState.Loading
+            try {
+                val json = getApplication<Application>().contentResolver.openInputStream(uri)?.use { inputStream ->
+                    inputStream.reader().use { reader ->
+                        reader.readText()
+                    }
+                }
+
+                if (json == null) {
+                    _backupState.value = BackupOperationState.Error("Failed to read backup file")
+                    return@launch
+                }
+
+                val backupData = backupRepository.deserializeFromJson(json)
+                if (backupData == null) {
+                    _backupState.value = BackupOperationState.Error("Invalid backup file format")
+                    return@launch
+                }
+
+                val result = backupRepository.restoreBackupData(backupData)
+                if (result.isSuccess) {
+                    _backupState.value = BackupOperationState.Success("Backup restored successfully")
+                } else {
+                    _backupState.value = BackupOperationState.Error("Restore failed: ${result.exceptionOrNull()?.message}")
+                }
+            } catch (e: Exception) {
+                _backupState.value = BackupOperationState.Error("Import failed: ${e.localizedMessage}")
+            }
+        }
+    }
+    
     private fun buildDateMillis(month: Int, day: Int): Long {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.MONTH, month)
@@ -1254,4 +1314,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         calendar.set(Calendar.MILLISECOND, 0)
         return calendar.timeInMillis
     }
+}
+
+sealed class BackupOperationState {
+    object Idle : BackupOperationState()
+    object Loading : BackupOperationState()
+    data class Success(val message: String) : BackupOperationState()
+    data class Error(val message: String) : BackupOperationState()
 }

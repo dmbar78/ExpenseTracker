@@ -3,6 +3,7 @@ package com.example.expensetracker.data
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -26,4 +27,14 @@ interface ExpenseDao {
 
     @Delete
     suspend fun delete(expense: Expense)
+
+    // Backup/Restore operations
+    @Query("SELECT * FROM expenses ORDER BY id ASC")
+    suspend fun getAllExpensesOnce(): List<Expense>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(expenses: List<Expense>)
+
+    @Query("DELETE FROM expenses")
+    suspend fun deleteAll()
 }

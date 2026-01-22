@@ -3,6 +3,7 @@ package com.example.expensetracker.data
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -23,4 +24,14 @@ interface TransferHistoryDao {
 
     @Query("SELECT * FROM transfer_history WHERE id = :transferId")
     fun getTransferById(transferId: Int): Flow<TransferHistory>
+
+    // Backup/Restore operations
+    @Query("SELECT * FROM transfer_history ORDER BY id ASC")
+    suspend fun getAllTransfersOnce(): List<TransferHistory>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(transfers: List<TransferHistory>)
+
+    @Query("DELETE FROM transfer_history")
+    suspend fun deleteAll()
 }

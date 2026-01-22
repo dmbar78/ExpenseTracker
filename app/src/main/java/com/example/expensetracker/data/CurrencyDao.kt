@@ -24,4 +24,14 @@ interface CurrencyDao {
 
     @Query("SELECT * FROM currencies WHERE id = :id")
     fun getCurrencyById(id: Int): Flow<Currency?>
+
+    // Backup/Restore operations
+    @Query("SELECT * FROM currencies ORDER BY id ASC")
+    suspend fun getAllCurrenciesOnce(): List<Currency>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(currencies: List<Currency>)
+
+    @Query("DELETE FROM currencies")
+    suspend fun deleteAll()
 }

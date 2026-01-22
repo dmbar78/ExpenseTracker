@@ -24,4 +24,14 @@ interface CategoryDao {
 
     @Query("SELECT * FROM categories WHERE id = :categoryId")
     fun getCategoryById(categoryId: Int): Flow<Category>
+
+    // Backup/Restore operations
+    @Query("SELECT * FROM categories ORDER BY id ASC")
+    suspend fun getAllCategoriesOnce(): List<Category>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(categories: List<Category>)
+
+    @Query("DELETE FROM categories")
+    suspend fun deleteAll()
 }

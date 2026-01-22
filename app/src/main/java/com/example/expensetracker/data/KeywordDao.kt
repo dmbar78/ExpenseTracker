@@ -57,4 +57,23 @@ interface KeywordDao {
             insertExpenseKeywordCrossRef(ExpenseKeywordCrossRef(expenseId, keywordId))
         }
     }
+
+    // Backup/Restore operations
+    @Query("SELECT * FROM keywords ORDER BY id ASC")
+    suspend fun getAllKeywordsOnce(): List<Keyword>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllKeywords(keywords: List<Keyword>)
+
+    @Query("DELETE FROM keywords")
+    suspend fun deleteAllKeywords()
+
+    @Query("SELECT * FROM expense_keyword_cross_ref ORDER BY expenseId, keywordId")
+    suspend fun getAllCrossRefsOnce(): List<ExpenseKeywordCrossRef>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllCrossRefs(crossRefs: List<ExpenseKeywordCrossRef>)
+
+    @Query("DELETE FROM expense_keyword_cross_ref")
+    suspend fun deleteAllCrossRefs()
 }
