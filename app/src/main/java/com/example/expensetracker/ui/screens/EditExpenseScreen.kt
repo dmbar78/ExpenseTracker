@@ -15,6 +15,7 @@ import com.example.expensetracker.ui.screens.content.EditExpenseState
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import androidx.lifecycle.repeatOnLifecycle
 import java.math.BigDecimal
 import java.util.*
 
@@ -94,6 +95,9 @@ fun EditExpenseScreen(
         }
     }
 
+    // Track saving state to prevent double-saves
+    var isSaving by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
     
@@ -141,17 +145,20 @@ fun EditExpenseScreen(
     }
 
     // Update account if a new one was created
-    LaunchedEffect(createdAccountName?.value) {
+    LaunchedEffect(createdAccountName?.value, accounts) {
         createdAccountName?.value?.let { newAccountName ->
-            accountName = newAccountName
-            accountError = false // Clear error since we have a valid account now
-            // Try to resolve currency from the new account
+            // First check if account is in the list yet
             val newAccount = accounts.find { it.name.equals(newAccountName, ignoreCase = true) }
+            
             if (newAccount != null) {
+                // Account is found - safe to update state
+                accountName = newAccountName
+                accountError = false // Clear error since we have a valid account now
                 currency = newAccount.currency
+                
+                // Clear the result only after we've processed it
+                navController.currentBackStackEntry?.savedStateHandle?.remove<String>("createdAccountName")
             }
-            // Clear the result so it doesn't re-trigger if we navigate back and forth
-            navController.currentBackStackEntry?.savedStateHandle?.remove<String>("createdAccountName")
         }
     }
 
@@ -217,25 +224,6 @@ fun EditExpenseScreen(
         }
     }
 
-    // Listen for navigateBackFlow - show success snackbar then pop
-    LaunchedEffect(Unit) {
-        viewModel.navigateBackFlow.collectLatest {
-            val message = if (expenseId > 0) "$type updated" else "$type created"
-            //snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
-            scope.launch {
-                snackbarHostState.showSnackbar(
-                    message = message,
-                    duration = SnackbarDuration.Short
-                )
-            }
-
-           //  navController.previousBackStackEntry
-           //     ?.savedStateHandle
-           //     ?.set("snackbarMessage", message)
-
-            navController.popBackStack()
-        }
-    }
 
     // Wrap content in Scaffold with SnackbarHost
     Scaffold(
@@ -282,20 +270,66 @@ fun EditExpenseScreen(
             onDateClick = { datePickerDialog.show() },
             onCommentChange = { comment = it },
             onSave = { expenseToSave ->
-                if (expenseId > 0) {
-                    viewModel.updateExpense(expenseToSave)
-                } else {
-                    viewModel.insertExpense(expenseToSave)
+                if (isSaving) return@EditExpenseCallbacks
+                isSaving = true
+                
+                scope.launch {
+                    val result = if (expenseId > 0) {
+                        viewModel.updateExpenseAndReturn(expenseToSave)
+                    } else {
+                        viewModel.insertExpenseAndReturn(expenseToSave)
+                    }
+                    
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        result.fold(
+                            onSuccess = {
+                                val message = if (expenseId > 0) "$type updated" else "$type created"
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = message,
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                                navController.navigateUp()
+                            },
+                            onFailure = { error ->
+                                snackbarHostState.showSnackbar(error.message ?: "Failed to save $type.")
+                                isSaving = false
+                            }
+                        )
+                    }
                 }
-                // Don't pop here - wait for navigateBackFlow
             },
             onSaveWithKeywords = { expenseToSave, keywordIds ->
-                if (expenseId > 0) {
-                    viewModel.updateExpenseWithKeywords(expenseToSave, keywordIds)
-                } else {
-                    viewModel.insertExpenseWithKeywords(expenseToSave, keywordIds)
+                if (isSaving) return@EditExpenseCallbacks
+                isSaving = true
+                
+                scope.launch {
+                    val result = if (expenseId > 0) {
+                        viewModel.updateExpenseWithKeywordsAndReturn(expenseToSave, keywordIds)
+                    } else {
+                        viewModel.insertExpenseWithKeywordsAndReturn(expenseToSave, keywordIds)
+                    }
+                    
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        result.fold(
+                            onSuccess = {
+                                val message = if (expenseId > 0) "$type updated" else "$type created"
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = message,
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                                navController.navigateUp()
+                            },
+                            onFailure = { error ->
+                                snackbarHostState.showSnackbar(error.message ?: "Failed to save $type.")
+                                isSaving = false
+                            }
+                        )
+                    }
                 }
-                // Don't pop here - wait for navigateBackFlow
             },
             onDelete = { expenseToDelete ->
                 viewModel.deleteExpense(expenseToDelete)

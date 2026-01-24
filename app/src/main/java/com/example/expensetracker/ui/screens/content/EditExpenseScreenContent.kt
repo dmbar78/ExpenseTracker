@@ -86,6 +86,7 @@ fun EditExpenseScreenContent(
     var isCategoryDropdownExpanded by remember { mutableStateOf(false) }
     var isKeywordDropdownExpanded by remember { mutableStateOf(false) }
     var showCreateKeywordDialog by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
     
     // Local mutable state for form fields (copy from state initially)
     var localAmount by remember(state.amount) { mutableStateOf(state.amount) }
@@ -403,6 +404,9 @@ fun EditExpenseScreenContent(
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = {
+                        // Prevent duplicate saves
+                        if (isSaving) return@Button
+                        
                         // Validation with case-insensitive matching
                         var isValid = true
                         val resolvedAccount = accounts.find { it.name.equals(localAccountName, ignoreCase = true) }
@@ -431,6 +435,12 @@ fun EditExpenseScreenContent(
                         }
 
                         if (parsedAmount != null && resolvedAccount != null && resolvedCategory != null) {
+                            // Clear error states since validation passed
+                            localAccountError = false
+                            localCategoryError = false
+                            localAmountError = false
+                            isSaving = true
+                            
                             val expenseToSave = if (state.expenseId > 0 && state.existingExpense != null) {
                                 state.existingExpense.copy(
                                     account = resolvedAccount.name, // Use canonical name
@@ -454,6 +464,7 @@ fun EditExpenseScreenContent(
                             callbacks.onSaveWithKeywords(expenseToSave, localSelectedKeywordIds)
                         }
                     },
+                    enabled = !isSaving,
                     modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_EXPENSE_SAVE)
                 ) {
                     Text("Save")

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
@@ -15,6 +16,7 @@ import com.example.expensetracker.ui.screens.content.EditTransferState
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import androidx.lifecycle.repeatOnLifecycle
 import java.math.BigDecimal
 import java.util.*
 
@@ -42,12 +44,13 @@ fun EditTransferScreen(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
 
     val isEditMode = transferId > 0
     
     // Track error states
-    var showSourceError by remember { mutableStateOf(initialSourceAccountError) }
-    var showDestError by remember { mutableStateOf(initialDestAccountError) }
+    var showSourceError by rememberSaveable { mutableStateOf(initialSourceAccountError) }
+    var showDestError by rememberSaveable { mutableStateOf(initialDestAccountError) }
 
     // Load existing transfer if in edit mode
     LaunchedEffect(transferId) {
@@ -56,21 +59,9 @@ fun EditTransferScreen(
         }
     }
 
-    // Listen for navigation back signal (successful save) - show snackbar then pop
-    LaunchedEffect(Unit) {
-        viewModel.navigateBackFlow.collectLatest {
-            val message = if (isEditMode) "Transfer updated" else "Transfer created"
+    // Track saving state to prevent double-saves
+    var isSaving by remember { mutableStateOf(false) }
 
-            scope.launch {
-                snackbarHostState.showSnackbar(
-                    message = message,
-                    duration = SnackbarDuration.Short
-                )
-            }
-
-            navController.popBackStack()
-        }
-    }
 
     // Observe result from AddAccountScreen (Create New Account flow)
     val createdAccountNameState = navController.currentBackStackEntry
@@ -79,7 +70,7 @@ fun EditTransferScreen(
         ?.observeAsState()
     
     // Track which dropdown triggered the create flow
-    var lastCreateNewTarget by remember { mutableStateOf("") } // "source" or "dest"
+    var lastCreateNewTarget by rememberSaveable { mutableStateOf("") } // "source" or "dest"
 
     // Collect error messages from ViewModel and show as Snackbar
     LaunchedEffect(Unit) {
@@ -91,13 +82,13 @@ fun EditTransferScreen(
     val transfer by viewModel.selectedTransfer.collectAsState()
     val accounts by viewModel.allAccounts.collectAsState()
 
-    // Initialize state with prefill values if provided (for voice recognition prefill)
-    var sourceAccountName by remember { mutableStateOf(initialSourceAccountName ?: "") }
-    var destAccountName by remember { mutableStateOf(initialDestAccountName ?: "") }
-    var amount by remember { mutableStateOf(initialAmount?.toPlainString() ?: "") }
-    var currency by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(if (initialTransferDateMillis > 0) initialTransferDateMillis else System.currentTimeMillis()) }
-    var comment by remember { mutableStateOf("") }
+    // Initialize state with prefill values if provided
+    var sourceAccountName by rememberSaveable { mutableStateOf(initialSourceAccountName ?: "") }
+    var destAccountName by rememberSaveable { mutableStateOf(initialDestAccountName ?: "") }
+    var amount by rememberSaveable { mutableStateOf(initialAmount?.toPlainString() ?: "") }
+    var currency by rememberSaveable { mutableStateOf("") }
+    var date by rememberSaveable { mutableStateOf(if (initialTransferDateMillis > 0) initialTransferDateMillis else System.currentTimeMillis()) }
+    var comment by rememberSaveable { mutableStateOf("") }
 
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
@@ -137,26 +128,55 @@ fun EditTransferScreen(
         }
     }
     
-    // When a new account is created via "Create New...", set it as the selected account
-    LaunchedEffect(createdAccountNameState?.value) {
-        val newName = createdAccountNameState?.value
-        if (!newName.isNullOrEmpty()) {
-            if (lastCreateNewTarget == "source") {
-                sourceAccountName = newName
+    // Reactive Error Clearing for Source Account
+    LaunchedEffect(accounts, sourceAccountName, showSourceError) {
+        if (showSourceError && sourceAccountName.isNotEmpty()) {
+            val account = accounts.find { it.name.equals(sourceAccountName, ignoreCase = true) }
+            if (account != null) {
                 showSourceError = false
-                // Resolve currency from the newly created account
-                val createdAccount = accounts.find { it.name.equals(newName, ignoreCase = true) }
-                if (createdAccount != null) {
-                    currency = createdAccount.currency
-                }
-            } else if (lastCreateNewTarget == "dest") {
-                destAccountName = newName
+                currency = account.currency
+            }
+        }
+        // Update currency even if no error, if it's missing
+        if (currency.isEmpty() && sourceAccountName.isNotEmpty()) {
+            val account = accounts.find { it.name.equals(sourceAccountName, ignoreCase = true) }
+            if (account != null) {
+                currency = account.currency
+            }
+        }
+    }
+    
+    // Reactive Error Clearing for Destination Account
+    LaunchedEffect(accounts, destAccountName, showDestError) {
+        if (showDestError && destAccountName.isNotEmpty()) {
+            val account = accounts.find { it.name.equals(destAccountName, ignoreCase = true) }
+            if (account != null) {
                 showDestError = false
             }
-            // Clear the result so it doesn't re-trigger
-            navController.currentBackStackEntry
-                ?.savedStateHandle
-                ?.remove<String>("createdAccountName")
+        }
+    }
+    
+    // When a new account is created via "Create New...", set it as the selected account
+    LaunchedEffect(createdAccountNameState?.value, accounts) {
+        val newName = createdAccountNameState?.value
+        if (!newName.isNullOrEmpty()) {
+            // First check if account is in the list yet
+            val createdAccount = accounts.find { it.name.equals(newName, ignoreCase = true) }
+            if (createdAccount != null) {
+                // Account is now in the list - update state and clear savedStateHandle
+                if (lastCreateNewTarget == "source") {
+                    sourceAccountName = newName
+                    showSourceError = false
+                    currency = createdAccount.currency
+                } else if (lastCreateNewTarget == "dest") {
+                    destAccountName = newName
+                    showDestError = false
+                }
+                // Only clear AFTER we've found and processed the account
+                navController.currentBackStackEntry
+                    ?.savedStateHandle
+                    ?.remove<String>("createdAccountName")
+            }
         }
     }
 
@@ -201,12 +221,35 @@ fun EditTransferScreen(
                 onDateClick = { datePickerDialog.show() },
                 onCommentChange = { comment = it },
                 onSave = { transferToSave ->
-                    if (isEditMode) {
-                        viewModel.updateTransfer(transferToSave)
-                    } else {
-                        viewModel.insertTransfer(transferToSave)
+                    if (isSaving) return@EditTransferCallbacks
+                    isSaving = true
+                    
+                    scope.launch {
+                        val result = if (isEditMode) {
+                            viewModel.updateTransferAndReturn(transferToSave)
+                        } else {
+                            viewModel.insertTransferAndReturn(transferToSave)
+                        }
+                        
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            result.fold(
+                                onSuccess = {
+                                    val message = if (isEditMode) "Transfer updated" else "Transfer created"
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            message = message,
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                    navController.popBackStack()
+                                },
+                                onFailure = { error ->
+                                    snackbarHostState.showSnackbar(error.message ?: "Failed to save transfer.")
+                                    isSaving = false
+                                }
+                            )
+                        }
                     }
-                    // Don't pop here - wait for navigateBackFlow
                 },
                 onDelete = { transferToDelete ->
                     viewModel.deleteTransfer(transferToDelete)

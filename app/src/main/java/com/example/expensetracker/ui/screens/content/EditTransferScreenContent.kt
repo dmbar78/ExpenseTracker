@@ -67,6 +67,7 @@ fun EditTransferScreenContent(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isSourceAccountDropdownExpanded by remember { mutableStateOf(false) }
     var isDestAccountDropdownExpanded by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
 
     var localSourceAccountName by remember(state.sourceAccountName) { mutableStateOf(state.sourceAccountName) }
     var localDestAccountName by remember(state.destAccountName) { mutableStateOf(state.destAccountName) }
@@ -284,6 +285,9 @@ fun EditTransferScreenContent(
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = {
+                        // Prevent duplicate saves
+                        if (isSaving) return@Button
+                        
                         // Validate inputs
                         if (localSourceAccountName.isBlank() || localDestAccountName.isBlank()) {
                             callbacks.onShowSnackbar("Please select both accounts.")
@@ -317,6 +321,11 @@ fun EditTransferScreenContent(
                             return@Button
                         }
                         
+                        // Clear error states since validation passed
+                        showSourceError = false
+                        showDestError = false
+                        isSaving = true
+                        
                         if (state.isEditMode && state.existingTransfer != null) {
                             val updatedTransfer = state.existingTransfer.copy(
                                 sourceAccount = resolvedSourceAccount.name, // Use canonical name
@@ -340,6 +349,7 @@ fun EditTransferScreenContent(
                             callbacks.onSave(newTransfer)
                         }
                     },
+                    enabled = !isSaving,
                     modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_TRANSFER_SAVE)
                 ) {
                     Text("Save")

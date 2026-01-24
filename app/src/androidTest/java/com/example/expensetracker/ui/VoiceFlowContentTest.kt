@@ -886,6 +886,183 @@ class VoiceFlowContentTest {
         assertNotNull("Save callback should be invoked", savedExpense)
         assertEquals("Income", savedExpense!!.type)
     }
+
+    // --- Bug fix test: Transfer error clears on successful save ---
+    @Test
+    fun createTransfer_errorClearedOnSuccessfulSave() {
+        var savedTransfer: TransferHistory? = null
+
+        val state = EditTransferState(
+            transferId = 0,
+            sourceAccountName = "unknownSource",
+            destAccountName = "Test3",
+            amount = "50",
+            currency = "",
+            date = jan1_2026,
+            sourceAccountError = true,  // Error initially set
+            destAccountError = false
+        )
+
+        val callbacks = EditTransferCallbacks(
+            onSave = { savedTransfer = it },
+            onSourceAccountSelect = {}
+        )
+
+        composeTestRule.setContent {
+            EditTransferScreenContent(
+                state = state,
+                accounts = testAccounts,
+                callbacks = callbacks
+            )
+        }
+
+        // Error is shown initially
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND).assertExists()
+
+        // Select valid source account (Test2, id=3)
+        selectDropdownOption(
+            rootTag = TestTags.EDIT_TRANSFER_ROOT,
+            dropdownTag = TestTags.EDIT_TRANSFER_SOURCE_DROPDOWN,
+            optionTag = TestTags.ACCOUNT_OPTION_PREFIX + "source_3"
+        )
+
+        // Error should be cleared after selecting account
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND).assertDoesNotExist()
+
+        // Enter amount and save
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).performTextInput("50")
+        scrollToAndClick(TestTags.EDIT_TRANSFER_ROOT, TestTags.EDIT_TRANSFER_SAVE)
+
+        // Verify save succeeded (error didn't persist)
+        assertNotNull("Save callback should be invoked", savedTransfer)
+    }
+
+    // --- Bug fix test: Expense error clears on successful save ---
+    @Test
+    fun createExpense_errorClearedOnSuccessfulSave() {
+        var savedExpense: Expense? = null
+
+        val state = EditExpenseState(
+            expenseId = 0,
+            amount = "25",
+            accountName = "unknownAccount",
+            category = "default",
+            currency = "",
+            expenseDate = jan1_2026,
+            type = "Expense",
+            accountError = true,  // Error initially set
+            categoryError = false
+        )
+
+        val callbacks = EditExpenseCallbacks(
+            onSaveWithKeywords = { expense, _ -> savedExpense = expense },
+            onAccountSelect = {}
+        )
+
+        composeTestRule.setContent {
+            EditExpenseScreenContent(
+                state = state,
+                accounts = testAccounts,
+                categories = testCategories,
+                keywords = testKeywords,
+                callbacks = callbacks
+            )
+        }
+
+        // Error is shown initially
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND).assertExists()
+
+        // Select valid account (Test1, id=2)
+        selectDropdownOption(
+            rootTag = TestTags.EDIT_EXPENSE_ROOT,
+            dropdownTag = TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN,
+            optionTag = TestTags.ACCOUNT_OPTION_PREFIX + "2"
+        )
+
+        // Error should be cleared after selecting account
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND).assertDoesNotExist()
+
+        // Save
+        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
+
+        // Verify save succeeded (error didn't persist)
+        assertNotNull("Save callback should be invoked", savedExpense)
+    }
+
+    // --- Bug fix test: Transfer prevents duplicate save ---
+    @Test
+    fun createTransfer_isSavingPreventsDoubleSave() {
+        var saveCount = 0
+
+        val state = EditTransferState(
+            transferId = 0,
+            sourceAccountName = "Test2",
+            destAccountName = "Test3",
+            amount = "50",
+            currency = "EUR",
+            date = jan1_2026
+        )
+
+        val callbacks = EditTransferCallbacks(
+            onSave = { saveCount++ }
+        )
+
+        composeTestRule.setContent {
+            EditTransferScreenContent(
+                state = state,
+                accounts = testAccounts,
+                callbacks = callbacks
+            )
+        }
+
+        // Click Save button
+        scrollToAndClick(TestTags.EDIT_TRANSFER_ROOT, TestTags.EDIT_TRANSFER_SAVE)
+
+       // Verify callback invoked once
+        assertEquals("Save callback should be invoked exactly once", 1, saveCount)
+
+        // Verify Save button is now disabled (isSaving = true)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SAVE).assertIsNotEnabled()
+    }
+
+    // --- Bug fix test: Expense prevents duplicate save ---
+    @Test
+    fun createExpense_isSavingPreventsDoubleSave() {
+        var saveCount = 0
+
+        val state = EditExpenseState(
+            expenseId = 0,
+            amount = "25",
+            accountName = "Test1",
+            category = "default",
+            currency = "EUR",
+            expenseDate = jan1_2026,
+            type = "Expense"
+        )
+
+        val callbacks = EditExpenseCallbacks(
+            onSaveWithKeywords = { _, _ -> saveCount++ }
+        )
+
+        composeTestRule.setContent {
+            EditExpenseScreenContent(
+                state = state,
+                accounts = testAccounts,
+                categories = testCategories,
+                keywords = testKeywords,
+                callbacks = callbacks
+            )
+        }
+
+        // Click Save button
+        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
+
+        // Verify callback invoked once
+        assertEquals("Save callback should be invoked exactly once", 1, saveCount)
+
+        // Verify Save button is now disabled (isSaving = true)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).assertIsNotEnabled()
+    }
 }
 
 /**

@@ -38,7 +38,7 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
 
     private var speechRecognizer: SpeechRecognizer? = null
-    private val viewModel: ExpenseViewModel by viewModels()
+    internal val viewModel: ExpenseViewModel by viewModels()
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->

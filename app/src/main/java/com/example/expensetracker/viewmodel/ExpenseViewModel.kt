@@ -64,13 +64,13 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val voiceRecognitionState: StateFlow<VoiceRecognitionState> = _voiceRecognitionState
 
     // For general errors and navigation
-    private val _errorChannel = Channel<String>()
+    private val _errorChannel = Channel<String>(Channel.BUFFERED)
     val errorFlow = _errorChannel.receiveAsFlow()
 
-    private val _navigateBackChannel = Channel<Unit>()
+    private val _navigateBackChannel = Channel<Unit>(Channel.BUFFERED)
     val navigateBackFlow = _navigateBackChannel.receiveAsFlow()
 
-    private val _navigateTo = Channel<String>()
+    private val _navigateTo = Channel<String>(Channel.BUFFERED)
     val navigateToFlow = _navigateTo.receiveAsFlow()
 
     // For entity selection
@@ -652,7 +652,13 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private suspend fun processParsedTransfer(parsedTransfer: ParsedTransfer) {
-        val accounts = allAccounts.first { it.isNotEmpty() }
+        val accounts = allAccounts.first()
+        if (accounts.isEmpty()) {
+            _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed(
+                "No accounts found. Please create at least one account before adding transfers."
+            )
+            return
+        }
         
         val sourceAccount = accounts.find { it.name.equals(parsedTransfer.sourceAccountName, ignoreCase = true) }
         val destAccount = accounts.find { it.name.equals(parsedTransfer.destAccountName, ignoreCase = true) }
@@ -887,6 +893,18 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
+     * Insert expense and return result directly (for local navigation handling).
+     */
+    suspend fun insertExpenseAndReturn(expense: Expense): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            ledgerRepository.addExpense(expense)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Insert a new expense with associated keywords.
      */
     fun insertExpenseWithKeywords(expense: Expense, keywordIds: Set<Int>) = viewModelScope.launch {
@@ -911,6 +929,18 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
+     * Update expense and return result directly (for local navigation handling).
+     */
+    suspend fun updateExpenseAndReturn(expense: Expense): Result<Unit> {
+        return try {
+            ledgerRepository.updateExpense(expense)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Update an existing expense with associated keywords.
      */
     fun updateExpenseWithKeywords(expense: Expense, keywordIds: Set<Int>) = viewModelScope.launch {
@@ -920,6 +950,34 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             _navigateBackChannel.send(Unit)
         } catch (e: IllegalStateException) {
             _errorChannel.send(e.message ?: "Failed to update expense.")
+        }
+    }
+
+    /**
+     * Insert expense with keywords and return result directly (for local navigation handling).
+     */
+    suspend fun insertExpenseWithKeywordsAndReturn(expense: Expense, keywordIds: Set<Int>): Result<Unit> {
+        return try {
+            val expenseId = ledgerRepository.addExpense(expense)
+            if (keywordIds.isNotEmpty()) {
+                keywordDao.setKeywordsForExpense(expenseId.toInt(), keywordIds)
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Update expense with keywords and return result directly (for local navigation handling).
+     */
+    suspend fun updateExpenseWithKeywordsAndReturn(expense: Expense, keywordIds: Set<Int>): Result<Unit> {
+        return try {
+            ledgerRepository.updateExpense(expense)
+            keywordDao.setKeywordsForExpense(expense.id, keywordIds)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -942,6 +1000,30 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             _errorChannel.send(e.message ?: "Invalid transfer.")
         } catch (e: IllegalStateException) {
             _errorChannel.send(e.message ?: "Failed to add transfer.")
+        }
+    }
+
+    /**
+     * Insert transfer and return result directly (for screens that handle navigation locally).
+     */
+    suspend fun insertTransferAndReturn(transfer: TransferHistory): Result<Unit> {
+        return try {
+            ledgerRepository.addTransfer(transfer)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Update transfer and return result directly (for screens that handle navigation locally).
+     */
+    suspend fun updateTransferAndReturn(transfer: TransferHistory): Result<Unit> {
+        return try {
+            ledgerRepository.updateTransfer(transfer)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -977,6 +1059,26 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             _errorChannel.send("Account with name '${trimmedAccount.name}' already exists.")
         } catch (e: Exception) {
             _errorChannel.send("An unknown error occurred.")
+        }
+    }
+
+    /**
+     * Insert account and return result directly (for screens that handle navigation locally).
+     * This avoids using the shared navigateBackChannel which can cause race conditions
+     * when multiple screens are collecting from it.
+     */
+    suspend fun insertAccountAndReturn(account: Account): Result<Unit> {
+        val trimmedAccount = account.copy(name = account.name.trim())
+        if (trimmedAccount.name.isBlank() || trimmedAccount.currency.isBlank()) {
+            return Result.failure(IllegalArgumentException("Account Name and Currency cannot be empty."))
+        }
+        return try {
+            accountRepository.insert(trimmedAccount)
+            Result.success(Unit)
+        } catch (e: android.database.sqlite.SQLiteConstraintException) {
+            Result.failure(IllegalArgumentException("Account with name '${trimmedAccount.name}' already exists."))
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

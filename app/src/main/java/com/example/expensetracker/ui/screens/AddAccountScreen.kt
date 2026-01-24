@@ -7,12 +7,12 @@ import com.example.expensetracker.ui.screens.content.AddAccountCallbacks
 import com.example.expensetracker.ui.screens.content.AddAccountScreenContent
 import com.example.expensetracker.ui.screens.content.AddAccountState
 import com.example.expensetracker.viewmodel.ExpenseViewModel
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 /**
  * Thin wrapper for AddAccountScreen.
- * - Collects errorFlow and navigateBackFlow from ViewModel
- * - Handles savedStateHandle result passing for createdAccountName
+ * - Handles account creation with local navigation (not using shared navigateBackFlow)
+ * - Shows error dialog on failure
  * - Delegates all UI rendering to AddAccountScreenContent
  */
 @Composable
@@ -25,25 +25,10 @@ fun AddAccountScreen(
     var currentName by remember { mutableStateOf(accountName ?: "") }
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    var isSaving by remember { mutableStateOf(false) }
 
     val currencies by viewModel.allCurrencies.collectAsState()
-
-    // Collect error flow and show error dialog
-    LaunchedEffect(Unit) {
-        viewModel.errorFlow.collectLatest { message ->
-            errorMessage = message
-            showErrorDialog = true
-        }
-    }
-
-    // Collect navigate back signal and pass result via savedStateHandle
-    LaunchedEffect(Unit) {
-        viewModel.navigateBackFlow.collectLatest { 
-            // Pass the new account name back to the previous screen
-            navController.previousBackStackEntry?.savedStateHandle?.set("createdAccountName", currentName)
-            navController.popBackStack()
-        }
-    }
+    val scope = rememberCoroutineScope()
 
     // Error dialog (side-effect owned by wrapper)
     if (showErrorDialog) {
@@ -67,7 +52,30 @@ fun AddAccountScreen(
             onNameChange = { currentName = it },
             onBalanceChange = { /* Balance tracked locally in Content */ },
             onCurrencySelect = { /* Currency tracked locally in Content */ },
-            onSave = { account -> viewModel.insertAccount(account) }
+            onSave = { account ->
+                if (isSaving) return@AddAccountCallbacks
+                isSaving = true
+                
+                scope.launch {
+                    val result = viewModel.insertAccountAndReturn(account)
+                    // Switch to Main thread for UI operations
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        result.fold(
+                            onSuccess = {
+                                // Pass the new account name back to the previous screen (trimmed)
+                                navController.previousBackStackEntry?.savedStateHandle?.set("createdAccountName", currentName.trim())
+                                navController.popBackStack()
+                            },
+                            onFailure = { error ->
+                                errorMessage = error.message ?: "An unknown error occurred."
+                                showErrorDialog = true
+                                isSaving = false
+                            }
+                        )
+                    }
+                }
+            }
         )
     )
 }
+
