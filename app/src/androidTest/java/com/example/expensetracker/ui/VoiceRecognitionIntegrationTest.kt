@@ -40,21 +40,21 @@ class VoiceRecognitionIntegrationTest {
             viewModel = activity.viewModel
         }
         
-        // Clear database to ensure we start with no accounts
+        // Clear database directly to ensure we start with no accounts
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val db = com.example.expensetracker.data.AppDatabase.getDatabase(context)
+        
         runBlocking {
-            // Delete all data
-            viewModel.allAccounts.value.forEach { account ->
-                viewModel.deleteAccount(account)
-            }
-            viewModel.allExpenses.value.forEach { expense ->
-                viewModel.deleteExpense(expense)
-            }
-            viewModel.allTransfers.value.forEach { transfer ->
-                viewModel.deleteTransfer(transfer)
-            }
+            db.expenseDao().deleteAll()
+            db.transferHistoryDao().deleteAll()
+            db.accountDao().deleteAll()
+            // We can leave categories or defaults if needed, but for safety:
+            // db.categoryDao().deleteAll() 
+            // Note: If app requires default categories, we might need to re-insert or carefully delete.
+            // Voice tests depend on "Food" category in one test case.
         }
         
-        // Wait for deletions to complete
+        // Wait for ViewModel to reflect state
         composeTestRule.waitUntil(timeoutMillis = 5000) {
             viewModel.allAccounts.value.isEmpty()
         }
