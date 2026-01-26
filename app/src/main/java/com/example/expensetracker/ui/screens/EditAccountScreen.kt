@@ -149,7 +149,6 @@ fun EditAccountScreen(accountId: Int, viewModel: ExpenseViewModel, navController
                     onClick = {
                         account?.let { viewModel.deleteAccount(it) }
                         showDeleteDialog = false
-                        navController.popBackStack()
                     }
                 ) {
                     Text("Yes")

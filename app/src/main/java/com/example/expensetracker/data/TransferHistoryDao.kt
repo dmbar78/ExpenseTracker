@@ -25,6 +25,9 @@ interface TransferHistoryDao {
     @Query("SELECT * FROM transfer_history WHERE id = :transferId")
     fun getTransferById(transferId: Int): Flow<TransferHistory>
 
+    @Query("SELECT COUNT(*) FROM transfer_history WHERE sourceAccount = :accountName OR destinationAccount = :accountName")
+    suspend fun getCountByAccount(accountName: String): Int
+
     // Backup/Restore operations
     @Query("SELECT * FROM transfer_history ORDER BY id ASC")
     suspend fun getAllTransfersOnce(): List<TransferHistory>

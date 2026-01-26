@@ -24,6 +24,10 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
         return expenseDao.getExpenseById(expenseId)
     }
 
+    suspend fun getCountByAccount(accountName: String): Int {
+        return expenseDao.getCountByAccount(accountName)
+    }
+
     suspend fun delete(expense: Expense) {
         expenseDao.delete(expense)
     }

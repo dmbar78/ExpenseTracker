@@ -25,6 +25,9 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE id = :expenseId")
     fun getExpenseById(expenseId: Int): Flow<Expense>
 
+    @Query("SELECT COUNT(*) FROM expenses WHERE account = :accountName")
+    suspend fun getCountByAccount(accountName: String): Int
+
     @Delete
     suspend fun delete(expense: Expense)
 

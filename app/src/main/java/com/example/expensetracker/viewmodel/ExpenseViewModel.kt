@@ -4,7 +4,10 @@ import android.app.Application
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.expensetracker.data.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -16,24 +19,51 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
+class ExpenseViewModel(
+    application: Application,
+    private val expenseRepository: ExpenseRepository,
+    private val accountRepository: AccountRepository,
+    private val categoryRepository: CategoryRepository,
+    private val currencyRepository: CurrencyRepository,
+    private val transferHistoryRepository: TransferHistoryRepository,
+    private val ledgerRepository: LedgerRepository,
+    private val filterPreferences: FilterPreferences,
+    private val userPreferences: UserPreferences,
+    private val exchangeRateRepository: ExchangeRateRepository,
+    private val backupRepository: BackupRepository,
+    private val keywordDao: KeywordDao
+) : AndroidViewModel(application) {
 
     companion object {
         private const val TAG = "VoiceDateParse"
+
+        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(
+                modelClass: Class<T>,
+                extras: CreationExtras
+            ): T {
+                val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY])
+                val database = AppDatabase.getDatabase(application)
+                val userPrefs = UserPreferences(application)
+                
+                return ExpenseViewModel(
+                    application,
+                    ExpenseRepository(database.expenseDao()),
+                    AccountRepository(database.accountDao()),
+                    CategoryRepository(database.categoryDao()),
+                    CurrencyRepository(database.currencyDao()),
+                    TransferHistoryRepository(database.transferHistoryDao()),
+                    LedgerRepository(database.ledgerDao()),
+                    FilterPreferences(application),
+                    userPrefs,
+                    ExchangeRateRepository(database.exchangeRateDao(), FrankfurterRatesProvider()),
+                    BackupRepository(database, userPrefs),
+                    database.keywordDao()
+                ) as T
+            }
+        }
     }
-
-    private val expenseRepository: ExpenseRepository
-    private val accountRepository: AccountRepository
-    private val categoryRepository: CategoryRepository
-    private val currencyRepository: CurrencyRepository
-    private val transferHistoryRepository: TransferHistoryRepository
-    private val ledgerRepository: LedgerRepository
-    private val filterPreferences: FilterPreferences
-    private val userPreferences: UserPreferences
-    private val exchangeRateRepository: ExchangeRateRepository
-    private val backupRepository: BackupRepository
-
-    private val keywordDao: KeywordDao
 
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab
@@ -102,22 +132,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     var pendingParsedData: Any? = null
 
     init {
-        val database = AppDatabase.getDatabase(application)
-        expenseRepository = ExpenseRepository(database.expenseDao())
-        accountRepository = AccountRepository(database.accountDao())
-        categoryRepository = CategoryRepository(database.categoryDao())
-        currencyRepository = CurrencyRepository(database.currencyDao())
-        transferHistoryRepository = TransferHistoryRepository(database.transferHistoryDao())
-        ledgerRepository = LedgerRepository(database.ledgerDao())
-        filterPreferences = FilterPreferences(application)
-        userPreferences = UserPreferences(application)
-        exchangeRateRepository = ExchangeRateRepository(
-            database.exchangeRateDao(),
-            FrankfurterRatesProvider()
-        )
-        keywordDao = database.keywordDao()
-        backupRepository = BackupRepository(database, userPreferences)
-
         allExpenses = expenseRepository.getExpensesByType("Expense").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allIncomes = expenseRepository.getExpensesByType("Income").stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allAccounts = accountRepository.allAccounts.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -856,7 +870,15 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun deleteAccount(account: Account) = viewModelScope.launch {
-        accountRepository.delete(account)
+        val expenseCount = expenseRepository.getCountByAccount(account.name)
+        val transferCount = transferHistoryRepository.getCountByAccount(account.name)
+
+        if (expenseCount > 0 || transferCount > 0) {
+            _errorChannel.send("Cannot delete account. It has associated expenses or transfers.")
+        } else {
+            accountRepository.delete(account)
+            _navigateBackChannel.send(Unit)
+        }
     }
 
     fun deleteCategory(category: Category) = viewModelScope.launch {

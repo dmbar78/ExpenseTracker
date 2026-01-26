@@ -21,4 +21,8 @@ class TransferHistoryRepository(private val transferHistoryDao: TransferHistoryD
     fun getTransferById(transferId: Int): Flow<TransferHistory> {
         return transferHistoryDao.getTransferById(transferId)
     }
+
+    suspend fun getCountByAccount(accountName: String): Int {
+        return transferHistoryDao.getCountByAccount(accountName)
+    }
 }
