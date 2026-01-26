@@ -35,6 +35,12 @@ interface TransferHistoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(transfers: List<TransferHistory>)
 
+    @Query("UPDATE transfer_history SET sourceAccount = :newName WHERE sourceAccount = :oldName")
+    suspend fun updateSourceAccountName(oldName: String, newName: String)
+
+    @Query("UPDATE transfer_history SET destinationAccount = :newName WHERE destinationAccount = :oldName")
+    suspend fun updateDestinationAccountName(oldName: String, newName: String)
+
     @Query("DELETE FROM transfer_history")
     suspend fun deleteAll()
 }

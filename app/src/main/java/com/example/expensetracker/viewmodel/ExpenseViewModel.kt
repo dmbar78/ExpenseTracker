@@ -1105,7 +1105,16 @@ class ExpenseViewModel(
     }
 
     fun updateAccount(account: Account) = viewModelScope.launch {
+        // Fetch existing account to check for name change
+        val oldAccount = accountRepository.getAccountById(account.id).firstOrNull()
+
         if (updateAccountInternal(account)) {
+            // If update succeeded, check if name changed and cascade
+            if (oldAccount != null && oldAccount.name != account.name.trim()) {
+                val newName = account.name.trim()
+                expenseRepository.updateAccountName(oldAccount.name, newName)
+                transferHistoryRepository.updateAccountName(oldAccount.name, newName)
+            }
             _navigateBackChannel.send(Unit)
         }
     }
@@ -1127,13 +1136,20 @@ class ExpenseViewModel(
     }
 
     fun updateCategory(category: Category) = viewModelScope.launch {
+        val oldCategory = categoryRepository.getCategoryById(category.id).firstOrNull()
         val trimmedCategory = category.copy(name = category.name.trim())
+        
         if (trimmedCategory.name.isBlank()) {
             _errorChannel.send("Category Name cannot be empty.")
             return@launch
         }
         try {
             categoryRepository.update(trimmedCategory)
+            
+            if (oldCategory != null && oldCategory.name != trimmedCategory.name) {
+                expenseRepository.updateCategoryName(oldCategory.name, trimmedCategory.name)
+            }
+            
             _navigateBackChannel.send(Unit)
         } catch (e: android.database.sqlite.SQLiteConstraintException) {
             _errorChannel.send("Category with name '${trimmedCategory.name}' already exists.")

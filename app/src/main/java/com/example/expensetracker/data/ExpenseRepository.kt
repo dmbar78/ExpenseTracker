@@ -31,4 +31,12 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
     suspend fun delete(expense: Expense) {
         expenseDao.delete(expense)
     }
+
+    suspend fun updateAccountName(oldName: String, newName: String) {
+        expenseDao.updateAccountName(oldName, newName)
+    }
+
+    suspend fun updateCategoryName(oldName: String, newName: String) {
+        expenseDao.updateCategoryName(oldName, newName)
+    }
 }

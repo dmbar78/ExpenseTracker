@@ -150,9 +150,37 @@ class ExpenseViewModelTest {
     }
 
     @Test
-    fun voiceTransfer_withNoAccounts_showsErrorInsteadOfHanging() {
-        // This test was previously a placeholder. 
-        // Ideally we implement it now that we can inject mocks.
-        // For now, focusing on the deletion safeguard task.
+    fun updateAccount_cascadesNameChange() = runTest {
+        // GIVEN
+        val oldAccount = Account(id = 1, name = "OldName", currency = "USD", balance = BigDecimal.ZERO)
+        val updatedAccount = oldAccount.copy(name = "NewName")
+        
+        whenever(accountRepository.getAccountById(1)).thenReturn(MutableStateFlow(oldAccount))
+        
+        // WHEN
+        viewModel.updateAccount(updatedAccount)
+        advanceUntilIdle()
+
+        // THEN
+        verify(accountRepository).update(org.mockito.kotlin.argThat { name == "NewName" })
+        verify(expenseRepository).updateAccountName("OldName", "NewName")
+        verify(transferHistoryRepository).updateAccountName("OldName", "NewName")
+    }
+
+    @Test
+    fun updateCategory_cascadesNameChange() = runTest {
+        // GIVEN
+        val oldCategory = Category(id = 10, name = "OldCat")
+        val updatedCategory = oldCategory.copy(name = "NewCat")
+        
+        whenever(categoryRepository.getCategoryById(10)).thenReturn(MutableStateFlow(oldCategory))
+        
+        // WHEN
+        viewModel.updateCategory(updatedCategory)
+        advanceUntilIdle()
+
+        // THEN
+        verify(categoryRepository).update(org.mockito.kotlin.argThat { name == "NewCat" })
+        verify(expenseRepository).updateCategoryName("OldCat", "NewCat")
     }
 }

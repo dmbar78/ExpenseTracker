@@ -25,4 +25,9 @@ class TransferHistoryRepository(private val transferHistoryDao: TransferHistoryD
     suspend fun getCountByAccount(accountName: String): Int {
         return transferHistoryDao.getCountByAccount(accountName)
     }
+
+    suspend fun updateAccountName(oldName: String, newName: String) {
+        transferHistoryDao.updateSourceAccountName(oldName, newName)
+        transferHistoryDao.updateDestinationAccountName(oldName, newName)
+    }
 }

@@ -38,6 +38,12 @@ interface ExpenseDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(expenses: List<Expense>)
 
+    @Query("UPDATE expenses SET account = :newName WHERE account = :oldName")
+    suspend fun updateAccountName(oldName: String, newName: String)
+
+    @Query("UPDATE expenses SET category = :newName WHERE category = :oldName")
+    suspend fun updateCategoryName(oldName: String, newName: String)
+
     @Query("DELETE FROM expenses")
     suspend fun deleteAll()
 }
