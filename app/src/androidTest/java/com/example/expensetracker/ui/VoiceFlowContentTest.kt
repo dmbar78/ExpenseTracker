@@ -57,12 +57,7 @@ class VoiceFlowContentTest {
         cal.timeInMillis
     }
 
-    // --- Helper: Scroll to a node inside a LazyColumn before clicking ---
-    private fun scrollToAndClick(rootTag: String, targetTag: String) {
-        composeTestRule.onNodeWithTag(rootTag).performScrollToNode(hasTestTag(targetTag))
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag(targetTag).performClick()
-    }
+
 
     // --- Helper: Open dropdown, wait for option, then click it ---
     private fun selectDropdownOption(
@@ -131,7 +126,8 @@ class VoiceFlowContentTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ERROR_CATEGORY_NOT_FOUND).assertDoesNotExist()
 
         // Scroll to and click Save (landscape-safe)
-        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        composeTestRule.waitForIdle()
 
         // Verify callback invoked with correct args
         assertNotNull("Save callback should be invoked", savedExpense)
@@ -231,7 +227,8 @@ class VoiceFlowContentTest {
         }
 
         // Scroll to and click Save (landscape-safe)
-        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        composeTestRule.waitForIdle()
 
         // Verify callback invoked with Income type
         assertNotNull("Save callback should be invoked", savedExpense)
@@ -286,7 +283,8 @@ class VoiceFlowContentTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).performTextInput("50")
 
         // Scroll to and click Save (landscape-safe)
-        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        composeTestRule.waitForIdle()
 
         // Verify callback invoked with updated amount
         assertNotNull("Save callback should be invoked", savedExpense)
@@ -339,7 +337,8 @@ class VoiceFlowContentTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_DELETE).assertExists()
 
         // Scroll to and click Delete (landscape-safe)
-        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_DELETE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_DELETE).performClick()
+        composeTestRule.waitForIdle()
 
         // Wait for and click confirm in dialog (using stable test tag)
         composeTestRule.waitUntil(timeoutMillis = 3000) {
@@ -609,7 +608,8 @@ class VoiceFlowContentTest {
         }
 
         // Scroll to and click Delete (landscape-safe)
-        scrollToAndClick(TestTags.EDIT_TRANSFER_ROOT, TestTags.EDIT_TRANSFER_DELETE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DELETE).performClick()
+        composeTestRule.waitForIdle()
 
         // Wait for and click confirm in dialog (using stable test tag)
         composeTestRule.waitUntil(timeoutMillis = 3000) {
@@ -664,7 +664,8 @@ class VoiceFlowContentTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).performTextInput("75")
 
         // Scroll to and click Save (landscape-safe)
-        scrollToAndClick(TestTags.EDIT_TRANSFER_ROOT, TestTags.EDIT_TRANSFER_SAVE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SAVE).performClick()
+        composeTestRule.waitForIdle()
 
         // Verify callback
         assertNotNull("Save callback should be invoked", savedTransfer)
@@ -725,7 +726,8 @@ class VoiceFlowContentTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).performTextInput("100")
 
         // Scroll to and click Save (landscape-safe)
-        scrollToAndClick(TestTags.EDIT_TRANSFER_ROOT, TestTags.EDIT_TRANSFER_SAVE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SAVE).performClick()
+        composeTestRule.waitForIdle()
 
         // Verify callback invoked with new transfer
         assertNotNull("Save callback should be invoked", savedTransfer)
@@ -820,7 +822,8 @@ class VoiceFlowContentTest {
         )
 
         // Scroll to and click Save (landscape-safe)
-        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        composeTestRule.waitForIdle()
 
         // Verify callback invoked
         assertNotNull("Save callback should be invoked", savedExpense)
@@ -880,7 +883,8 @@ class VoiceFlowContentTest {
         )
 
         // Scroll to and click Save (landscape-safe)
-        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        composeTestRule.waitForIdle()
 
         // Verify callback invoked with Income type
         assertNotNull("Save callback should be invoked", savedExpense)
@@ -931,7 +935,8 @@ class VoiceFlowContentTest {
 
         // Enter amount and save
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).performTextInput("50")
-        scrollToAndClick(TestTags.EDIT_TRANSFER_ROOT, TestTags.EDIT_TRANSFER_SAVE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SAVE).performClick()
+        composeTestRule.waitForIdle()
 
         // Verify save succeeded (error didn't persist)
         assertNotNull("Save callback should be invoked", savedTransfer)
@@ -983,7 +988,8 @@ class VoiceFlowContentTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND).assertDoesNotExist()
 
         // Save
-        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        composeTestRule.waitForIdle()
 
         // Verify save succeeded (error didn't persist)
         assertNotNull("Save callback should be invoked", savedExpense)
@@ -1016,7 +1022,8 @@ class VoiceFlowContentTest {
         }
 
         // Click Save button
-        scrollToAndClick(TestTags.EDIT_TRANSFER_ROOT, TestTags.EDIT_TRANSFER_SAVE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SAVE).performClick()
+        composeTestRule.waitForIdle()
 
        // Verify callback invoked once
         assertEquals("Save callback should be invoked exactly once", 1, saveCount)
@@ -1055,7 +1062,8 @@ class VoiceFlowContentTest {
         }
 
         // Click Save button
-        scrollToAndClick(TestTags.EDIT_EXPENSE_ROOT, TestTags.EDIT_EXPENSE_SAVE)
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        composeTestRule.waitForIdle()
 
         // Verify callback invoked once
         assertEquals("Save callback should be invoked exactly once", 1, saveCount)
@@ -1097,34 +1105,34 @@ class PlusMenuWiringTest {
     }
 
     @Test
-    fun plusMenu_createExpense_navigatesToEditExpense_andPlusStillVisible() {
+    fun plusMenu_createExpense_navigatesToEditExpense_andPlusHidden() {
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_EXPENSE).performClick()
 
         // Assert we reached EditExpenseScreen (real screen tag)
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_DATE_FIELD).assertIsDisplayed()
 
-        // Plus button remains global across destinations
-        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).assertIsDisplayed()
+        // Plus button should be hidden on edit screens
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).assertDoesNotExist()
     }
 
     @Test
-    fun plusMenu_createIncome_navigatesToEditExpense_andPlusStillVisible() {
+    fun plusMenu_createIncome_navigatesToEditExpense_andPlusHidden() {
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_INCOME).performClick()
 
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_DATE_FIELD).assertIsDisplayed()
-        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).assertDoesNotExist()
     }
 
     @Test
-    fun plusMenu_createTransfer_navigatesToEditTransfer_andPlusStillVisible() {
+    fun plusMenu_createTransfer_navigatesToEditTransfer_andPlusHidden() {
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_TRANSFER).performClick()
 
         // Assert we reached EditTransferScreen (real screen tag)
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DATE_FIELD).assertIsDisplayed()
 
-        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).assertDoesNotExist()
     }
 }
