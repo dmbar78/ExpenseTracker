@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.data.Account
@@ -68,7 +70,10 @@ fun AddAccountScreenContent(
                 callbacks.onBalanceChange(it)
             },
             label = { Text("Balance") },
-            modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_ACCOUNT_BALANCE_FIELD)
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(TestTags.ADD_ACCOUNT_BALANCE_FIELD),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
         Spacer(modifier = Modifier.height(8.dp))
 

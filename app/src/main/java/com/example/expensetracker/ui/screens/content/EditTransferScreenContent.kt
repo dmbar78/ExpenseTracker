@@ -11,6 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.TransferHistory
@@ -252,7 +254,10 @@ fun EditTransferScreenContent(
                         callbacks.onAmountChange(it)
                     },
                     label = { Text("Amount") },
-                    modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))

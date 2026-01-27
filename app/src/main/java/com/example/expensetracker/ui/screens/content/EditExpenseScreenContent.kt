@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Category
@@ -212,8 +214,11 @@ fun EditExpenseScreenContent(
                         callbacks.onAmountChange(it)
                     },
                     label = { Text("Amount") },
-                    modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD),
-                    isError = localAmountError
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD),
+                    isError = localAmountError,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 if (localAmountError) {
                     Text(
