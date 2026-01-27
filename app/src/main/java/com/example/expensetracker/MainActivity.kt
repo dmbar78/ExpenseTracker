@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.ui.TestTags
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.expensetracker.ui.dialogs.VoiceRecognitionDialogs
 import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
 import com.example.expensetracker.viewmodel.ExpenseViewModel
@@ -56,6 +57,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             ExpenseTrackerTheme {
                 val navController = rememberNavController()
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
+                // Hide FABs on Edit and Add screens to prevent overlap
+                val showFabs = currentRoute == null || (!currentRoute.startsWith("edit", ignoreCase = true) && !currentRoute.startsWith("add", ignoreCase = true))
+
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
 
@@ -86,8 +92,10 @@ class MainActivity : ComponentActivity() {
                             )
                         },
                         floatingActionButton = {
-                            FloatingActionButton(onClick = { startVoiceRecognition() }) {
-                                Icon(Icons.Default.Mic, contentDescription = "Start Recognition")
+                            if (showFabs) {
+                                FloatingActionButton(onClick = { startVoiceRecognition() }) {
+                                    Icon(Icons.Default.Mic, contentDescription = "Start Recognition")
+                                }
                             }
                         }
                     ) { innerPadding ->
@@ -96,50 +104,52 @@ class MainActivity : ComponentActivity() {
 
                             // Global "+" create menu - available on every screen
                             var isPlusMenuExpanded by remember { mutableStateOf(false) }
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = 16.dp)
-                                    .testTag(TestTags.GLOBAL_CREATE_MENU)
-                            ) {
-                                FloatingActionButton(
-                                    onClick = { isPlusMenuExpanded = true },
-                                    modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_BUTTON)
+                            if (showFabs) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(bottom = 16.dp)
+                                        .testTag(TestTags.GLOBAL_CREATE_MENU)
                                 ) {
-                                    Icon(Icons.Default.Add, contentDescription = "Create")
-                                }
-                                DropdownMenu(
-                                    expanded = isPlusMenuExpanded,
-                                    onDismissRequest = { isPlusMenuExpanded = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Create Expense") },
-                                        onClick = {
-                                            isPlusMenuExpanded = false
-                                            navController.navigate(
-                                                "editExpense/0?type=Expense&expenseDateMillis=${System.currentTimeMillis()}"
-                                            )
-                                        },
-                                        modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_EXPENSE)
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Create Income") },
-                                        onClick = {
-                                            isPlusMenuExpanded = false
-                                            navController.navigate(
-                                                "editExpense/0?type=Income&expenseDateMillis=${System.currentTimeMillis()}"
-                                            )
-                                        },
-                                        modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_INCOME)
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Create Transfer") },
-                                        onClick = {
-                                            isPlusMenuExpanded = false
-                                            navController.navigate("editTransfer/0")
-                                        },
-                                        modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_TRANSFER)
-                                    )
+                                    FloatingActionButton(
+                                        onClick = { isPlusMenuExpanded = true },
+                                        modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_BUTTON)
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = "Create")
+                                    }
+                                    DropdownMenu(
+                                        expanded = isPlusMenuExpanded,
+                                        onDismissRequest = { isPlusMenuExpanded = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Create Expense") },
+                                            onClick = {
+                                                isPlusMenuExpanded = false
+                                                navController.navigate(
+                                                    "editExpense/0?type=Expense&expenseDateMillis=${System.currentTimeMillis()}"
+                                                )
+                                            },
+                                            modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_EXPENSE)
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Create Income") },
+                                            onClick = {
+                                                isPlusMenuExpanded = false
+                                                navController.navigate(
+                                                    "editExpense/0?type=Income&expenseDateMillis=${System.currentTimeMillis()}"
+                                                )
+                                            },
+                                            modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_INCOME)
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Create Transfer") },
+                                            onClick = {
+                                                isPlusMenuExpanded = false
+                                                navController.navigate("editTransfer/0")
+                                            },
+                                            modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_TRANSFER)
+                                        )
+                                    }
                                 }
                             }
                         }

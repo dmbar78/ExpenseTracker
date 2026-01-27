@@ -190,4 +190,37 @@ class VoiceRecognitionIntegrationTest {
         // If we get here, navigation worked (no hanging)
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_DATE_FIELD).assertExists()
     }
+
+    @Test
+    fun voiceExpense_capitalizesParsedInputs() {
+        // GIVEN: No accounts exist
+        assertEquals("Database should be empty", 0, viewModel.allAccounts.value.size)
+        // Ensure categories exist
+        composeTestRule.waitUntil(timeoutMillis = 3000) {
+            viewModel.allCategories.value.isNotEmpty()
+        }
+
+        // WHEN: User attempts voice expense with lowercase inputs
+        composeTestRule.activityRule.scenario.onActivity {
+            // "wallet" -> "Wallet", "food" -> "Food"
+            viewModel.onVoiceRecognitionResult("expense from wallet 50 category food")
+        }
+
+        // THEN: Navigate to EditExpenseScreen and fields should be capitalized
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            try {
+                composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE)
+                    .assertExists()
+                true
+            } catch (e: Exception) { false }
+        }
+
+        // Check Account Field Text
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE)
+            .assertTextContains("Wallet") // Capitalized
+
+        // Check Category Field Text
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE)
+            .assertTextContains("Food") // Capitalized
+    }
 }

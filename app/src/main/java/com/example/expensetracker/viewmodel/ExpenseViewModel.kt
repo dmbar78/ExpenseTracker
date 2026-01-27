@@ -783,6 +783,7 @@ class ExpenseViewModel(
         }
 
         val sourceAccountStr = input.substring(transferIndex + 14, toIndex).trim()
+            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
         val restAfterTo = input.substring(toIndex + 4).trim()
 
         // 1) Parse (and remove) trailing date first so day numbers (e.g., "1st") don't get treated as amount
@@ -794,6 +795,7 @@ class ExpenseViewModel(
         val amount = parseMoneyAmount(amountMatch.value) ?: return null
 
         val destAccountStr = restWithoutDate.substring(0, amountMatch.range.first).trim()
+            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
         return ParsedTransfer(
             sourceAccountName = sourceAccountStr,
@@ -843,6 +845,7 @@ class ExpenseViewModel(
         }
 
         val accountStr = accountAndAmountBlock.substring(0, amountMatch.range.first).trim()
+            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
         val amountStr = amountMatch.value
 
         val amount = parseMoneyAmount(amountStr)
@@ -854,7 +857,13 @@ class ExpenseViewModel(
         val (finalCategoryStr, parsedDate) = parseTrailingSpokenDate(categoryStr)
         val expenseDate = parsedDate ?: System.currentTimeMillis()
 
-        return ParsedExpense(accountName = accountStr, amount = amount, categoryName = finalCategoryStr, type = type, expenseDate = expenseDate)
+        return ParsedExpense(
+            accountName = accountStr, 
+            amount = amount, 
+            categoryName = finalCategoryStr.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }, 
+            type = type, 
+            expenseDate = expenseDate
+        )
     }
 
     fun reprocessExpenseWithNewCategory(newCategoryName: String) {

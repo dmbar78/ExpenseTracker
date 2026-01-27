@@ -103,25 +103,193 @@ fun EditExpenseScreenContent(
     var keywordQuery by remember { mutableStateOf("") }
     var newKeywordName by remember { mutableStateOf("") }
 
-    LazyColumn(modifier = modifier.padding(16.dp).testTag(TestTags.EDIT_EXPENSE_ROOT)) {
-        item {
-            val headerText = if (state.expenseId > 0) "Edit ${state.type}" else "Add ${state.type}"
-            Text(headerText, style = MaterialTheme.typography.headlineSmall)
-            Spacer(modifier = Modifier.height(16.dp))
+    Box(modifier = modifier) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag(TestTags.EDIT_EXPENSE_ROOT),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp)
+        ) {
+            item {
+                val headerText = if (state.expenseId > 0) "Edit ${state.type}" else "Add ${state.type}"
+                Text(headerText, style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Date field
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { callbacks.onDateClick() }
-                    .testTag(TestTags.EDIT_EXPENSE_DATE_FIELD)
-            ) {
+                // Date field
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { callbacks.onDateClick() }
+                        .testTag(TestTags.EDIT_EXPENSE_DATE_FIELD)
+                ) {
+                    OutlinedTextField(
+                        value = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(state.expenseDate),
+                        onValueChange = {},
+                        label = { Text("Date") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Account dropdown
+                ExposedDropdownMenuBox(
+                    expanded = isAccountDropdownExpanded,
+                    onExpandedChange = { isAccountDropdownExpanded = !isAccountDropdownExpanded },
+                    modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN)
+                ) {
+                    OutlinedTextField(
+                        value = localAccountName,
+                        onValueChange = {},
+                        label = { Text("Account") },
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isAccountDropdownExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                            .testTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE)
+                            .then(if (localAccountError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
+                        isError = localAccountError
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isAccountDropdownExpanded,
+                        onDismissRequest = { isAccountDropdownExpanded = false }
+                    ) {
+                        // "Create New..." option
+                        DropdownMenuItem(
+                            text = { Text("Create New…") },
+                            onClick = {
+                                isAccountDropdownExpanded = false
+                                callbacks.onCreateNewAccount(localAccountName)
+                            },
+                            modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ACCOUNT_CREATE_NEW)
+                        )
+
+                        if (accounts.isNotEmpty()) {
+                            HorizontalDivider()
+                        }
+
+                        accounts.forEach { accountItem ->
+                            DropdownMenuItem(
+                                text = { Text(accountItem.name) },
+                                onClick = {
+                                    localAccountName = accountItem.name
+                                    localCurrency = accountItem.currency
+                                    localAccountError = false
+                                    isAccountDropdownExpanded = false
+                                    callbacks.onAccountSelect(accountItem)
+                                },
+                                modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + accountItem.id)
+                            )
+                        }
+                    }
+                }
+                if (localAccountError) {
+                    Text(
+                        "Account not found. Please select a valid account.",
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Amount field
                 OutlinedTextField(
-                    value = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(state.expenseDate),
+                    value = localAmount,
+                    onValueChange = {
+                        localAmount = it
+                        localAmountError = false
+                        callbacks.onAmountChange(it)
+                    },
+                    label = { Text("Amount") },
+                    modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD),
+                    isError = localAmountError
+                )
+                if (localAmountError) {
+                    Text(
+                        "Amount cannot be empty.",
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_AMOUNT)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Category dropdown
+                ExposedDropdownMenuBox(
+                    expanded = isCategoryDropdownExpanded,
+                    onExpandedChange = { isCategoryDropdownExpanded = !isCategoryDropdownExpanded },
+                    modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN)
+                ) {
+                    OutlinedTextField(
+                        value = localCategory,
+                        onValueChange = {},
+                        label = { Text("Category") },
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryDropdownExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                            .testTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE)
+                            .then(if (localCategoryError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
+                        isError = localCategoryError
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isCategoryDropdownExpanded,
+                        onDismissRequest = { isCategoryDropdownExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Create New...") },
+                            onClick = {
+                                isCategoryDropdownExpanded = false
+                                callbacks.onCreateNewCategory(localCategory)
+                            },
+                            modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_CATEGORY_CREATE_NEW)
+                        )
+                        HorizontalDivider()
+                        categories.forEach { categoryItem ->
+                            DropdownMenuItem(
+                                text = { Text(categoryItem.name) },
+                                onClick = {
+                                    localCategory = categoryItem.name
+                                    localCategoryError = false
+                                    isCategoryDropdownExpanded = false
+                                    callbacks.onCategorySelect(categoryItem)
+                                },
+                                modifier = Modifier.testTag(TestTags.CATEGORY_OPTION_PREFIX + categoryItem.id)
+                            )
+                        }
+                    }
+                }
+                if (localCategoryError) {
+                    Text(
+                        "Category not found. Please select a valid category.",
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_CATEGORY_NOT_FOUND)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Currency (read-only)
+                OutlinedTextField(
+                    value = localCurrency,
                     onValueChange = {},
-                    label = { Text("Date") },
+                    label = { Text("Currency") },
                     readOnly = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_CURRENCY_VALUE),
                     enabled = false,
                     colors = OutlinedTextFieldDefaults.colors(
                         disabledTextColor = MaterialTheme.colorScheme.onSurface,
@@ -130,278 +298,125 @@ fun EditExpenseScreenContent(
                         disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 )
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Account dropdown
-            ExposedDropdownMenuBox(
-                expanded = isAccountDropdownExpanded,
-                onExpandedChange = { isAccountDropdownExpanded = !isAccountDropdownExpanded },
-                modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN)
-            ) {
-                OutlinedTextField(
-                    value = localAccountName,
-                    onValueChange = {},
-                    label = { Text("Account") },
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isAccountDropdownExpanded) },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                        .testTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE)
-                        .then(if (localAccountError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
-                    isError = localAccountError
-                )
-                ExposedDropdownMenu(
-                    expanded = isAccountDropdownExpanded,
-                    onDismissRequest = { isAccountDropdownExpanded = false }
-                ) {
-                    // "Create New..." option
-                    DropdownMenuItem(
-                        text = { Text("Create New…") },
-                        onClick = {
-                            isAccountDropdownExpanded = false
-                            callbacks.onCreateNewAccount(localAccountName)
-                        },
-                        modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ACCOUNT_CREATE_NEW)
-                    )
-
-                    if (accounts.isNotEmpty()) {
-                        HorizontalDivider()
-                    }
-
-                    accounts.forEach { accountItem ->
-                        DropdownMenuItem(
-                            text = { Text(accountItem.name) },
-                            onClick = {
-                                localAccountName = accountItem.name
-                                localCurrency = accountItem.currency
-                                localAccountError = false
-                                isAccountDropdownExpanded = false
-                                callbacks.onAccountSelect(accountItem)
-                            },
-                            modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + accountItem.id)
-                        )
-                    }
-                }
-            }
-            if (localAccountError) {
-                Text(
-                    "Account not found. Please select a valid account.",
-                    color = Color.Red,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Amount field
-            OutlinedTextField(
-                value = localAmount,
-                onValueChange = {
-                    localAmount = it
-                    localAmountError = false
-                    callbacks.onAmountChange(it)
-                },
-                label = { Text("Amount") },
-                modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD),
-                isError = localAmountError
-            )
-            if (localAmountError) {
-                Text(
-                    "Amount cannot be empty.",
-                    color = Color.Red,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_AMOUNT)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Category dropdown
-            ExposedDropdownMenuBox(
-                expanded = isCategoryDropdownExpanded,
-                onExpandedChange = { isCategoryDropdownExpanded = !isCategoryDropdownExpanded },
-                modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN)
-            ) {
-                OutlinedTextField(
-                    value = localCategory,
-                    onValueChange = {},
-                    label = { Text("Category") },
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryDropdownExpanded) },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                        .testTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE)
-                        .then(if (localCategoryError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
-                    isError = localCategoryError
-                )
-                ExposedDropdownMenu(
-                    expanded = isCategoryDropdownExpanded,
-                    onDismissRequest = { isCategoryDropdownExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Create New...") },
-                        onClick = {
-                            isCategoryDropdownExpanded = false
-                            callbacks.onCreateNewCategory(localCategory)
-                        },
-                        modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_CATEGORY_CREATE_NEW)
-                    )
-                    HorizontalDivider()
-                    categories.forEach { categoryItem ->
-                        DropdownMenuItem(
-                            text = { Text(categoryItem.name) },
-                            onClick = {
-                                localCategory = categoryItem.name
-                                localCategoryError = false
-                                isCategoryDropdownExpanded = false
-                                callbacks.onCategorySelect(categoryItem)
-                            },
-                            modifier = Modifier.testTag(TestTags.CATEGORY_OPTION_PREFIX + categoryItem.id)
-                        )
-                    }
-                }
-            }
-            if (localCategoryError) {
-                Text(
-                    "Category not found. Please select a valid category.",
-                    color = Color.Red,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_CATEGORY_NOT_FOUND)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Currency (read-only)
-            OutlinedTextField(
-                value = localCurrency,
-                onValueChange = {},
-                label = { Text("Currency") },
-                readOnly = true,
-                modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_CURRENCY_VALUE),
-                enabled = false,
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                    disabledBorderColor = MaterialTheme.colorScheme.outline,
-                    disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Keywords section
-            Text("Keywords", style = MaterialTheme.typography.labelMedium)
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            // Selected keywords chips
-            if (localSelectedKeywordIds.isNotEmpty()) {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    keywords.filter { it.id in localSelectedKeywordIds }.forEach { keyword ->
-                        KeywordChip(
-                            label = keyword.name,
-                            onRemove = { localSelectedKeywordIds = localSelectedKeywordIds - keyword.id }
-                        )
-                    }
-                }
                 Spacer(modifier = Modifier.height(8.dp))
-            }
-            
-            // Keywords dropdown with search
-            ExposedDropdownMenuBox(
-                expanded = isKeywordDropdownExpanded,
-                onExpandedChange = { isKeywordDropdownExpanded = !isKeywordDropdownExpanded },
-                modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_KEYWORD_DROPDOWN)
-            ) {
-                OutlinedTextField(
-                    value = keywordQuery,
-                    onValueChange = { keywordQuery = it },
-                    label = { Text("Search or add keywords") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isKeywordDropdownExpanded) },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                        .testTag(TestTags.EDIT_EXPENSE_KEYWORD_SEARCH)
-                )
-                ExposedDropdownMenu(
-                    expanded = isKeywordDropdownExpanded,
-                    onDismissRequest = { isKeywordDropdownExpanded = false }
-                ) {
-                    // "Create New..." option
-                    DropdownMenuItem(
-                        text = { Text("Create New…") },
-                        onClick = {
-                            newKeywordName = keywordQuery
-                            showCreateKeywordDialog = true
-                        },
-                        modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_KEYWORD_CREATE_NEW)
-                    )
-                    
-                    // Build filtered + sorted keyword list: selected first, then matching by query
-                    val trimmedKeywordQuery = keywordQuery.trim()
-                    val filteredKeywords = keywords
-                        .filter { trimmedKeywordQuery.isBlank() || it.name.contains(trimmedKeywordQuery, ignoreCase = true) }
-                        .sortedWith(compareByDescending<Keyword> { it.id in localSelectedKeywordIds }.thenBy { it.name })
-                    
-                    if (filteredKeywords.isNotEmpty()) {
-                        HorizontalDivider()
+
+                // Keywords section
+                Text("Keywords", style = MaterialTheme.typography.labelMedium)
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                // Selected keywords chips
+                if (localSelectedKeywordIds.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        keywords.filter { it.id in localSelectedKeywordIds }.forEach { keyword ->
+                            KeywordChip(
+                                label = keyword.name,
+                                onRemove = { localSelectedKeywordIds = localSelectedKeywordIds - keyword.id }
+                            )
+                        }
                     }
-                    
-                    filteredKeywords.forEach { keyword ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                // Keywords dropdown with search
+                ExposedDropdownMenuBox(
+                    expanded = isKeywordDropdownExpanded,
+                    onExpandedChange = { isKeywordDropdownExpanded = !isKeywordDropdownExpanded },
+                    modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_KEYWORD_DROPDOWN)
+                ) {
+                    OutlinedTextField(
+                        value = keywordQuery,
+                        onValueChange = { keywordQuery = it },
+                        label = { Text("Search or add keywords") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isKeywordDropdownExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                            .testTag(TestTags.EDIT_EXPENSE_KEYWORD_SEARCH)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isKeywordDropdownExpanded,
+                        onDismissRequest = { isKeywordDropdownExpanded = false }
+                    ) {
+                        // "Create New..." option
                         DropdownMenuItem(
-                            text = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Checkbox(
-                                        checked = keyword.id in localSelectedKeywordIds,
-                                        onCheckedChange = null // Handled by row click
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(keyword.name)
-                                }
-                            },
+                            text = { Text("Create New…") },
                             onClick = {
-                                localSelectedKeywordIds = if (keyword.id in localSelectedKeywordIds) {
-                                    localSelectedKeywordIds - keyword.id
-                                } else {
-                                    localSelectedKeywordIds + keyword.id
-                                }
-                                // Don't close dropdown on selection
+                                newKeywordName = keywordQuery
+                                showCreateKeywordDialog = true
                             },
-                            modifier = Modifier.testTag(TestTags.KEYWORD_OPTION_PREFIX + keyword.id)
+                            modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_KEYWORD_CREATE_NEW)
                         )
+                        
+                        // Build filtered + sorted keyword list: selected first, then matching by query
+                        val trimmedKeywordQuery = keywordQuery.trim()
+                        val filteredKeywords = keywords
+                            .filter { trimmedKeywordQuery.isBlank() || it.name.contains(trimmedKeywordQuery, ignoreCase = true) }
+                            .sortedWith(compareByDescending<Keyword> { it.id in localSelectedKeywordIds }.thenBy { it.name })
+                        
+                        if (filteredKeywords.isNotEmpty()) {
+                            HorizontalDivider()
+                        }
+                        
+                        filteredKeywords.forEach { keyword ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Checkbox(
+                                            checked = keyword.id in localSelectedKeywordIds,
+                                            onCheckedChange = null // Handled by row click
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(keyword.name)
+                                    }
+                                },
+                                onClick = {
+                                    localSelectedKeywordIds = if (keyword.id in localSelectedKeywordIds) {
+                                        localSelectedKeywordIds - keyword.id
+                                    } else {
+                                        localSelectedKeywordIds + keyword.id
+                                    }
+                                    // Don't close dropdown on selection
+                                },
+                                modifier = Modifier.testTag(TestTags.KEYWORD_OPTION_PREFIX + keyword.id)
+                            )
+                        }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Comment field
+                OutlinedTextField(
+                    value = localComment,
+                    onValueChange = {
+                        localComment = it
+                        callbacks.onCommentChange(it)
+                    },
+                    label = { Text("Comment") },
+                    modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Comment field
-            OutlinedTextField(
-                value = localComment,
-                onValueChange = {
-                    localComment = it
-                    callbacks.onCommentChange(it)
-                },
-                label = { Text("Comment") },
-                modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Buttons
-            Row(modifier = Modifier.fillMaxWidth()) {
+        }
+        
+        // Floating Buttons
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
+            shadowElevation = 8.dp,
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Button(
                     onClick = {
                         // Prevent duplicate saves

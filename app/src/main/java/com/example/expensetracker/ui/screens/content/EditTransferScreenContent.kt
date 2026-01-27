@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -79,27 +80,190 @@ fun EditTransferScreenContent(
     var showSourceError by remember(state.sourceAccountError) { mutableStateOf(state.sourceAccountError) }
     var showDestError by remember(state.destAccountError) { mutableStateOf(state.destAccountError) }
 
-    LazyColumn(modifier = modifier.padding(16.dp).testTag(TestTags.EDIT_TRANSFER_ROOT)) {
-        item {
-            Text(
-                if (state.isEditMode) "Edit Transfer" else "Add Transfer",
-                style = MaterialTheme.typography.headlineSmall
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+    Box(modifier = modifier) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag(TestTags.EDIT_TRANSFER_ROOT),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp)
+        ) {
+            item {
+                Text(
+                    if (state.isEditMode) "Edit Transfer" else "Add Transfer",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Date field
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { callbacks.onDateClick() }
-                    .testTag(TestTags.EDIT_TRANSFER_DATE_FIELD)
-            ) {
+                // Date field
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { callbacks.onDateClick() }
+                        .testTag(TestTags.EDIT_TRANSFER_DATE_FIELD)
+                ) {
+                    OutlinedTextField(
+                        value = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(state.date),
+                        onValueChange = {},
+                        label = { Text("Date") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Source Account dropdown
+                ExposedDropdownMenuBox(
+                    expanded = isSourceAccountDropdownExpanded,
+                    onExpandedChange = { isSourceAccountDropdownExpanded = !isSourceAccountDropdownExpanded },
+                    modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_SOURCE_DROPDOWN)
+                ) {
+                    OutlinedTextField(
+                        value = localSourceAccountName,
+                        onValueChange = {},
+                        label = { Text("From") },
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isSourceAccountDropdownExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                            .testTag(TestTags.EDIT_TRANSFER_SOURCE_VALUE)
+                            .then(if (showSourceError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
+                        isError = showSourceError
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isSourceAccountDropdownExpanded,
+                        onDismissRequest = { isSourceAccountDropdownExpanded = false }
+                    ) {
+                        // "Create New..." option
+                        DropdownMenuItem(
+                            text = { Text("Create New…") },
+                            onClick = {
+                                isSourceAccountDropdownExpanded = false
+                                callbacks.onCreateNewSourceAccount(localSourceAccountName)
+                            },
+                            modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_SOURCE_CREATE_NEW)
+                        )
+
+                        if (accounts.isNotEmpty()) {
+                            HorizontalDivider()
+                        }
+
+                        accounts.forEach { accountItem ->
+                            DropdownMenuItem(
+                                text = { Text(accountItem.name) },
+                                onClick = {
+                                    localSourceAccountName = accountItem.name
+                                    localCurrency = accountItem.currency
+                                    showSourceError = false // Clear error on selection
+                                    isSourceAccountDropdownExpanded = false
+                                    callbacks.onSourceAccountSelect(accountItem)
+                                },
+                                modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + "source_" + accountItem.id)
+                            )
+                        }
+                    }
+                }
+                if (showSourceError) {
+                    Text(
+                        "Source account not found. Please select a valid account.",
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Destination Account dropdown
+                ExposedDropdownMenuBox(
+                    expanded = isDestAccountDropdownExpanded,
+                    onExpandedChange = { isDestAccountDropdownExpanded = !isDestAccountDropdownExpanded },
+                    modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_DESTINATION_DROPDOWN)
+                ) {
+                    OutlinedTextField(
+                        value = localDestAccountName,
+                        onValueChange = {},
+                        label = { Text("To") },
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDestAccountDropdownExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                            .testTag(TestTags.EDIT_TRANSFER_DESTINATION_VALUE)
+                            .then(if (showDestError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
+                        isError = showDestError
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isDestAccountDropdownExpanded,
+                        onDismissRequest = { isDestAccountDropdownExpanded = false }
+                    ) {
+                        // "Create New..." option
+                        DropdownMenuItem(
+                            text = { Text("Create New…") },
+                            onClick = {
+                                isDestAccountDropdownExpanded = false
+                                callbacks.onCreateNewDestAccount(localDestAccountName)
+                            },
+                            modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_DEST_CREATE_NEW)
+                        )
+
+                        if (accounts.isNotEmpty()) {
+                            HorizontalDivider()
+                        }
+
+                        accounts.forEach { accountItem ->
+                            DropdownMenuItem(
+                                text = { Text(accountItem.name) },
+                                onClick = {
+                                    localDestAccountName = accountItem.name
+                                    showDestError = false // Clear error on selection
+                                    isDestAccountDropdownExpanded = false
+                                    callbacks.onDestAccountSelect(accountItem)
+                                },
+                                modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + "dest_" + accountItem.id)
+                            )
+                        }
+                    }
+                }
+                if (showDestError) {
+                    Text(
+                        "Destination account not found. Please select a valid account.",
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_ERROR_DEST_NOT_FOUND)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Amount field
                 OutlinedTextField(
-                    value = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(state.date),
+                    value = localAmount,
+                    onValueChange = {
+                        localAmount = it
+                        callbacks.onAmountChange(it)
+                    },
+                    label = { Text("Amount") },
+                    modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Currency (read-only)
+                OutlinedTextField(
+                    value = localCurrency,
                     onValueChange = {},
-                    label = { Text("Date") },
+                    label = { Text("Currency") },
                     readOnly = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_CURRENCY_VALUE),
                     enabled = false,
                     colors = OutlinedTextFieldDefaults.colors(
                         disabledTextColor = MaterialTheme.colorScheme.onSurface,
@@ -108,181 +272,33 @@ fun EditTransferScreenContent(
                         disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 )
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-            // Source Account dropdown
-            ExposedDropdownMenuBox(
-                expanded = isSourceAccountDropdownExpanded,
-                onExpandedChange = { isSourceAccountDropdownExpanded = !isSourceAccountDropdownExpanded },
-                modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_SOURCE_DROPDOWN)
-            ) {
+                // Comment field
                 OutlinedTextField(
-                    value = localSourceAccountName,
-                    onValueChange = {},
-                    label = { Text("From") },
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isSourceAccountDropdownExpanded) },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                        .testTag(TestTags.EDIT_TRANSFER_SOURCE_VALUE)
-                        .then(if (showSourceError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
-                    isError = showSourceError
+                    value = localComment,
+                    onValueChange = {
+                        localComment = it
+                        callbacks.onCommentChange(it)
+                    },
+                    label = { Text("Comment") },
+                    modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_COMMENT_FIELD)
                 )
-                ExposedDropdownMenu(
-                    expanded = isSourceAccountDropdownExpanded,
-                    onDismissRequest = { isSourceAccountDropdownExpanded = false }
-                ) {
-                    // "Create New..." option
-                    DropdownMenuItem(
-                        text = { Text("Create New…") },
-                        onClick = {
-                            isSourceAccountDropdownExpanded = false
-                            callbacks.onCreateNewSourceAccount(localSourceAccountName)
-                        },
-                        modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_SOURCE_CREATE_NEW)
-                    )
 
-                    if (accounts.isNotEmpty()) {
-                        HorizontalDivider()
-                    }
-
-                    accounts.forEach { accountItem ->
-                        DropdownMenuItem(
-                            text = { Text(accountItem.name) },
-                            onClick = {
-                                localSourceAccountName = accountItem.name
-                                localCurrency = accountItem.currency
-                                showSourceError = false // Clear error on selection
-                                isSourceAccountDropdownExpanded = false
-                                callbacks.onSourceAccountSelect(accountItem)
-                            },
-                            modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + "source_" + accountItem.id)
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
-            if (showSourceError) {
-                Text(
-                    "Source account not found. Please select a valid account.",
-                    color = Color.Red,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Destination Account dropdown
-            ExposedDropdownMenuBox(
-                expanded = isDestAccountDropdownExpanded,
-                onExpandedChange = { isDestAccountDropdownExpanded = !isDestAccountDropdownExpanded },
-                modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_DESTINATION_DROPDOWN)
-            ) {
-                OutlinedTextField(
-                    value = localDestAccountName,
-                    onValueChange = {},
-                    label = { Text("To") },
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDestAccountDropdownExpanded) },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                        .testTag(TestTags.EDIT_TRANSFER_DESTINATION_VALUE)
-                        .then(if (showDestError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
-                    isError = showDestError
-                )
-                ExposedDropdownMenu(
-                    expanded = isDestAccountDropdownExpanded,
-                    onDismissRequest = { isDestAccountDropdownExpanded = false }
-                ) {
-                    // "Create New..." option
-                    DropdownMenuItem(
-                        text = { Text("Create New…") },
-                        onClick = {
-                            isDestAccountDropdownExpanded = false
-                            callbacks.onCreateNewDestAccount(localDestAccountName)
-                        },
-                        modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_DEST_CREATE_NEW)
-                    )
-
-                    if (accounts.isNotEmpty()) {
-                        HorizontalDivider()
-                    }
-
-                    accounts.forEach { accountItem ->
-                        DropdownMenuItem(
-                            text = { Text(accountItem.name) },
-                            onClick = {
-                                localDestAccountName = accountItem.name
-                                showDestError = false // Clear error on selection
-                                isDestAccountDropdownExpanded = false
-                                callbacks.onDestAccountSelect(accountItem)
-                            },
-                            modifier = Modifier.testTag(TestTags.ACCOUNT_OPTION_PREFIX + "dest_" + accountItem.id)
-                        )
-                    }
-                }
-            }
-            if (showDestError) {
-                Text(
-                    "Destination account not found. Please select a valid account.",
-                    color = Color.Red,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_ERROR_DEST_NOT_FOUND)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Amount field
-            OutlinedTextField(
-                value = localAmount,
-                onValueChange = {
-                    localAmount = it
-                    callbacks.onAmountChange(it)
-                },
-                label = { Text("Amount") },
-                modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Currency (read-only)
-            OutlinedTextField(
-                value = localCurrency,
-                onValueChange = {},
-                label = { Text("Currency") },
-                readOnly = true,
-                modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_CURRENCY_VALUE),
-                enabled = false,
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                    disabledBorderColor = MaterialTheme.colorScheme.outline,
-                    disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Comment field
-            OutlinedTextField(
-                value = localComment,
-                onValueChange = {
-                    localComment = it
-                    callbacks.onCommentChange(it)
-                },
-                label = { Text("Comment") },
-                modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_COMMENT_FIELD)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Buttons
-            Row(modifier = Modifier.fillMaxWidth()) {
+        }
+        
+        // Floating Buttons
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
+            shadowElevation = 8.dp,
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Button(
                     onClick = {
                         // Prevent duplicate saves

@@ -421,7 +421,9 @@ private fun TransactionList(transactions: List<Expense>, navController: NavContr
         SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(it.expenseDate)
     }
 
-    LazyColumn {
+    LazyColumn(
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 88.dp)
+    ) {
         groupedTransactions.forEach { (date, transactionsOnDate) ->
             stickyHeader {
                 Row(
@@ -458,7 +460,9 @@ private fun TransfersTab(transfers: List<TransferHistory>, navController: NavCon
         SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(it.date)
     }
 
-    LazyColumn {
+    LazyColumn(
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 88.dp)
+    ) {
         groupedTransfers.forEach { (date, transfersOnDate) ->
             stickyHeader {
                 Row(
