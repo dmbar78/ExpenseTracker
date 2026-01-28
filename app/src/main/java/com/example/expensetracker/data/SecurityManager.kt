@@ -48,6 +48,10 @@ object SecurityManager {
     // In-memory Master Key (DEK) - cleared on app kill
     private var masterKey: SecretKey? = null
 
+    // Background Timeout
+    private var backgroundTimestamp: Long = 0L
+    private const val LOCK_TIMEOUT_MS = 30000L // 30 seconds
+
     // --- State Check ---
     fun isPinSet(context: Context): Boolean {
         val prefs = getPrefs(context)
@@ -56,6 +60,18 @@ object SecurityManager {
 
     fun isBiometricEnabled(context: Context): Boolean {
         return getPrefs(context).getBoolean(KEY_IS_BIO_ENABLED, false)
+    }
+    
+    fun noteBackgroundTime() {
+        backgroundTimestamp = System.currentTimeMillis()
+    }
+    
+    fun shouldLock(context: Context): Boolean {
+        if (!isPinSet(context)) return false // No security = no lock
+        if (backgroundTimestamp == 0L) return false // Fresh start or not paused
+        
+        val elapsed = System.currentTimeMillis() - backgroundTimestamp
+        return elapsed > LOCK_TIMEOUT_MS
     }
 
     fun isLocked(): Boolean {
@@ -190,20 +206,26 @@ object SecurityManager {
 
     // --- Biometric Operations ---
 
-    fun enableBiometric(context: Context) {
-        val currentDek = masterKey ?: throw IllegalStateException("Must unlock with PIN first")
-
-        // 1. Generate KEK_bio in Keystore (User Auth Required)
+    // 1. Prepare for enrollment: Generate key and return Cipher for BiometricPrompt
+    fun getBiometricEnrollmentCipher(): Cipher {
+        // Generate KEK_bio in Keystore (User Auth Required)
         val bioKek = generateBiometricKey()
 
-        // 2. Encrypt DEK with KEK_bio
+        // Init Cipher for encryption
         val cipher = Cipher.getInstance(KeyProperties.KEY_ALGORITHM_AES + "/"
                 + KeyProperties.BLOCK_MODE_GCM + "/"
                 + KeyProperties.ENCRYPTION_PADDING_NONE)
         cipher.init(Cipher.ENCRYPT_MODE, bioKek)
-        
-        val iv = cipher.iv
+        return cipher
+    }
+
+    // 2. Finalize enrollment after successful Auth
+    fun finalizeBiometricEnable(context: Context, cryptoObject: BiometricPrompt.CryptoObject) {
+        val currentDek = masterKey ?: throw IllegalStateException("Must unlock with PIN first")
+        val cipher = cryptoObject.cipher ?: throw IllegalStateException("Cipher is null")
+
         val encDek = cipher.doFinal(currentDek.encoded)
+        val iv = cipher.iv
 
         getPrefs(context).edit()
             .putBoolean(KEY_IS_BIO_ENABLED, true)

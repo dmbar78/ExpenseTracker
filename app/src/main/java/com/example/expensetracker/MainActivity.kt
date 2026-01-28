@@ -8,7 +8,7 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -37,7 +37,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private var speechRecognizer: SpeechRecognizer? = null
     internal val viewModel: ExpenseViewModel by viewModels { ExpenseViewModel.Factory }
@@ -68,7 +68,14 @@ class MainActivity : ComponentActivity() {
                 // Check lock status on Resume
                 DisposableEffect(lifecycleOwner) {
                     val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-                        if (event == androidx.lifecycle.Lifecycle.Event.ON_START) {
+                        if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                            com.example.expensetracker.data.SecurityManager.noteBackgroundTime()
+                        } else if (event == androidx.lifecycle.Lifecycle.Event.ON_START) {
+                            // Check for timeout
+                            if (com.example.expensetracker.data.SecurityManager.shouldLock(context)) {
+                                com.example.expensetracker.data.SecurityManager.setLocked()
+                            }
+                            
                             if (com.example.expensetracker.data.SecurityManager.isPinSet(context) && 
                                 com.example.expensetracker.data.SecurityManager.isLocked()) {
                                 isAppLocked = true

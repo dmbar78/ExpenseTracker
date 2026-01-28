@@ -287,14 +287,15 @@ private fun PinKey(key: String, onClick: () -> Unit) {
         modifier = Modifier
             .size(80.dp)
             .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .testTag(tag)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         when (key) {
-            "Backspace" -> Icon(Icons.Default.Backspace, contentDescription = "Backspace")
-            "Biometric" -> Icon(Icons.Default.Fingerprint, contentDescription = "Biometric")
-            else -> Text(text = key, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+            "Backspace" -> Icon(Icons.Default.Backspace, contentDescription = "Backspace", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            "Biometric" -> Icon(Icons.Default.Fingerprint, contentDescription = "Biometric", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            else -> Text(text = key, fontSize = 28.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

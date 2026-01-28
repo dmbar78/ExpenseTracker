@@ -216,13 +216,83 @@ fun SettingsScreen(
                                  Toast.makeText(context, "Please unlock with PIN first", Toast.LENGTH_SHORT).show()
                                  // Trigger PIN unlock?
                              } else {
-                                 // Ready to enable
-                                 try {
-                                     SecurityManager.enableBiometric(context)
-                                     isBiometricEnabled = true
-                                 } catch (e: Exception) {
-                                     Toast.makeText(context, "Failed to enable biometric: ${e.message}", Toast.LENGTH_SHORT).show()
+                             // Check if device supports biometric auth
+                             val biometricManager = androidx.biometric.BiometricManager.from(context)
+                             val result = biometricManager.canAuthenticate(androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG)
+                             
+                             if (result == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS) {
+                                 val activity = context as? androidx.fragment.app.FragmentActivity
+                                 if (activity == null) {
+                                     Toast.makeText(context, "Error: Context is not a FragmentActivity", Toast.LENGTH_SHORT).show()
+                                     return@Switch
                                  }
+
+                                 try {
+                                     // 1. Get Cipher
+                                     val cipher = SecurityManager.getBiometricEnrollmentCipher()
+                                     val cryptoObject = androidx.biometric.BiometricPrompt.CryptoObject(cipher)
+                                     
+                                     // 2. Show Prompt
+                                     val executor = androidx.core.content.ContextCompat.getMainExecutor(context)
+                                     val callback = object : androidx.biometric.BiometricPrompt.AuthenticationCallback() {
+                                         override fun onAuthenticationSucceeded(result: androidx.biometric.BiometricPrompt.AuthenticationResult) {
+                                             super.onAuthenticationSucceeded(result)
+                                             try {
+                                                 val authenticatedCryptoObject = result.cryptoObject
+                                                 if (authenticatedCryptoObject != null) {
+                                                     SecurityManager.finalizeBiometricEnable(context, authenticatedCryptoObject)
+                                                     isBiometricEnabled = true
+                                                     Toast.makeText(context, "Biometric enabled", Toast.LENGTH_SHORT).show()
+                                                 }
+                                             } catch (e: Exception) {
+                                                 e.printStackTrace()
+                                                 Toast.makeText(context, "Finalization failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                 isBiometricEnabled = false // Revert visual switch
+                                             }
+                                         }
+                                         
+                                         override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                                             super.onAuthenticationError(errorCode, errString)
+                                             Toast.makeText(context, "Auth Error: $errString", Toast.LENGTH_SHORT).show()
+                                             isBiometricEnabled = false // Revert visual switch
+                                         }
+                                         
+                                         override fun onAuthenticationFailed() {
+                                             super.onAuthenticationFailed()
+                                             // Soft failure, system usually handles retries. 
+                                             // But we might want to ensure switch stays off until success.
+                                         }
+                                     }
+                                     
+                                     val promptInfo = androidx.biometric.BiometricPrompt.PromptInfo.Builder()
+                                         .setTitle("Enable Biometric Unlock")
+                                         .setSubtitle("Confirm your identity to enable biometric unlock")
+                                         .setNegativeButtonText("Cancel")
+                                         .build()
+                                         
+                                     val biometricPrompt = androidx.biometric.BiometricPrompt(activity, executor, callback)
+                                     biometricPrompt.authenticate(promptInfo, cryptoObject)
+                                     
+                                     // Optimistically set true? No, wait for callback. 
+                                     // But the Switch UI might need to bounce back if we don't set it true here?
+                                     // Better to keep it false and only set true on success. 
+                                     // BUT `onCheckedChange` is called. The `isBiometricEnabled` state is driving the switch.
+                                     // Use a local loading state if needed, or accepting that it stays off until auth succeeds.
+                                 } catch (e: Exception) {
+                                     e.printStackTrace()
+                                     Toast.makeText(context, "Setup failed: ${e.message}", Toast.LENGTH_LONG).show()
+                                 }
+                             } else {
+                                 val msg = when(result) {
+                                     androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> "No biometric hardware"
+                                     androidx.biometric.BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> "Biometric hardware unavailable"
+                                     androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> "No biometrics enrolled. Check phone settings."
+                                     else -> "Biometric auth not available (Code: $result)"
+                                 }
+                                 Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                 // Reset switch visual state since we failed
+                                 // (Note: isBiometricEnabled is already false, but to be sure we don't flip it)
+                             }
                              }
                          } else {
                              SecurityManager.disableBiometric(context)
