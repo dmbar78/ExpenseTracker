@@ -23,15 +23,7 @@ fun VoiceRecognitionDialogs(viewModel: ExpenseViewModel) {
                 modifier = Modifier.testTag(TestTags.VOICE_DIALOG_RECOGNITION_FAILED)
             )
         }
-        is VoiceRecognitionState.TransferCurrencyMismatch -> {
-            AlertDialog(
-                onDismissRequest = { viewModel.dismissVoiceRecognitionDialog() },
-                title = { Text("Currency Mismatch") },
-                text = { Text(currentState.message) },
-                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text("OK") } },
-                modifier = Modifier.testTag(TestTags.VOICE_DIALOG_CURRENCY_MISMATCH)
-            )
-        }
+
         is VoiceRecognitionState.SameAccountTransfer -> {
             AlertDialog(
                 onDismissRequest = { viewModel.dismissVoiceRecognitionDialog() },

@@ -22,5 +22,9 @@ data class TransferHistory(
     /** Exchange rate from transfer currency to originalDefaultCurrency at transfer date */
     val exchangeRateToOriginalDefault: BigDecimal? = null,
     /** Amount expressed in originalDefaultCurrencyCode (amount * exchangeRateToOriginalDefault) */
-    val amountInOriginalDefault: BigDecimal? = null
+    val amountInOriginalDefault: BigDecimal? = null,
+    
+    // Multi-currency support
+    val destinationAmount: BigDecimal? = null,
+    val destinationCurrency: String? = null
 )

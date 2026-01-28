@@ -24,7 +24,7 @@ data class ParsedTransfer(
 sealed class VoiceRecognitionState {
     object Idle : VoiceRecognitionState()
     data class RecognitionFailed(val message: String) : VoiceRecognitionState()
-    data class TransferCurrencyMismatch(val message: String) : VoiceRecognitionState()
+
     data class SameAccountTransfer(val message: String) : VoiceRecognitionState()
     data class Success(val message: String) : VoiceRecognitionState()
 }

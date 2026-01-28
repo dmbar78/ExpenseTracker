@@ -696,6 +696,22 @@ class ExpenseViewModel(
             return
         }
 
+        // Multi-currency check:
+        // If currencies differ, we cannot auto-create the transfer because we don't know the destination amount.
+        // Navigate to Edit screen to let user enter it.
+        if (sourceAccount.currency != destAccount.currency) {
+            _navigateTo.send(
+                "editTransfer/0" +
+                    "?sourceAccountName=${Uri.encode(sourceAccount.name)}" +
+                    "&destAccountName=${Uri.encode(destAccount.name)}" +
+                    "&amount=${Uri.encode(parsedTransfer.amount.toPlainString())}" +
+                    "&transferDateMillis=${parsedTransfer.transferDate}" +
+                    "&sourceAccountError=false" +
+                    "&destAccountError=false"
+            )
+            return
+        }
+
         val transferRecord = TransferHistory(
             sourceAccount = sourceAccount.name,
             destinationAccount = destAccount.name,
@@ -712,8 +728,6 @@ class ExpenseViewModel(
             val message = e.message ?: "Invalid transfer."
             if (message.contains("same", ignoreCase = true)) {
                 _voiceRecognitionState.value = VoiceRecognitionState.SameAccountTransfer(message)
-            } else if (message.contains("currency", ignoreCase = true)) {
-                _voiceRecognitionState.value = VoiceRecognitionState.TransferCurrencyMismatch(message)
             } else {
                 _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed(message)
             }

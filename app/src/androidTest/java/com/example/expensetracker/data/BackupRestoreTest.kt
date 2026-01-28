@@ -60,7 +60,7 @@ class BackupRestoreTest {
         // Then: backup data should be valid with empty lists
         assertNotNull(backupData)
         assertNotNull(backupData.metadata)
-        assertEquals(1, backupData.metadata.schemaVersion)
+        assertEquals(2, backupData.metadata.schemaVersion)
         assertNotNull(backupData.data)
         assertTrue(backupData.data.accounts.isEmpty())
         assertTrue(backupData.data.expenses.isEmpty())
@@ -317,7 +317,7 @@ class BackupRestoreTest {
         return BackupData(
             metadata = BackupMetadata(
                 appVersion = "1.0.0",
-                schemaVersion = 1,
+                schemaVersion = 2,
                 timestamp = System.currentTimeMillis(),
                 device = "Android"
             ),
@@ -341,7 +341,7 @@ class BackupRestoreTest {
         return BackupData(
             metadata = BackupMetadata(
                 appVersion = "1.0.0",
-                schemaVersion = 1,
+                schemaVersion = 2,
                 timestamp = System.currentTimeMillis(),
                 device = "Android"
             ),
@@ -365,7 +365,7 @@ class BackupRestoreTest {
         return BackupData(
             metadata = BackupMetadata(
                 appVersion = "1.0.0",
-                schemaVersion = 1,
+                schemaVersion = 2,
                 timestamp = System.currentTimeMillis(),
                 device = "Android"
             ),
@@ -397,7 +397,7 @@ class BackupRestoreTest {
         return BackupData(
             metadata = BackupMetadata(
                 appVersion = "1.0.0",
-                schemaVersion = 1,
+                schemaVersion = 2,
                 timestamp = System.currentTimeMillis(),
                 device = "Android"
             ),

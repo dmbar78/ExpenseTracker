@@ -46,6 +46,7 @@ object TestTags {
     const val EDIT_TRANSFER_DESTINATION_DROPDOWN = "editTransfer_destinationDropdown"
     const val EDIT_TRANSFER_DESTINATION_VALUE = "editTransfer_destinationValue"
     const val EDIT_TRANSFER_AMOUNT_FIELD = "editTransfer_amountField"
+    const val EDIT_TRANSFER_DEST_AMOUNT_FIELD = "editTransfer_destAmountField"
     const val EDIT_TRANSFER_CURRENCY_VALUE = "editTransfer_currencyValue"
     const val EDIT_TRANSFER_COMMENT_FIELD = "editTransfer_commentField"
     const val EDIT_TRANSFER_SAVE = "editTransfer_save"
@@ -67,7 +68,6 @@ object TestTags {
 
     // VoiceRecognitionDialogs
     const val VOICE_DIALOG_RECOGNITION_FAILED = "voiceDialog_recognitionFailed"
-    const val VOICE_DIALOG_CURRENCY_MISMATCH = "voiceDialog_currencyMismatch"
     const val VOICE_DIALOG_SAME_ACCOUNT = "voiceDialog_sameAccount"
     const val VOICE_DIALOG_SUCCESS = "voiceDialog_success"
 

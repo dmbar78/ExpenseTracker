@@ -105,12 +105,13 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             )
         }
         composable(
-            route = "editTransfer/{transferId}?sourceAccountName={sourceAccountName}&destAccountName={destAccountName}&amount={amount}&transferDateMillis={transferDateMillis}&sourceAccountError={sourceAccountError}&destAccountError={destAccountError}",
+            route = "editTransfer/{transferId}?sourceAccountName={sourceAccountName}&destAccountName={destAccountName}&amount={amount}&destAmount={destAmount}&transferDateMillis={transferDateMillis}&sourceAccountError={sourceAccountError}&destAccountError={destAccountError}",
             arguments = listOf(
                 navArgument("transferId") { type = NavType.IntType },
                 navArgument("sourceAccountName") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("destAccountName") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("amount") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("destAmount") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("transferDateMillis") { type = NavType.LongType; defaultValue = 0L },
                 navArgument("sourceAccountError") { type = NavType.BoolType; defaultValue = false },
                 navArgument("destAccountError") { type = NavType.BoolType; defaultValue = false }
@@ -121,6 +122,8 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             val destAccountName = it.arguments?.getString("destAccountName")
             val amountStr = it.arguments?.getString("amount")
             val amount = amountStr?.let { str -> runCatching { BigDecimal(str) }.getOrNull() }
+            val destAmountStr = it.arguments?.getString("destAmount")
+            val destAmount = destAmountStr?.let { str -> runCatching { BigDecimal(str) }.getOrNull() }
             val transferDateMillis = it.arguments?.getLong("transferDateMillis") ?: 0L
             val sourceAccountError = it.arguments?.getBoolean("sourceAccountError") ?: false
             val destAccountError = it.arguments?.getBoolean("destAccountError") ?: false
@@ -132,6 +135,7 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
                 initialSourceAccountName = sourceAccountName,
                 initialDestAccountName = destAccountName,
                 initialAmount = amount,
+                initialDestAmount = destAmount,
                 initialTransferDateMillis = transferDateMillis,
                 initialSourceAccountError = sourceAccountError,
                 initialDestAccountError = destAccountError

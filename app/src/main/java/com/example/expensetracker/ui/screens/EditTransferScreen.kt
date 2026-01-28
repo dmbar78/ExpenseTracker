@@ -38,6 +38,7 @@ fun EditTransferScreen(
     initialSourceAccountName: String? = null,
     initialDestAccountName: String? = null,
     initialAmount: BigDecimal? = null,
+    initialDestAmount: BigDecimal? = null,
     initialTransferDateMillis: Long = 0L,
     initialSourceAccountError: Boolean = false,
     initialDestAccountError: Boolean = false
@@ -86,6 +87,7 @@ fun EditTransferScreen(
     var sourceAccountName by rememberSaveable { mutableStateOf(initialSourceAccountName ?: "") }
     var destAccountName by rememberSaveable { mutableStateOf(initialDestAccountName ?: "") }
     var amount by rememberSaveable { mutableStateOf(initialAmount?.toPlainString() ?: "") }
+    var destAmount by rememberSaveable { mutableStateOf(initialDestAmount?.toPlainString() ?: "") }
     var currency by rememberSaveable { mutableStateOf("") }
     var date by rememberSaveable { mutableStateOf(if (initialTransferDateMillis > 0) initialTransferDateMillis else System.currentTimeMillis()) }
     var comment by rememberSaveable { mutableStateOf("") }
@@ -111,6 +113,7 @@ fun EditTransferScreen(
                 sourceAccountName = it.sourceAccount
                 destAccountName = it.destinationAccount
                 amount = it.amount.toPlainString()
+                destAmount = it.destinationAmount?.toPlainString() ?: ""
                 currency = it.currency
                 date = it.date
                 comment = it.comment ?: ""
@@ -190,6 +193,7 @@ fun EditTransferScreen(
                 sourceAccountName = sourceAccountName,
                 destAccountName = destAccountName,
                 amount = amount,
+                destAmount = destAmount,
                 currency = currency,
                 date = date,
                 comment = comment,
@@ -218,6 +222,7 @@ fun EditTransferScreen(
                     navController.navigate("addAccount?accountName=${currentDestText.trim()}")
                 },
                 onAmountChange = { amount = it },
+                onDestAmountChange = { destAmount = it },
                 onDateClick = { datePickerDialog.show() },
                 onCommentChange = { comment = it },
                 onSave = { transferToSave ->

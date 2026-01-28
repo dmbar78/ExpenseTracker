@@ -157,28 +157,27 @@ class LedgerDaoTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // Flow 6: Transfer from Test0 (RUB) to Test1 (EUR) - Currency mismatch error
+    // Flow 6: Transfer from Test0 (RUB) to Test1 (EUR) - Multi-currency support
+    // Result: Test0 balance = 80 RUB, Test1 balance = 105 EUR (assuming 20 RUB -> 5 EUR rate manually specified)
     // ─────────────────────────────────────────────────────────────────────────────
 
     @Test
-    fun flow6_transferDifferentCurrencies_throwsCurrencyMismatch() = runBlocking {
+    fun flow6_transferDifferentCurrencies_success() = runBlocking {
         val transfer = TransferHistory(
             sourceAccount = "Test0",
             destinationAccount = "Test1",
-            amount = BigDecimal("20.00"),
-            currency = "RUB"
+            amount = BigDecimal("20.00"), // RUB
+            currency = "RUB",
+            destinationAmount = BigDecimal("5.00"), // EUR
+            destinationCurrency = "EUR"
         )
         
-        try {
-            ledgerDao.addTransferAndAdjust(transfer)
-            fail("Expected IllegalArgumentException for currency mismatch")
-        } catch (e: IllegalArgumentException) {
-            assertTrue(e.message!!.contains("currency", ignoreCase = true))
-        }
+        ledgerDao.addTransferAndAdjust(transfer)
         
-        // Balances should be unchanged
-        assertEquals(BigDecimal("100.00"), ledgerDao.getAccountByNameOnce("Test0")!!.balance)
-        assertEquals(BigDecimal("100.00"), ledgerDao.getAccountByNameOnce("Test1")!!.balance)
+        // Test0 (Source): 100 - 20 = 80 RUB
+        assertEquals(BigDecimal("80.00"), ledgerDao.getAccountByNameOnce("Test0")!!.balance)
+        // Test1 (Dest): 100 + 5 = 105 EUR
+        assertEquals(BigDecimal("105.00"), ledgerDao.getAccountByNameOnce("Test1")!!.balance)
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

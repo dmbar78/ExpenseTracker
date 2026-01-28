@@ -21,7 +21,7 @@ class BackupRepository(
 ) {
     companion object {
         /** Current schema version for backups */
-        const val CURRENT_SCHEMA_VERSION = 1
+        const val CURRENT_SCHEMA_VERSION = 2
         
         /** App version - should be read from BuildConfig in production */
         const val APP_VERSION = "1.0.0"

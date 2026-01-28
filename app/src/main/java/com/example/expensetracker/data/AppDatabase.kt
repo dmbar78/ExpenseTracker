@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Expense::class, Account::class, Category::class, Currency::class, Keyword::class, TransferHistory::class, ExchangeRate::class, ExpenseKeywordCrossRef::class], version = 14, exportSchema = false)
+@Database(entities = [Expense::class, Account::class, Category::class, Currency::class, Keyword::class, TransferHistory::class, ExchangeRate::class, ExpenseKeywordCrossRef::class], version = 15, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -172,9 +172,28 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "expense_database"
                 )
-                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)                .build()
+                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)                .build()
                 INSTANCE = instance
                 instance
+            }
+        }
+
+        /**
+         * Migration from version 14 to 15: Add destinationAmount and destinationCurrency to transfer_history.
+         * - Adds nullable columns for separate destination amount/currency (multi-currency support).
+         * - Backfills existing rows: destinationCurrency = source currency, destinationAmount = NULL.
+         */
+        private val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE transfer_history ADD COLUMN destinationAmount TEXT")
+                database.execSQL("ALTER TABLE transfer_history ADD COLUMN destinationCurrency TEXT")
+                
+                // Set default destination currency to match source currency for existing records
+                database.execSQL("UPDATE transfer_history SET destinationCurrency = currency")
+                
+                // destinationAmount defaults to NULL (which implies same as source amount logic in Repo)
+                // Explicitly setting it to NULL just to be safe, though existing columns default to NULL usually.
+                database.execSQL("UPDATE transfer_history SET destinationAmount = NULL")
             }
         }
     }

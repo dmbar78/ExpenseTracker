@@ -147,7 +147,7 @@ interface LedgerDao {
     /**
      * Insert a new transfer and adjust source/destination account balances atomically.
      * - Source account: subtract amount
-     * - Destination account: add amount
+     * - Destination account: add destinationAmount (or amount if null)
      * @return the inserted transfer ID
      * @throws IllegalStateException if source or destination account not found
      */
@@ -166,14 +166,12 @@ interface LedgerDao {
             throw IllegalArgumentException("Source and Destination Accounts can't be the same! Please, repeat transaction with correct values.")
         }
 
-        // Validation: Currency mismatch check
-        if (sourceAcc.currency != destAcc.currency) {
-            throw IllegalArgumentException("Currency mismatch: transfer between accounts with different currencies is not supported.")
-        }
-
-        val amount = transfer.amount.setScale(2, RoundingMode.HALF_UP)
-        val newSourceBalance = sourceAcc.balance.subtract(amount).setScale(2, RoundingMode.HALF_UP)
-        val newDestBalance = destAcc.balance.add(amount).setScale(2, RoundingMode.HALF_UP)
+        val debitAmount = transfer.amount.setScale(2, RoundingMode.HALF_UP)
+        // Use destinationAmount if present (multi-currency), otherwise fallback to source amount
+        val creditAmount = (transfer.destinationAmount ?: transfer.amount).setScale(2, RoundingMode.HALF_UP)
+        
+        val newSourceBalance = sourceAcc.balance.subtract(debitAmount).setScale(2, RoundingMode.HALF_UP)
+        val newDestBalance = destAcc.balance.add(creditAmount).setScale(2, RoundingMode.HALF_UP)
 
         updateAccountRow(sourceAcc.copy(balance = newSourceBalance))
         updateAccountRow(destAcc.copy(balance = newDestBalance))
@@ -205,11 +203,6 @@ interface LedgerDao {
             throw IllegalArgumentException("Source and Destination Accounts can't be the same! Please, repeat transaction with correct values.")
         }
 
-        // Validation: Currency mismatch check
-        if (newSourceAcc.currency != newDestAcc.currency) {
-            throw IllegalArgumentException("Currency mismatch: transfer between accounts with different currencies is not supported.")
-        }
-
         // Build per-account delta map (case-insensitive keys)
         val deltas = mutableMapOf<String, BigDecimal>()
 
@@ -218,17 +211,21 @@ interface LedgerDao {
 
         // Revert original transfer (unless source==dest - which shouldn't exist but handle gracefully)
         if (oldSourceKey != oldDestKey) {
+            val originalCredit = original.destinationAmount ?: original.amount
+            
             // Add back to old source
             deltas[oldSourceKey] = (deltas[oldSourceKey] ?: BigDecimal.ZERO).add(original.amount)
             // Subtract from old dest
-            deltas[oldDestKey] = (deltas[oldDestKey] ?: BigDecimal.ZERO).subtract(original.amount)
+            deltas[oldDestKey] = (deltas[oldDestKey] ?: BigDecimal.ZERO).subtract(originalCredit)
         }
 
         // Apply new transfer
+        val newCredit = updated.destinationAmount ?: updated.amount
+        
         // Subtract from new source
         deltas[newSourceKey] = (deltas[newSourceKey] ?: BigDecimal.ZERO).subtract(updated.amount)
         // Add to new dest
-        deltas[newDestKey] = (deltas[newDestKey] ?: BigDecimal.ZERO).add(updated.amount)
+        deltas[newDestKey] = (deltas[newDestKey] ?: BigDecimal.ZERO).add(newCredit)
 
         // Apply merged deltas to each affected account
         for ((key, delta) in deltas) {
@@ -261,9 +258,11 @@ interface LedgerDao {
             val destAcc = getAccountByNameOnce(transfer.destinationAccount)
                 ?: throw IllegalStateException("Destination account '${transfer.destinationAccount}' not found")
 
-            val amount = transfer.amount.setScale(2, RoundingMode.HALF_UP)
-            val newSourceBalance = sourceAcc.balance.add(amount).setScale(2, RoundingMode.HALF_UP)
-            val newDestBalance = destAcc.balance.subtract(amount).setScale(2, RoundingMode.HALF_UP)
+            val debitAmount = transfer.amount.setScale(2, RoundingMode.HALF_UP)
+            val creditAmount = (transfer.destinationAmount ?: transfer.amount).setScale(2, RoundingMode.HALF_UP)
+            
+            val newSourceBalance = sourceAcc.balance.add(debitAmount).setScale(2, RoundingMode.HALF_UP)
+            val newDestBalance = destAcc.balance.subtract(creditAmount).setScale(2, RoundingMode.HALF_UP)
 
             updateAccountRow(sourceAcc.copy(balance = newSourceBalance))
             updateAccountRow(destAcc.copy(balance = newDestBalance))
