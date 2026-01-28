@@ -109,6 +109,7 @@ dependencies {
 
     // DataStore for filter persistence
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation(libs.androidx.biometric)
 
     // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:21.2.0")

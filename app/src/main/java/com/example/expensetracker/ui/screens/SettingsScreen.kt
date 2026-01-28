@@ -12,10 +12,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.expensetracker.data.Currency
+import com.example.expensetracker.data.SecurityManager
+import com.example.expensetracker.ui.TestTags
 import com.example.expensetracker.viewmodel.BackupOperationState
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.launch
@@ -117,6 +121,40 @@ fun SettingsScreen(
         )
     }
     
+    // State for PIN Lock Screen
+    var showPinLock by remember { mutableStateOf(false) }
+    var pinLockMode by remember { mutableStateOf(PinScreenMode.Create) }
+    
+    // Check PIN Status
+    var isPinSet by remember { mutableStateOf(SecurityManager.isPinSet(context)) }
+    var isBiometricEnabled by remember { mutableStateOf(SecurityManager.isBiometricEnabled(context)) }
+
+    if (showPinLock) {
+        // Overlay PIN Screen
+        Surface(modifier = Modifier.fillMaxSize().zIndex(1f)) {
+            PinLockScreen(
+                mode = pinLockMode,
+                onSuccess = {
+                    showPinLock = false
+                    isPinSet = SecurityManager.isPinSet(context) // Refresh
+                    isBiometricEnabled = SecurityManager.isBiometricEnabled(context)
+                    // If we were changing, we might need a 2-step flow (Old -> New).
+                    // For simplicity, if mode was Change, we just verified old. Now launch Create for new.
+                    if (pinLockMode == PinScreenMode.Change) {
+                        pinLockMode = PinScreenMode.Create
+                        showPinLock = true 
+                    } else if (pinLockMode == PinScreenMode.Remove) {
+                        SecurityManager.removePin(context)
+                        isPinSet = false
+                        isBiometricEnabled = false
+                        Toast.makeText(context, "PIN removed", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onCancel = { showPinLock = false }
+            )
+        }
+    }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -128,7 +166,93 @@ fun SettingsScreen(
             modifier = Modifier.padding(bottom = 24.dp)
         )
         
+        // Security Section
+        Text(
+            text = "Security",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+            color = MaterialTheme.colorScheme.primary
+        )
+        
+        if (isPinSet) {
+            SettingsItem(
+                title = "Change PIN",
+                value = "******",
+                onClick = {
+                    pinLockMode = PinScreenMode.Change
+                    showPinLock = true
+                },
+                modifier = Modifier.testTag(TestTags.SETTINGS_CHANGE_PIN)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            SettingsItem(
+                title = "Remove PIN",
+                value = "Disable Security",
+                onClick = {
+                    pinLockMode = PinScreenMode.Remove
+                    showPinLock = true
+                },
+                modifier = Modifier.testTag(TestTags.SETTINGS_REMOVE_PIN)
+            )
+            // Actually, secure removal is better.
+            // Let's implement simple "Switch" logic for Biometrics
+            Row(
+                 modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Enable Biometric Unlock", style = MaterialTheme.typography.bodyLarge)
+                Switch(
+                    checked = isBiometricEnabled,
+                    onCheckedChange = { params ->
+                         if (params) {
+                             // Enabling: Need to confirm PIN first or just enable if keys are ready?
+                             // Plan said: "Require entering the PIN once before enabling biometrics"
+                             // We are masterKey loaded? If we just entered Settings, maybe locked?
+                             // If SecurityManager.isLocked(), we must unlock DEK first.
+                             if (SecurityManager.isLocked()) {
+                                 Toast.makeText(context, "Please unlock with PIN first", Toast.LENGTH_SHORT).show()
+                                 // Trigger PIN unlock?
+                             } else {
+                                 // Ready to enable
+                                 try {
+                                     SecurityManager.enableBiometric(context)
+                                     isBiometricEnabled = true
+                                 } catch (e: Exception) {
+                                     Toast.makeText(context, "Failed to enable biometric: ${e.message}", Toast.LENGTH_SHORT).show()
+                                 }
+                             }
+                         } else {
+                             SecurityManager.disableBiometric(context)
+                             isBiometricEnabled = false
+                         }
+                    },
+                    modifier = Modifier.testTag(TestTags.SETTINGS_BIOMETRIC_SWITCH)
+                )
+            }
+
+        } else {
+            SettingsItem(
+                title = "Add PIN",
+                value = "Enable Security",
+                onClick = {
+                    pinLockMode = PinScreenMode.Create
+                    showPinLock = true
+                },
+                modifier = Modifier.testTag(TestTags.SETTINGS_ADD_PIN)
+            )
+        }
+        
         // Default Currency setting
+        Text(
+            text = "General",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            color = MaterialTheme.colorScheme.primary
+        )
+
         SettingsItem(
             title = "Default currency",
             value = defaultCurrencyCode,
@@ -230,10 +354,11 @@ fun SettingsScreen(
 private fun SettingsItem(
     title: String,
     value: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         color = MaterialTheme.colorScheme.surfaceVariant,

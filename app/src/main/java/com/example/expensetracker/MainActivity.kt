@@ -24,6 +24,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.ui.TestTags
@@ -54,103 +55,146 @@ class MainActivity : ComponentActivity() {
         setupSpeechRecognizer()
         requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
 
+        requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+
         setContent {
             ExpenseTrackerTheme {
-                val navController = rememberNavController()
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route
-                // Hide FABs on Edit and Add screens to prevent overlap
-                val showFabs = currentRoute == null || (!currentRoute.startsWith("edit", ignoreCase = true) && !currentRoute.startsWith("add", ignoreCase = true))
+                val context = LocalContext.current
+                val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+                
+                // App Lock State
+                var isAppLocked by remember { mutableStateOf(false) }
 
-                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-                val scope = rememberCoroutineScope()
-
-                // Listen for navigation events from the ViewModel
-                LaunchedEffect(Unit) {
-                    viewModel.navigateToFlow.collectLatest { route ->
-                        navController.navigate(route)
+                // Check lock status on Resume
+                DisposableEffect(lifecycleOwner) {
+                    val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                        if (event == androidx.lifecycle.Lifecycle.Event.ON_START) {
+                            if (com.example.expensetracker.data.SecurityManager.isPinSet(context) && 
+                                com.example.expensetracker.data.SecurityManager.isLocked()) {
+                                isAppLocked = true
+                            }
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
                     }
                 }
 
-                VoiceRecognitionDialogs(viewModel = viewModel)
-
-                ModalNavigationDrawer(
-                    drawerState = drawerState,
-                    drawerContent = {
-                        AppDrawer(navController = navController, drawerState = drawerState, scope = scope)
-                    }
-                ) {
-                    Scaffold(
-                        topBar = {
-                            TopAppBar(
-                                title = { Text("Expense Tracker") },
-                                navigationIcon = {
-                                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                        Icon(Icons.Default.Menu, contentDescription = "Menu")
-                                    }
-                                }
-                            )
+                if (isAppLocked) {
+                    com.example.expensetracker.ui.screens.PinLockScreen(
+                        mode = com.example.expensetracker.ui.screens.PinScreenMode.Unlock,
+                        onSuccess = {
+                            isAppLocked = false
                         },
-                        floatingActionButton = {
-                            if (showFabs) {
-                                FloatingActionButton(onClick = { startVoiceRecognition() }) {
-                                    Icon(Icons.Default.Mic, contentDescription = "Start Recognition")
-                                }
+                        onCancel = {
+                            // If cancelled on unlock, exit app/minimize?
+                            finish()
+                        }
+                    )
+                } else {
+                    MainContent()
+                }
+            }
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun MainContent() {
+        val navController = rememberNavController()
+        val navBackStackEntry by navController.currentBackStackEntryAsState()
+        val currentRoute = navBackStackEntry?.destination?.route
+        // Hide FABs on Edit and Add screens to prevent overlap
+        val showFabs = currentRoute == null || (!currentRoute.startsWith("edit", ignoreCase = true) && !currentRoute.startsWith("add", ignoreCase = true))
+
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+        val scope = rememberCoroutineScope()
+
+        // Listen for navigation events from the ViewModel
+        LaunchedEffect(Unit) {
+            viewModel.navigateToFlow.collectLatest { route ->
+                navController.navigate(route)
+            }
+        }
+
+        VoiceRecognitionDialogs(viewModel = viewModel)
+
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                AppDrawer(navController = navController, drawerState = drawerState, scope = scope)
+            }
+        ) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("Expense Tracker") },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
                             }
                         }
-                    ) { innerPadding ->
-                        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                            NavGraph(viewModel = viewModel, navController = navController)
+                    )
+                },
+                floatingActionButton = {
+                    if (showFabs) {
+                        FloatingActionButton(onClick = { startVoiceRecognition() }) {
+                            Icon(Icons.Default.Mic, contentDescription = "Start Recognition")
+                        }
+                    }
+                }
+            ) { innerPadding ->
+                Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                    NavGraph(viewModel = viewModel, navController = navController)
 
-                            // Global "+" create menu - available on every screen
-                            var isPlusMenuExpanded by remember { mutableStateOf(false) }
-                            if (showFabs) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomCenter)
-                                        .padding(bottom = 16.dp)
-                                        .testTag(TestTags.GLOBAL_CREATE_MENU)
-                                ) {
-                                    FloatingActionButton(
-                                        onClick = { isPlusMenuExpanded = true },
-                                        modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_BUTTON)
-                                    ) {
-                                        Icon(Icons.Default.Add, contentDescription = "Create")
-                                    }
-                                    DropdownMenu(
-                                        expanded = isPlusMenuExpanded,
-                                        onDismissRequest = { isPlusMenuExpanded = false }
-                                    ) {
-                                        DropdownMenuItem(
-                                            text = { Text("Create Expense") },
-                                            onClick = {
-                                                isPlusMenuExpanded = false
-                                                navController.navigate(
-                                                    "editExpense/0?type=Expense&expenseDateMillis=${System.currentTimeMillis()}"
-                                                )
-                                            },
-                                            modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_EXPENSE)
+                    // Global "+" create menu - available on every screen
+                    var isPlusMenuExpanded by remember { mutableStateOf(false) }
+                    if (showFabs) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 16.dp)
+                                .testTag(TestTags.GLOBAL_CREATE_MENU)
+                        ) {
+                            FloatingActionButton(
+                                onClick = { isPlusMenuExpanded = true },
+                                modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_BUTTON)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Create")
+                            }
+                            DropdownMenu(
+                                expanded = isPlusMenuExpanded,
+                                onDismissRequest = { isPlusMenuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Create Expense") },
+                                    onClick = {
+                                        isPlusMenuExpanded = false
+                                        navController.navigate(
+                                            "editExpense/0?type=Expense&expenseDateMillis=${System.currentTimeMillis()}"
                                         )
-                                        DropdownMenuItem(
-                                            text = { Text("Create Income") },
-                                            onClick = {
-                                                isPlusMenuExpanded = false
-                                                navController.navigate(
-                                                    "editExpense/0?type=Income&expenseDateMillis=${System.currentTimeMillis()}"
-                                                )
-                                            },
-                                            modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_INCOME)
+                                    },
+                                    modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_EXPENSE)
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Create Income") },
+                                    onClick = {
+                                        isPlusMenuExpanded = false
+                                        navController.navigate(
+                                            "editExpense/0?type=Income&expenseDateMillis=${System.currentTimeMillis()}"
                                         )
-                                        DropdownMenuItem(
-                                            text = { Text("Create Transfer") },
-                                            onClick = {
-                                                isPlusMenuExpanded = false
-                                                navController.navigate("editTransfer/0")
-                                            },
-                                            modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_TRANSFER)
-                                        )
-                                    }
-                                }
+                                    },
+                                    modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_INCOME)
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Create Transfer") },
+                                    onClick = {
+                                        isPlusMenuExpanded = false
+                                        navController.navigate("editTransfer/0")
+                                    },
+                                    modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_TRANSFER)
+                                )
                             }
                         }
                     }

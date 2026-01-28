@@ -91,4 +91,18 @@ object TestTags {
     const val CATEGORY_OPTION_PREFIX = "categoryOption_"
     const val CURRENCY_OPTION_PREFIX = "currencyOption_"
     const val KEYWORD_OPTION_PREFIX = "keywordOption_"
+
+    // PinLockScreen
+    const val PIN_LOCK_ROOT = "pinLock_root"
+    const val PIN_LOCK_INSTRUCTION = "pinLock_instruction"
+    const val PIN_KEY_PREFIX = "pinKey_" // pinKey_1, pinKey_0, etc.
+    const val PIN_KEY_BACKSPACE = "pinKey_Backspace"
+    const val PIN_KEY_BIOMETRIC = "pinKey_Biometric"
+    const val PIN_LOCK_CANCEL = "pinLock_cancel"
+    
+    // Settings Security
+    const val SETTINGS_ADD_PIN = "settings_addPin"
+    const val SETTINGS_CHANGE_PIN = "settings_changePin"
+    const val SETTINGS_REMOVE_PIN = "settings_removePin"
+    const val SETTINGS_BIOMETRIC_SWITCH = "settings_biometricSwitch"
 }
