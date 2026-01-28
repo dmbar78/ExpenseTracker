@@ -11,10 +11,13 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.expensetracker.data.Currency
 import com.example.expensetracker.viewmodel.ExpenseViewModel
+import com.example.expensetracker.ui.TestTags
+import androidx.compose.ui.platform.testTag
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCurrencyScreen(
     currencyId: Int,
@@ -24,8 +27,20 @@ fun AddCurrencyScreen(
     val isEditMode = currencyId > 0
     val scope = rememberCoroutineScope()
     
+    // ISO 4217 Data Source
+    val allCurrencies = remember { 
+        java.util.Currency.getAvailableCurrencies()
+            .toList()
+            .sortedBy { it.currencyCode } 
+    }
+
     var code by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
+    
+    // Search states for dropdowns
+    var codeExpanded by remember { mutableStateOf(false) }
+    var nameExpanded by remember { mutableStateOf(false) }
+    
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -140,21 +155,106 @@ fun AddCurrencyScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
         
-        OutlinedTextField(
-            value = code,
-            onValueChange = { code = it },
-            label = { Text("Currency Code (e.g., USD)") },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isEditMode // Code is immutable in edit mode
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Currency Name (e.g., United States Dollar)") },
-            modifier = Modifier.fillMaxWidth()
-        )
+        if (isEditMode) {
+            OutlinedTextField(
+                value = code,
+                onValueChange = {},
+                label = { Text("Currency Code") },
+                modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_CURRENCY_CODE_FIELD),
+                enabled = false
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = name,
+                onValueChange = {},
+                label = { Text("Currency Name") },
+                modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_CURRENCY_NAME_FIELD),
+                enabled = false
+            )
+        } else {
+            // Filter logic
+            val filteredByCode = allCurrencies.filter {
+                it.currencyCode.contains(code, ignoreCase = true)
+            }
+            
+            ExposedDropdownMenuBox(
+                expanded = codeExpanded,
+                onExpandedChange = { codeExpanded = it },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = {
+                        code = it.uppercase()
+                        codeExpanded = true
+                    },
+                    label = { Text("Currency Code (Search)") },
+                    modifier = Modifier.fillMaxWidth().menuAnchor().testTag(TestTags.ADD_CURRENCY_CODE_FIELD),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = codeExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                )
+                
+                if (filteredByCode.isNotEmpty()) {
+                    ExposedDropdownMenu(
+                        expanded = codeExpanded,
+                        onDismissRequest = { codeExpanded = false }
+                    ) {
+                        filteredByCode.take(15).forEach { currency ->
+                            DropdownMenuItem(
+                                text = { Text("${currency.currencyCode} - ${currency.displayName}") },
+                                onClick = {
+                                    code = currency.currencyCode
+                                    name = currency.displayName
+                                    codeExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            val filteredByName = allCurrencies.filter {
+                it.displayName.contains(name, ignoreCase = true)
+            }
+            
+            ExposedDropdownMenuBox(
+                expanded = nameExpanded,
+                onExpandedChange = { nameExpanded = it },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = {
+                        name = it
+                        nameExpanded = true
+                    },
+                    label = { Text("Currency Name (Search)") },
+                    modifier = Modifier.fillMaxWidth().menuAnchor().testTag(TestTags.ADD_CURRENCY_NAME_FIELD),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = nameExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                )
+                
+                if (filteredByName.isNotEmpty()) {
+                    ExposedDropdownMenu(
+                        expanded = nameExpanded,
+                        onDismissRequest = { nameExpanded = false }
+                    ) {
+                        filteredByName.take(15).forEach { currency ->
+                            DropdownMenuItem(
+                                text = { Text(currency.displayName) },
+                                onClick = {
+                                    code = currency.currencyCode
+                                    name = currency.displayName
+                                    nameExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
         
         // Latest rate display (edit mode only, when not same as default)
@@ -203,7 +303,7 @@ fun AddCurrencyScreen(
                     viewModel.insertCurrency(newCurrency)
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_CURRENCY_SAVE)
         ) {
             Text("Save")
         }

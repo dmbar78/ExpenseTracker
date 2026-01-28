@@ -182,12 +182,12 @@ class ExpenseViewModel(
         // Pre-populate currencies
         viewModelScope.launch {
             if (currencyRepository.allCurrencies.first().isEmpty()) {
-                currencyRepository.insert(Currency(code = "USD", name = "United States Dollar"))
-                currencyRepository.insert(Currency(code = "EUR", name = "Euro"))
-                currencyRepository.insert(Currency(code = "RUB", name = "Russian Ruble"))
-                currencyRepository.insert(Currency(code = "CHF", name = "Swiss Franc"))
-                currencyRepository.insert(Currency(code = "EGP", name = "Egyptian Pound"))
-                currencyRepository.insert(Currency(code = "GBP", name = "British Pound"))
+                currencyRepository.insert(Currency(code = "USD", name = java.util.Currency.getInstance("USD").displayName))
+                currencyRepository.insert(Currency(code = "EUR", name = java.util.Currency.getInstance("EUR").displayName))
+                currencyRepository.insert(Currency(code = "RUB", name = java.util.Currency.getInstance("RUB").displayName))
+                currencyRepository.insert(Currency(code = "CHF", name = java.util.Currency.getInstance("CHF").displayName))
+                currencyRepository.insert(Currency(code = "EGP", name = java.util.Currency.getInstance("EGP").displayName))
+                currencyRepository.insert(Currency(code = "GBP", name = java.util.Currency.getInstance("GBP").displayName))
             }
             if (categoryRepository.allCategories.first().isEmpty()) {
                 categoryRepository.insert(Category(name = "Default"))

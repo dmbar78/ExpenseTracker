@@ -38,6 +38,14 @@ object TestTags {
     const val ADD_ACCOUNT_CURRENCY_VALUE = "addAccount_currencyValue"
     const val ADD_ACCOUNT_SAVE = "addAccount_save"
 
+    // AddCurrencyScreen
+    const val ADD_CURRENCY_ROOT = "addCurrency_root"
+    const val ADD_CURRENCY_CODE_DROPDOWN = "addCurrency_codeDropdown"
+    const val ADD_CURRENCY_CODE_FIELD = "addCurrency_codeField"
+    const val ADD_CURRENCY_NAME_DROPDOWN = "addCurrency_nameDropdown"
+    const val ADD_CURRENCY_NAME_FIELD = "addCurrency_nameField"
+    const val ADD_CURRENCY_SAVE = "addCurrency_save"
+
     // EditTransferScreen
     const val EDIT_TRANSFER_ROOT = "editTransfer_root"
     const val EDIT_TRANSFER_DATE_FIELD = "editTransfer_dateField"
