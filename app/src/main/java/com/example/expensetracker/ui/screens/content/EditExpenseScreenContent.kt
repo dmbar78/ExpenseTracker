@@ -223,7 +223,9 @@ fun EditExpenseScreenContent(
                         if (localCurrency.isNotEmpty()) {
                             Text(
                                 text = localCurrency,
-                                modifier = Modifier.padding(end = 12.dp),
+                                modifier = Modifier
+                                    .padding(end = 12.dp)
+                                    .testTag(TestTags.EDIT_EXPENSE_CURRENCY_VALUE),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

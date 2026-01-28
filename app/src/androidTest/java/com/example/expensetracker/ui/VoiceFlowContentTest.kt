@@ -119,7 +119,7 @@ class VoiceFlowContentTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE).assertTextContains("Test1")
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains("20")
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE).assertTextContains("default")
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CURRENCY_VALUE).assertTextContains("EUR")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CURRENCY_VALUE, useUnmergedTree = true).assertTextContains("EUR")
 
         // No errors shown
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND).assertDoesNotExist()
@@ -442,7 +442,7 @@ class VoiceFlowContentTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND).assertDoesNotExist()
 
         // Currency should be filled
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CURRENCY_VALUE).assertTextContains("EUR")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CURRENCY_VALUE, useUnmergedTree = true).assertTextContains("EUR")
     }
 
     // --- Flow 18: Transfer with both accounts unknown - shows errors in EditTransferScreen ---

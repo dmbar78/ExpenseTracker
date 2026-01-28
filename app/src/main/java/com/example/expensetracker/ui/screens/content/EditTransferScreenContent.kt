@@ -290,12 +290,14 @@ fun EditTransferScreenContent(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         trailingIcon = {
                             if (localCurrency.isNotEmpty()) {
-                                Text(
-                                    text = localCurrency,
-                                    modifier = Modifier.padding(end = 12.dp),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                    Text(
+                                        text = localCurrency,
+                                        modifier = Modifier
+                                            .padding(end = 12.dp)
+                                            .testTag(TestTags.EDIT_TRANSFER_CURRENCY_VALUE),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                             }
                         }
                     )
