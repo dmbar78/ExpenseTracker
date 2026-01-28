@@ -57,7 +57,16 @@ class ExpenseViewModel(
                     LedgerRepository(database.ledgerDao()),
                     FilterPreferences(application),
                     userPrefs,
-                    ExchangeRateRepository(database.exchangeRateDao(), FrankfurterRatesProvider()),
+                    ExchangeRateRepository(
+                        database.exchangeRateDao(),
+                        CompositeRatesProvider(
+                            listOf(
+                                FawazAhmedRatesProvider(CdnUrlStrategy),
+                                FawazAhmedRatesProvider(PagesUrlStrategy),
+                                FrankfurterRatesProvider()
+                            )
+                        )
+                    ),
                     BackupRepository(database, userPrefs),
                     database.keywordDao()
                 ) as T

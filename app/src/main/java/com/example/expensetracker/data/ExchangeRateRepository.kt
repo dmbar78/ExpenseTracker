@@ -14,43 +14,7 @@ import java.util.TimeZone
  * Interface for fetching exchange rates from an external source.
  * Implementations can be offline (placeholder), network-based (Retrofit), etc.
  */
-interface RatesProvider {
-    /**
-     * Fetch the rate for a currency pair on a specific date.
-     * Returns null if the rate cannot be obtained.
-     */
-    suspend fun fetchRate(baseCurrency: String, quoteCurrency: String, date: Long): BigDecimal?
-    
-    /**
-     * Fetch multiple rates for a base currency on a specific date.
-     * Returns a map of quoteCurrency -> rate.
-     */
-    suspend fun fetchRates(baseCurrency: String, date: Long): Map<String, BigDecimal>
-}
 
-/**
- * Offline placeholder provider that returns no rates.
- * To be replaced with a network-based provider later.
- */
-class OfflineRatesProvider : RatesProvider {
-    override suspend fun fetchRate(baseCurrency: String, quoteCurrency: String, date: Long): BigDecimal? {
-        // Same currency always has rate 1
-        return if (baseCurrency == quoteCurrency) BigDecimal.ONE else null
-    }
-    
-    override suspend fun fetchRates(baseCurrency: String, date: Long): Map<String, BigDecimal> {
-        // Only return the identity rate
-        return mapOf(baseCurrency to BigDecimal.ONE)
-    }
-}
-
-/**
- * Result of a rate lookup operation.
- */
-sealed class RateResult {
-    data class Success(val rate: BigDecimal) : RateResult()
-    data object Missing : RateResult()
-}
 
 /**
  * Repository for managing exchange rates.
@@ -463,36 +427,17 @@ class ExchangeRateRepository(
             if (shouldFetch) {
                 try {
                     // Fetch EUR rates for all needed currencies
-                    val provider = ratesProvider
-                    if (provider is FrankfurterRatesProvider) {
-                        val eurRates = provider.fetchEurRatesForSymbols(normalizedDate, neededSymbols)
-                        if (eurRates != null) {
-                            // Store all EUR→X rates
-                            val ratesToInsert = eurRates.map { (quote, rate) ->
+                    // Fetch one by one (providers should handle caching for batch efficiency)
+                    neededSymbols.forEach { currency ->
+                        ratesProvider.fetchRate(PIVOT_CURRENCY, currency, normalizedDate)?.let { rate ->
+                            exchangeRateDao.insertOrUpdate(
                                 ExchangeRate(
                                     date = normalizedDate,
                                     baseCurrencyCode = PIVOT_CURRENCY,
-                                    quoteCurrencyCode = quote,
+                                    quoteCurrencyCode = currency,
                                     rate = rate
                                 )
-                            }
-                            if (ratesToInsert.isNotEmpty()) {
-                                exchangeRateDao.insertAll(ratesToInsert)
-                            }
-                        }
-                    } else {
-                        // Fallback for non-Frankfurter providers: fetch one by one
-                        neededSymbols.forEach { currency ->
-                            ratesProvider.fetchRate(PIVOT_CURRENCY, currency, normalizedDate)?.let { rate ->
-                                exchangeRateDao.insertOrUpdate(
-                                    ExchangeRate(
-                                        date = normalizedDate,
-                                        baseCurrencyCode = PIVOT_CURRENCY,
-                                        quoteCurrencyCode = currency,
-                                        rate = rate
-                                    )
-                                )
-                            }
+                            )
                         }
                     }
                 } finally {
