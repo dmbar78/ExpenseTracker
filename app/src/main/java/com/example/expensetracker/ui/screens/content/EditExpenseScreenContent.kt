@@ -218,7 +218,17 @@ fun EditExpenseScreenContent(
                         .fillMaxWidth()
                         .testTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD),
                     isError = localAmountError,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    trailingIcon = {
+                        if (localCurrency.isNotEmpty()) {
+                            Text(
+                                text = localCurrency,
+                                modifier = Modifier.padding(end = 12.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 )
                 if (localAmountError) {
                     Text(
@@ -287,22 +297,6 @@ fun EditExpenseScreenContent(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
-
-                // Currency (read-only)
-                OutlinedTextField(
-                    value = localCurrency,
-                    onValueChange = {},
-                    label = { Text("Currency") },
-                    readOnly = true,
-                    modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_CURRENCY_VALUE),
-                    enabled = false,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                        disabledBorderColor = MaterialTheme.colorScheme.outline,
-                        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
