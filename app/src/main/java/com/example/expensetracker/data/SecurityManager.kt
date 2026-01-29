@@ -17,7 +17,21 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
+import com.google.gson.Gson
+import javax.crypto.spec.GCMParameterSpec
+
 object SecurityManager {
+
+    private const val BACKUP_PBE_ITERATIONS = 100000
+    private const val BACKUP_KEY_LENGTH = 256
+    private const val BACKUP_SALT_LENGTH = 16
+
+    data class EncryptedBackupPayload(
+        val version: Int = 1,
+        val salt: String,
+        val iv: String,
+        val data: String
+    )
 
     private const val PREFS_NAME = "security_prefs"
     private const val KEY_ENC_DEK_PIN = "enc_dek_pin" // DEK encrypted with PIN-derived Key
@@ -282,6 +296,77 @@ object SecurityManager {
             e.printStackTrace()
             false
         }
+    }
+
+    // --- Backup Encryption Operations ---
+
+    fun encryptData(data: String, password: String): String {
+        val salt = generateBackupSalt()
+        val key = deriveKeyFromPassword(password, salt)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, key)
+        val iv = cipher.iv
+        val encryptedBytes = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
+
+        val payload = EncryptedBackupPayload(
+            salt = java.util.Base64.getEncoder().encodeToString(salt),
+            iv = java.util.Base64.getEncoder().encodeToString(iv),
+            data = java.util.Base64.getEncoder().encodeToString(encryptedBytes)
+        )
+        return Gson().toJson(payload)
+    }
+
+    fun decryptData(json: String, password: String): String {
+        val gson = Gson()
+        // Simple check if it matches our encrypted format
+        val payload = try {
+             gson.fromJson(json, EncryptedBackupPayload::class.java)
+        } catch (e: Exception) {
+            throw IllegalArgumentException("Invalid encrypted backup format")
+        }
+        
+        // Safety check to ensure it parsed correctly and isn't just empty/null fields
+        if (payload == null || payload.salt == null || payload.iv == null || payload.data == null) {
+             throw IllegalArgumentException("Not an encrypted backup")
+        }
+
+        if (payload.version != 1) throw IllegalArgumentException("Unsupported backup version: ${payload.version}")
+
+        val salt = java.util.Base64.getDecoder().decode(payload.salt)
+        val iv = java.util.Base64.getDecoder().decode(payload.iv)
+        val encryptedBytes = java.util.Base64.getDecoder().decode(payload.data)
+
+        val key = deriveKeyFromPassword(password, salt)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
+        
+        val decryptedBytes = cipher.doFinal(encryptedBytes)
+        return String(decryptedBytes, Charsets.UTF_8)
+    }
+    
+    fun isEncrypted(json: String): Boolean {
+        return try {
+            val payload = Gson().fromJson(json, EncryptedBackupPayload::class.java)
+            payload != null && payload.version > 0 && 
+            !payload.salt.isNullOrBlank() && 
+            !payload.iv.isNullOrBlank() && 
+            !payload.data.isNullOrBlank()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun deriveKeyFromPassword(password: String, salt: ByteArray): SecretKey {
+        val spec = PBEKeySpec(password.toCharArray(), salt, BACKUP_PBE_ITERATIONS, BACKUP_KEY_LENGTH)
+        val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val keyBytes = factory.generateSecret(spec).encoded
+        return SecretKeySpec(keyBytes, "AES")
+    }
+
+    private fun generateBackupSalt(): ByteArray {
+        val salt = ByteArray(BACKUP_SALT_LENGTH)
+        SecureRandom().nextBytes(salt)
+        return salt
     }
 
     // --- Helpers ---

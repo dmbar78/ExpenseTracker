@@ -56,12 +56,23 @@ fun SettingsScreen(
     // State for Restore Confirmation
     var showRestoreConfirmation by remember { mutableStateOf(false) }
     var pendingRestoreUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    
+    // State for Export Encryption
+    var showEncryptDialog by remember { mutableStateOf(false) }
+    var showSetPasswordDialog by remember { mutableStateOf(false) }
+    var pendingExportPassword by remember { mutableStateOf<String?>(null) }
+    var exportPasswordInput by remember { mutableStateOf("") }
+    
+    // State for Import Password
+    var restorePasswordInput by remember { mutableStateOf("") }
 
     // Launchers for Backup/Restore
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
-        uri?.let { viewModel.exportBackup(it) }
+        uri?.let { viewModel.exportBackup(it, pendingExportPassword) }
+        pendingExportPassword = null
+        exportPasswordInput = ""
     }
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -102,6 +113,52 @@ fun SettingsScreen(
             confirmButton = {}
         )
     }
+    
+    if (backupState is BackupOperationState.RequestPassword) {
+        AlertDialog(
+            onDismissRequest = { 
+                viewModel.cancelRestore()
+                restorePasswordInput = ""
+            },
+            title = { Text("Encrypted Backup") },
+            text = { 
+                Column {
+                    Text("This backup is encrypted. Please enter the password to restore it.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = restorePasswordInput,
+                        onValueChange = { restorePasswordInput = it },
+                        label = { Text("Password") },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.provideRestorePassword(restorePasswordInput)
+                        restorePasswordInput = ""
+                    },
+                    enabled = restorePasswordInput.isNotBlank()
+                ) {
+                    Text("Restore")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        viewModel.cancelRestore()
+                        restorePasswordInput = ""
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     // Restore Confirmation Dialog
     if (showRestoreConfirmation) {
@@ -122,6 +179,74 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showRestoreConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Encrypt Backup Choice Dialog
+    if (showEncryptDialog) {
+        AlertDialog(
+            onDismissRequest = { showEncryptDialog = false },
+            title = { Text("Encrypt Backup?") },
+            text = { Text("Do you want to encypt the backup file with a password? This allows you to restore it on any device if you know the password.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showEncryptDialog = false
+                    showSetPasswordDialog = true
+                }) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showEncryptDialog = false
+                    pendingExportPassword = null
+                    val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                    exportLauncher.launch("expense-tracker-backup-$timestamp.json")
+                }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Set Password Dialog
+    if (showSetPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = { showSetPasswordDialog = false },
+            title = { Text("Set Backup Password") },
+            text = {
+                Column {
+                    Text("Enter a password to encrypt the backup. Important: If you lose this password, the data cannot be recovered.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = exportPasswordInput,
+                        onValueChange = { exportPasswordInput = it },
+                        label = { Text("Password") },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingExportPassword = exportPasswordInput
+                        showSetPasswordDialog = false
+                        val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                        exportLauncher.launch("expense-tracker-backup-$timestamp.json")
+                    },
+                    enabled = exportPasswordInput.isNotBlank()
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSetPasswordDialog = false }) {
                     Text("Cancel")
                 }
             }
@@ -367,8 +492,7 @@ fun SettingsScreen(
             title = "Export Backup",
             value = "JSON",
             onClick = {
-                val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
-                exportLauncher.launch("expense-tracker-backup-$timestamp.json")
+                showEncryptDialog = true
             }
         )
         

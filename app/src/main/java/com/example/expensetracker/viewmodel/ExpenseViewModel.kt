@@ -1491,16 +1491,23 @@ class ExpenseViewModel(
         _backupState.value = BackupOperationState.Idle
     }
 
-    fun exportBackup(uri: Uri) {
+    private var pendingImportJson: String? = null
+
+    fun exportBackup(uri: Uri, password: String? = null) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             _backupState.value = BackupOperationState.Loading
             try {
                 val backupData = backupRepository.exportBackupData()
-                val json = backupRepository.serializeToJson(backupData)
+                
+                val outputString = if (password.isNullOrBlank()) {
+                    backupRepository.serializeToJson(backupData)
+                } else {
+                    backupRepository.serializeToEncryptedJson(backupData, password)
+                }
 
                 getApplication<Application>().contentResolver.openOutputStream(uri)?.use { outputStream ->
                     outputStream.writer().use { writer ->
-                        writer.write(json)
+                        writer.write(outputString)
                     }
                 }
                 _backupState.value = BackupOperationState.Success("Backup exported successfully")
@@ -1525,21 +1532,62 @@ class ExpenseViewModel(
                     return@launch
                 }
 
+                if (backupRepository.isBackupEncrypted(json)) {
+                    pendingImportJson = json
+                    _backupState.value = BackupOperationState.RequestPassword
+                    return@launch
+                }
+
                 val backupData = backupRepository.deserializeFromJson(json)
                 if (backupData == null) {
                     _backupState.value = BackupOperationState.Error("Invalid backup file format")
                     return@launch
                 }
 
-                val result = backupRepository.restoreBackupData(backupData)
-                if (result.isSuccess) {
-                    _backupState.value = BackupOperationState.Success("Backup restored successfully")
-                } else {
-                    _backupState.value = BackupOperationState.Error("Restore failed: ${result.exceptionOrNull()?.message}")
-                }
+                performRestore(backupData)
             } catch (e: Exception) {
                 _backupState.value = BackupOperationState.Error("Import failed: ${e.localizedMessage}")
             }
+        }
+    }
+
+    fun provideRestorePassword(password: String) {
+        val json = pendingImportJson
+        if (json == null) {
+             _backupState.value = BackupOperationState.Error("No pending restore data")
+             return
+        }
+        
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _backupState.value = BackupOperationState.Loading
+            try {
+                val backupData = backupRepository.deserializeFromEncryptedJson(json, password)
+                if (backupData != null) {
+                    performRestore(backupData)
+                    pendingImportJson = null // Clear memory
+                } else {
+                    // Stay in RequestPassword state or go to Error? 
+                    // Better to go to Error or back to RequestPassword?
+                    // Error message is better, user can retry.
+                    _backupState.value = BackupOperationState.Error("Incorrect password or invalid data")
+                }
+            } catch (e: Exception) {
+                _backupState.value = BackupOperationState.Error("Decryption failed: ${e.localizedMessage}")
+            }
+        }
+    }
+    
+    fun cancelRestore() {
+        pendingImportJson = null
+        resetBackupState()
+    }
+
+    private suspend fun performRestore(backupData: BackupData) {
+        val result = backupRepository.restoreBackupData(backupData)
+        if (result.isSuccess) {
+            _backupState.value = BackupOperationState.Success("Backup restored successfully")
+        } else {
+            _backupState.value = BackupOperationState.Error("Restore failed: ${result.exceptionOrNull()?.message}")
         }
     }
     
@@ -1560,4 +1608,5 @@ sealed class BackupOperationState {
     object Loading : BackupOperationState()
     data class Success(val message: String) : BackupOperationState()
     data class Error(val message: String) : BackupOperationState()
+    object RequestPassword : BackupOperationState() // For encrypted backups
 }

@@ -144,6 +144,18 @@ class BackupRepository(
     }
 
     /**
+     * Serialize BackupData to Encrypted JSON string.
+     *
+     * @param backupData The data to serialize
+     * @param password The password to encrypt with
+     * @return Encrypted JSON string
+     */
+    fun serializeToEncryptedJson(backupData: BackupData, password: String): String {
+        val json = gson.toJson(backupData)
+        return SecurityManager.encryptData(json, password)
+    }
+
+    /**
      * Deserialize JSON string to BackupData.
      * 
      * @param json The JSON string to parse
@@ -155,11 +167,30 @@ class BackupRepository(
         }
         return try {
             gson.fromJson(json, BackupData::class.java)
-        } catch (e: JsonSyntaxException) {
-            null
         } catch (e: Exception) {
             null
         }
+    }
+
+    /**
+     * Deserialize Encrypted JSON string to BackupData.
+     *
+     * @param json The encrypted JSON string
+     * @param password The password to decrypt with
+     * @return BackupData or null if decryption/parsing fails
+     */
+    fun deserializeFromEncryptedJson(json: String, password: String): BackupData? {
+        if (json.isBlank()) return null
+        return try {
+            val decryptedJson = SecurityManager.decryptData(json, password)
+            gson.fromJson(decryptedJson, BackupData::class.java)
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    fun isBackupEncrypted(json: String): Boolean {
+        return SecurityManager.isEncrypted(json)
     }
 
     /**
