@@ -1,5 +1,6 @@
 package com.example.expensetracker.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -114,7 +115,11 @@ fun AccountsScreen(viewModel: ExpenseViewModel, navController: NavController) {
                         account = account,
                         defaultCurrency = defaultCurrency,
                         viewModel = viewModel,
-                        onEditClick = { navController.navigate("editAccount/${account.id}") }
+                        onEditClick = { navController.navigate("editAccount/${account.id}") },
+                        onAccountClick = { clickedAccount ->
+                            viewModel.setExpenseIncomeAccountFilter(clickedAccount.name)
+                            navController.navigate("home")
+                        }
                     )
                 }
             }
@@ -165,7 +170,8 @@ private fun AccountRow(
     account: Account,
     defaultCurrency: String,
     viewModel: ExpenseViewModel,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
+    onAccountClick: (Account) -> Unit
 ) {
     // State for converted balance
     var convertedBalance by remember { mutableStateOf<BigDecimal?>(null) }
@@ -185,7 +191,11 @@ private fun AccountRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onAccountClick(account) }
+        ) {
             Text("${account.name} (${account.currency})")
             
             // Show balance with optional converted value
