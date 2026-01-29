@@ -112,8 +112,8 @@ class MainActivity : FragmentActivity() {
         val navController = rememberNavController()
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
-        // Hide FABs on Edit and Add screens to prevent overlap
-        val showFabs = currentRoute == null || (!currentRoute.startsWith("edit", ignoreCase = true) && !currentRoute.startsWith("add", ignoreCase = true))
+        // Show FABs only on Home screen
+        val showFabs = currentRoute == "home"
 
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
