@@ -83,6 +83,8 @@ class ExpenseViewModelTest {
         whenever(keywordDao.getAllKeywords()).thenReturn(MutableStateFlow(emptyList()))
         whenever(keywordDao.getAllExpenseKeywordCrossRefs()).thenReturn(MutableStateFlow(emptyList()))
         whenever(userPreferences.defaultCurrencyCode).thenReturn(MutableStateFlow("USD"))
+        whenever(userPreferences.defaultExpenseAccountId).thenReturn(MutableStateFlow(null))
+        whenever(userPreferences.defaultTransferAccountId).thenReturn(MutableStateFlow(null))
         whenever(filterPreferences.filterState).thenReturn(MutableStateFlow(FilterState()))
         whenever(expenseRepository.getExpensesByType(anyString())).thenReturn(MutableStateFlow(emptyList()))
 
