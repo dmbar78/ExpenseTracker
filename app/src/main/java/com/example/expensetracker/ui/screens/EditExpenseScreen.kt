@@ -354,7 +354,17 @@ fun EditExpenseScreen(
             onValidationFailed = { accError, catError, amtError ->
                 accountError = accError
                 categoryError = catError
-                // amountError handled locally in Content
+                scope.launch {
+                    val message = when {
+                        accError -> "Account not found. Please select a valid account."
+                        catError -> "Category not found. Please select a valid category."
+                        amtError -> "Please enter a valid amount."
+                        else -> null
+                    }
+                    if (message != null) {
+                        snackbarHostState.showSnackbar(message)
+                    }
+                }
             },
             onCreateKeyword = { name ->
                 viewModel.insertKeyword(name)
