@@ -418,7 +418,7 @@ object SecurityManager {
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setUserAuthenticationRequired(true)
-            .setUserAuthenticationValidityDurationSeconds(-1) // Require auth for EVERY use
+            .setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
             
         keyGenerator.init(builder.build())
         return keyGenerator.generateKey()
