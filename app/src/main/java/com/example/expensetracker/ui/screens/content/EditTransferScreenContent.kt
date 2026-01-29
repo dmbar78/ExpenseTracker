@@ -38,7 +38,8 @@ data class EditTransferState(
     val existingTransfer: TransferHistory? = null,
     val isEditMode: Boolean = transferId > 0,
     val sourceAccountError: Boolean = false,
-    val destAccountError: Boolean = false
+    val destAccountError: Boolean = false,
+    val defaultAccountUsed: Boolean = false
 )
 
 /**
@@ -84,7 +85,7 @@ fun EditTransferScreenContent(
     var localComment by remember(state.comment) { mutableStateOf(state.comment) }
     
     // Track error states locally so they can be cleared on selection
-    var showSourceError by remember(state.sourceAccountError) { mutableStateOf(state.sourceAccountError) }
+    var showSourceError by remember(state.sourceAccountError, state.defaultAccountUsed) { mutableStateOf(state.sourceAccountError || state.defaultAccountUsed) }
     var showDestError by remember(state.destAccountError) { mutableStateOf(state.destAccountError) }
 
     // Conditional visibility of Destination Amount/Currency
@@ -199,8 +200,13 @@ fun EditTransferScreenContent(
                     }
                 }
                 if (showSourceError) {
+                    val errorText = if (state.defaultAccountUsed && localSourceAccountName == state.sourceAccountName)
+                        "Account not found. Default account is used. You can change it from the menu."
+                    else
+                        "Source account not found. Please select a valid account."
+                        
                     Text(
-                        "Source account not found. Please select a valid account.",
+                        errorText,
                         color = Color.Red,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND)

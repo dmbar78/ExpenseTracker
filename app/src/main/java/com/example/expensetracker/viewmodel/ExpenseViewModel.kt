@@ -89,6 +89,13 @@ class ExpenseViewModel(
     private val _defaultCurrencyCode = MutableStateFlow(UserPreferences.INITIAL_DEFAULT_CURRENCY)
     val defaultCurrencyCode: StateFlow<String> = _defaultCurrencyCode.asStateFlow()
     
+    // Default accounts
+    private val _defaultExpenseAccountId = MutableStateFlow<Int?>(null)
+    val defaultExpenseAccountId: StateFlow<Int?> = _defaultExpenseAccountId.asStateFlow()
+
+    private val _defaultTransferAccountId = MutableStateFlow<Int?>(null)
+    val defaultTransferAccountId: StateFlow<Int?> = _defaultTransferAccountId.asStateFlow()
+    
     // Filter state
     private val _filterState = MutableStateFlow(FilterState())
     val filterState: StateFlow<FilterState> = _filterState.asStateFlow()
@@ -185,6 +192,18 @@ class ExpenseViewModel(
         viewModelScope.launch {
             userPreferences.defaultCurrencyCode.collect { currencyCode ->
                 _defaultCurrencyCode.value = currencyCode
+            }
+        }
+        
+        // Load persisted default accounts
+        viewModelScope.launch {
+            userPreferences.defaultExpenseAccountId.collect { id ->
+                _defaultExpenseAccountId.value = id
+            }
+        }
+        viewModelScope.launch {
+            userPreferences.defaultTransferAccountId.collect { id ->
+                _defaultTransferAccountId.value = id
             }
         }
 
@@ -427,6 +446,16 @@ class ExpenseViewModel(
     fun setDefaultCurrency(currencyCode: String) {
         _defaultCurrencyCode.value = currencyCode
         viewModelScope.launch { userPreferences.setDefaultCurrencyCode(currencyCode) }
+    }
+    
+    fun setDefaultExpenseAccount(id: Int?) {
+        _defaultExpenseAccountId.value = id
+        viewModelScope.launch { userPreferences.setDefaultExpenseAccountId(id) }
+    }
+
+    fun setDefaultTransferAccount(id: Int?) {
+        _defaultTransferAccountId.value = id
+        viewModelScope.launch { userPreferences.setDefaultTransferAccountId(id) }
     }
     
     /**
@@ -683,15 +712,28 @@ class ExpenseViewModel(
             return
         }
         
-        val sourceAccount = accounts.find { it.name.equals(parsedTransfer.sourceAccountName, ignoreCase = true) }
+        val inputSourceAccount = accounts.find { it.name.equals(parsedTransfer.sourceAccountName, ignoreCase = true) }
         val destAccount = accounts.find { it.name.equals(parsedTransfer.destAccountName, ignoreCase = true) }
 
-        if (sourceAccount == null || destAccount == null) {
-            val sourceError = sourceAccount == null
+        var finalSourceAccount = inputSourceAccount
+        var defaultAccountUsed = false
+
+        if (inputSourceAccount == null) {
+            val defaultId = _defaultTransferAccountId.value
+            if (defaultId != null && defaultId > 0) {
+                finalSourceAccount = accounts.find { it.id == defaultId }
+                if (finalSourceAccount != null) {
+                    defaultAccountUsed = true
+                }
+            }
+        }
+
+        if (inputSourceAccount == null || destAccount == null || defaultAccountUsed) {
+            val sourceError = inputSourceAccount == null && !defaultAccountUsed
             val destError = destAccount == null
             // Use canonical DB names (correct casing) when found, otherwise show parsed text so user sees what was recognized
-            val sourceName = if (sourceError) parsedTransfer.sourceAccountName else sourceAccount.name
-            val destName = if (destError) parsedTransfer.destAccountName else destAccount.name
+            val sourceName = finalSourceAccount?.name ?: parsedTransfer.sourceAccountName
+            val destName = destAccount?.name ?: parsedTransfer.destAccountName
             
             _navigateTo.send(
                 "editTransfer/0" +
@@ -700,7 +742,8 @@ class ExpenseViewModel(
                     "&amount=${Uri.encode(parsedTransfer.amount.toPlainString())}" +
                     "&transferDateMillis=${parsedTransfer.transferDate}" +
                     "&sourceAccountError=$sourceError" +
-                    "&destAccountError=$destError"
+                    "&destAccountError=$destError" +
+                    "&defaultAccountUsed=$defaultAccountUsed"
             )
             return
         }
@@ -708,31 +751,33 @@ class ExpenseViewModel(
         // Multi-currency check:
         // If currencies differ, we cannot auto-create the transfer because we don't know the destination amount.
         // Navigate to Edit screen to let user enter it.
-        if (sourceAccount.currency != destAccount.currency) {
+        // Note: finalSourceAccount is guaranteed non-null here
+        if (finalSourceAccount!!.currency != destAccount.currency) {
             _navigateTo.send(
                 "editTransfer/0" +
-                    "?sourceAccountName=${Uri.encode(sourceAccount.name)}" +
+                    "?sourceAccountName=${Uri.encode(finalSourceAccount.name)}" +
                     "&destAccountName=${Uri.encode(destAccount.name)}" +
                     "&amount=${Uri.encode(parsedTransfer.amount.toPlainString())}" +
                     "&transferDateMillis=${parsedTransfer.transferDate}" +
                     "&sourceAccountError=false" +
-                    "&destAccountError=false"
+                    "&destAccountError=false" +
+                    "&defaultAccountUsed=false"
             )
             return
         }
 
         val transferRecord = TransferHistory(
-            sourceAccount = sourceAccount.name,
+            sourceAccount = finalSourceAccount.name,
             destinationAccount = destAccount.name,
             amount = parsedTransfer.amount.setScale(2, RoundingMode.HALF_UP),
-            currency = sourceAccount.currency,
+            currency = finalSourceAccount.currency,
             comment = parsedTransfer.comment,
             date = parsedTransfer.transferDate
         )
 
         try {
             ledgerRepository.addTransfer(transferRecord)
-            _voiceRecognitionState.value = VoiceRecognitionState.Success("Transfer from ${parsedTransfer.sourceAccountName} to ${parsedTransfer.destAccountName} for ${parsedTransfer.amount} ${sourceAccount.currency} on ${formatDate(transferRecord.date)} successfully added.")
+            _voiceRecognitionState.value = VoiceRecognitionState.Success("Transfer from ${finalSourceAccount.name} to ${transferRecord.destinationAccount} for ${transferRecord.amount} ${transferRecord.currency} on ${formatDate(transferRecord.date)} successfully added.")
         } catch (e: IllegalArgumentException) {
             val message = e.message ?: "Invalid transfer."
             if (message.contains("same", ignoreCase = true)) {
@@ -747,17 +792,30 @@ class ExpenseViewModel(
 
     private suspend fun processParsedExpense(parsedExpense: ParsedExpense) {
         val accounts = allAccounts.first() // Wait for data to be loaded, but proceed even if empty
-        val account = accounts.find { it.name.equals(parsedExpense.accountName, ignoreCase = true) }
+        val inputAccount = accounts.find { it.name.equals(parsedExpense.accountName, ignoreCase = true) }
         
         // Wait for categories to be loaded (Default is pre-populated)
         val categories = allCategories.first { it.isNotEmpty() }
         val category = categories.find { it.name.equals(parsedExpense.categoryName, ignoreCase = true) }
 
-        if (account == null || category == null) {
-            val accountError = account == null
+        var finalAccount = inputAccount
+        var defaultAccountUsed = false
+        
+        if (inputAccount == null) {
+            val defaultId = _defaultExpenseAccountId.value
+            if (defaultId != null && defaultId > 0) {
+                finalAccount = accounts.find { it.id == defaultId }
+                if (finalAccount != null) {
+                    defaultAccountUsed = true
+                }
+            }
+        }
+
+        if (inputAccount == null || category == null || defaultAccountUsed) {
+            val accountError = inputAccount == null && !defaultAccountUsed
             val categoryError = category == null
             // Use canonical DB names (correct casing) when found, otherwise show parsed text so user sees what was recognized
-            val accountName = if (accountError) parsedExpense.accountName else account.name
+            val accountName = finalAccount?.name ?: parsedExpense.accountName
             val categoryName = if (categoryError) parsedExpense.categoryName else category.name
             val expenseType = parsedExpense.type ?: if (_selectedTab.value == 0) "Expense" else "Income"
             
@@ -769,7 +827,8 @@ class ExpenseViewModel(
                     "&type=${Uri.encode(expenseType)}" +
                     "&expenseDateMillis=${parsedExpense.expenseDate}" +
                     "&accountError=$accountError" +
-                    "&categoryError=$categoryError"
+                    "&categoryError=$categoryError" +
+                    "&defaultAccountUsed=$defaultAccountUsed"
             )
             return
         }
@@ -777,9 +836,9 @@ class ExpenseViewModel(
         val expenseType = parsedExpense.type ?: if (_selectedTab.value == 0) "Expense" else "Income"
 
         val finalExpense = Expense(
-            account = account.name,
+            account = finalAccount!!.name,
             amount = parsedExpense.amount.setScale(2, RoundingMode.HALF_UP),
-            currency = account.currency,
+            currency = finalAccount.currency,
             category = category.name,
             expenseDate = parsedExpense.expenseDate,
             type = expenseType
@@ -908,6 +967,14 @@ class ExpenseViewModel(
         if (expenseCount > 0 || transferCount > 0) {
             _errorChannel.send("Cannot delete account. It has associated expenses or transfers.")
         } else {
+            // Check if this account is the default expense or transfer account
+            if (_defaultExpenseAccountId.value == account.id) {
+                userPreferences.setDefaultExpenseAccountId(null)
+            }
+            if (_defaultTransferAccountId.value == account.id) {
+                userPreferences.setDefaultTransferAccountId(null)
+            }
+
             accountRepository.delete(account)
             _navigateBackChannel.send(Unit)
         }

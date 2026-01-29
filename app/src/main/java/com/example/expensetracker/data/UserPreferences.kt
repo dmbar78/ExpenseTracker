@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,8 @@ class UserPreferences(private val context: Context) {
     
     companion object {
         private val DEFAULT_CURRENCY_CODE = stringPreferencesKey("default_currency_code")
+        private val DEFAULT_EXPENSE_ACCOUNT_ID = intPreferencesKey("default_expense_account_id")
+        private val DEFAULT_TRANSFER_ACCOUNT_ID = intPreferencesKey("default_transfer_account_id")
         
         // Initial default currency on first app install
         const val INITIAL_DEFAULT_CURRENCY = "EUR"
@@ -32,12 +35,40 @@ class UserPreferences(private val context: Context) {
         prefs[DEFAULT_CURRENCY_CODE] ?: INITIAL_DEFAULT_CURRENCY
     }
     
+    val defaultExpenseAccountId: Flow<Int?> = context.userPreferencesDataStore.data.map { prefs ->
+        prefs[DEFAULT_EXPENSE_ACCOUNT_ID]
+    }
+
+    val defaultTransferAccountId: Flow<Int?> = context.userPreferencesDataStore.data.map { prefs ->
+        prefs[DEFAULT_TRANSFER_ACCOUNT_ID]
+    }
+    
     /**
      * Update the default currency code.
      */
     suspend fun setDefaultCurrencyCode(currencyCode: String) {
         context.userPreferencesDataStore.edit { prefs ->
             prefs[DEFAULT_CURRENCY_CODE] = currencyCode
+        }
+    }
+    
+    suspend fun setDefaultExpenseAccountId(accountId: Int?) {
+        context.userPreferencesDataStore.edit { prefs ->
+            if (accountId == null) {
+                prefs.remove(DEFAULT_EXPENSE_ACCOUNT_ID)
+            } else {
+                prefs[DEFAULT_EXPENSE_ACCOUNT_ID] = accountId
+            }
+        }
+    }
+
+    suspend fun setDefaultTransferAccountId(accountId: Int?) {
+        context.userPreferencesDataStore.edit { prefs ->
+            if (accountId == null) {
+                prefs.remove(DEFAULT_TRANSFER_ACCOUNT_ID)
+            } else {
+                prefs[DEFAULT_TRANSFER_ACCOUNT_ID] = accountId
+            }
         }
     }
 }

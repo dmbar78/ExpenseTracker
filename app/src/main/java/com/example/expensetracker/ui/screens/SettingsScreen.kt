@@ -17,6 +17,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Currency
 import com.example.expensetracker.data.SecurityManager
 import com.example.expensetracker.ui.TestTags
@@ -34,6 +35,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     val currencies by viewModel.allCurrencies.collectAsState()
     val defaultCurrencyCode by viewModel.defaultCurrencyCode.collectAsState()
+    val defaultExpenseAccountId by viewModel.defaultExpenseAccountId.collectAsState()
+    val defaultTransferAccountId by viewModel.defaultTransferAccountId.collectAsState()
+    val allAccounts by viewModel.allAccounts.collectAsState()
     val backupState by viewModel.backupState.collectAsState()
     val scope = rememberCoroutineScope()
     
@@ -45,6 +49,9 @@ fun SettingsScreen(
     var pivotRateInput by remember { mutableStateOf("") }
     var pendingCurrencyCode by remember { mutableStateOf("") }
     var isCheckingPivot by remember { mutableStateOf(false) }
+    
+    var showExpenseAccountPicker by remember { mutableStateOf(false) }
+    var showTransferAccountPicker by remember { mutableStateOf(false) }
 
     // State for Restore Confirmation
     var showRestoreConfirmation by remember { mutableStateOf(false) }
@@ -315,13 +322,29 @@ fun SettingsScreen(
             )
         }
         
-        // Default Currency setting
+    // Default Currency setting
         Text(
             text = "General",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
             color = MaterialTheme.colorScheme.primary
         )
+
+        SettingsItem(
+            title = "Default Expense Account",
+            value = allAccounts.find { it.id == defaultExpenseAccountId }?.name ?: "None",
+            onClick = { showExpenseAccountPicker = true }
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        SettingsItem(
+            title = "Default Transfer Account",
+            value = allAccounts.find { it.id == defaultTransferAccountId }?.name ?: "None",
+            onClick = { showTransferAccountPicker = true }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         SettingsItem(
             title = "Default currency",
@@ -416,6 +439,32 @@ fun SettingsScreen(
                 showPivotRateDialog = false
                 pivotRateInput = ""
             }
+        )
+    }
+    
+    if (showExpenseAccountPicker) {
+        DefaultAccountPickerDialog(
+            accounts = allAccounts,
+            selectedAccountId = defaultExpenseAccountId,
+            title = "Default Expense Account",
+            onAccountSelected = { id ->
+                viewModel.setDefaultExpenseAccount(id)
+                showExpenseAccountPicker = false
+            },
+            onDismiss = { showExpenseAccountPicker = false }
+        )
+    }
+
+    if (showTransferAccountPicker) {
+        DefaultAccountPickerDialog(
+            accounts = allAccounts,
+            selectedAccountId = defaultTransferAccountId,
+            title = "Default Transfer Account",
+            onAccountSelected = { id ->
+                viewModel.setDefaultTransferAccount(id)
+                showTransferAccountPicker = false
+            },
+            onDismiss = { showTransferAccountPicker = false }
         )
     }
 }
@@ -600,4 +649,77 @@ private fun parseRateInput(input: String): BigDecimal? {
     } catch (e: NumberFormatException) {
         null
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DefaultAccountPickerDialog(
+    accounts: List<Account>,
+    selectedAccountId: Int?,
+    title: String,
+    onAccountSelected: (Int?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedAccountName = accounts.find { it.id == selectedAccountId }?.name ?: "None"
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                Text(
+                    text = "Choose an account to pre-fill.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedAccountName,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Account") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("None") },
+                            onClick = {
+                                expanded = false
+                                onAccountSelected(null)
+                            }
+                        )
+                        HorizontalDivider()
+                        accounts.forEach { account ->
+                            DropdownMenuItem(
+                                text = { Text(account.name) },
+                                onClick = {
+                                    expanded = false
+                                    onAccountSelected(account.id)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
 }

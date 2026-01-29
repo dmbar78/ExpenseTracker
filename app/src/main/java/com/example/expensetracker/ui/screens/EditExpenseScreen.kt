@@ -40,7 +40,8 @@ fun EditExpenseScreen(
     initialType: String? = null,
     initialExpenseDateMillis: Long = 0L,
     initialAccountError: Boolean = false,
-    initialCategoryError: Boolean = false
+    initialCategoryError: Boolean = false,
+    defaultAccountUsed: Boolean = false
 ) {
     // Retrieve the result from AddCategoryScreen if available
     val createdCategoryName = navController.currentBackStackEntry
@@ -65,6 +66,7 @@ fun EditExpenseScreen(
     val accounts by viewModel.allAccounts.collectAsState()
     val categories by viewModel.allCategories.collectAsState()
     val keywords by viewModel.allKeywords.collectAsState()
+    val defaultExpenseAccountId by viewModel.defaultExpenseAccountId.collectAsState()
 
     // Snackbar state for error and success messages
     val snackbarHostState = remember { SnackbarHostState() }
@@ -207,6 +209,19 @@ fun EditExpenseScreen(
         }
     }
 
+    // Pre-populate default account if creating new expense and no account specified
+    LaunchedEffect(accounts, defaultExpenseAccountId) {
+        if (expenseId == 0 && accountName.isEmpty() && (initialAccountName.isNullOrBlank())) {
+             defaultExpenseAccountId?.let { id ->
+                 val defaultAccount = accounts.find { it.id == id }
+                 if (defaultAccount != null) {
+                     accountName = defaultAccount.name
+                     currency = defaultAccount.currency
+                 }
+             }
+        }
+    }
+
     // Reactive Error Clearing:
     // If the category list changes OR an error is flagged, check if the error is still valid.
     LaunchedEffect(categories, category, categoryError) {
@@ -245,7 +260,8 @@ fun EditExpenseScreen(
             categoryError = categoryError,
             amountError = false,
             existingExpense = if (expenseId > 0) expense else null,
-            selectedKeywordIds = selectedKeywordIds
+            selectedKeywordIds = selectedKeywordIds,
+            defaultAccountUsed = defaultAccountUsed
         ),
         accounts = accounts,
         categories = categories,

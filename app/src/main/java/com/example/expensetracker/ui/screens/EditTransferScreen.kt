@@ -41,7 +41,8 @@ fun EditTransferScreen(
     initialDestAmount: BigDecimal? = null,
     initialTransferDateMillis: Long = 0L,
     initialSourceAccountError: Boolean = false,
-    initialDestAccountError: Boolean = false
+    initialDestAccountError: Boolean = false,
+    defaultAccountUsed: Boolean = false
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -82,6 +83,7 @@ fun EditTransferScreen(
 
     val transfer by viewModel.selectedTransfer.collectAsState()
     val accounts by viewModel.allAccounts.collectAsState()
+    val defaultTransferAccountId by viewModel.defaultTransferAccountId.collectAsState()
 
     // Initialize state with prefill values if provided
     var sourceAccountName by rememberSaveable { mutableStateOf(initialSourceAccountName ?: "") }
@@ -128,6 +130,19 @@ fun EditTransferScreen(
             if (sourceAccount != null) {
                 currency = sourceAccount.currency
             }
+        }
+    }
+    
+    // Pre-populate default source account logic
+    LaunchedEffect(accounts, defaultTransferAccountId) {
+        if (!isEditMode && sourceAccountName.isEmpty() && initialSourceAccountName.isNullOrBlank()) {
+             defaultTransferAccountId?.let { id ->
+                 val defaultAccount = accounts.find { it.id == id }
+                 if (defaultAccount != null) {
+                     sourceAccountName = defaultAccount.name
+                     currency = defaultAccount.currency
+                 }
+             }
         }
     }
     
@@ -200,7 +215,8 @@ fun EditTransferScreen(
                 existingTransfer = if (isEditMode) transfer else null,
                 isEditMode = isEditMode,
                 sourceAccountError = showSourceError,
-                destAccountError = showDestError
+                destAccountError = showDestError,
+                defaultAccountUsed = defaultAccountUsed
             ),
             accounts = accounts,
             callbacks = EditTransferCallbacks(

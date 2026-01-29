@@ -45,7 +45,8 @@ data class EditExpenseState(
     val categoryError: Boolean = false,
     val amountError: Boolean = false,
     val existingExpense: Expense? = null,
-    val selectedKeywordIds: Set<Int> = emptySet()
+    val selectedKeywordIds: Set<Int> = emptySet(),
+    val defaultAccountUsed: Boolean = false
 )
 
 /**
@@ -96,7 +97,7 @@ fun EditExpenseScreenContent(
     var localCategory by remember(state.category) { mutableStateOf(state.category) }
     var localCurrency by remember(state.currency) { mutableStateOf(state.currency) }
     var localComment by remember(state.comment) { mutableStateOf(state.comment) }
-    var localAccountError by remember(state.accountError) { mutableStateOf(state.accountError) }
+    var localAccountError by remember(state.accountError, state.defaultAccountUsed) { mutableStateOf(state.accountError || state.defaultAccountUsed) }
     var localCategoryError by remember(state.categoryError) { mutableStateOf(state.categoryError) }
     var localAmountError by remember(state.amountError) { mutableStateOf(state.amountError) }
     
@@ -195,8 +196,13 @@ fun EditExpenseScreenContent(
                     }
                 }
                 if (localAccountError) {
+                    val errorText = if (state.defaultAccountUsed && localAccountName == state.accountName)
+                        "Account not found. Default account is used. You can change it from the menu."
+                    else
+                        "Account not found. Please select a valid account."
+
                     Text(
-                        "Account not found. Please select a valid account.",
+                        errorText,
                         color = Color.Red,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND)

@@ -69,7 +69,7 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             SettingsScreen(viewModel = viewModel, navController = navController)
         }
         composable(
-            route = "editExpense/{expenseId}?accountName={accountName}&amount={amount}&categoryName={categoryName}&type={type}&expenseDateMillis={expenseDateMillis}&accountError={accountError}&categoryError={categoryError}",
+            route = "editExpense/{expenseId}?accountName={accountName}&amount={amount}&categoryName={categoryName}&type={type}&expenseDateMillis={expenseDateMillis}&accountError={accountError}&categoryError={categoryError}&defaultAccountUsed={defaultAccountUsed}",
             arguments = listOf(
                 navArgument("expenseId") { type = NavType.IntType },
                 navArgument("accountName") { type = NavType.StringType; nullable = true },
@@ -78,7 +78,8 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
                 navArgument("type") { type = NavType.StringType; nullable = true },
                 navArgument("expenseDateMillis") { type = NavType.LongType; defaultValue = 0L },
                 navArgument("accountError") { type = NavType.BoolType; defaultValue = false },
-                navArgument("categoryError") { type = NavType.BoolType; defaultValue = false }
+                navArgument("categoryError") { type = NavType.BoolType; defaultValue = false },
+                navArgument("defaultAccountUsed") { type = NavType.BoolType; defaultValue = false }
             )
         ) {
             val expenseId = it.arguments?.getInt("expenseId") ?: 0
@@ -90,6 +91,7 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             val expenseDateMillis = it.arguments?.getLong("expenseDateMillis") ?: 0L
             val accountError = it.arguments?.getBoolean("accountError") ?: false
             val categoryError = it.arguments?.getBoolean("categoryError") ?: false
+            val defaultAccountUsed = it.arguments?.getBoolean("defaultAccountUsed") ?: false
 
             EditExpenseScreen(
                 expenseId = expenseId,
@@ -101,11 +103,12 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
                 initialType = type,
                 initialExpenseDateMillis = expenseDateMillis,
                 initialAccountError = accountError,
-                initialCategoryError = categoryError
+                initialCategoryError = categoryError,
+                defaultAccountUsed = defaultAccountUsed
             )
         }
         composable(
-            route = "editTransfer/{transferId}?sourceAccountName={sourceAccountName}&destAccountName={destAccountName}&amount={amount}&destAmount={destAmount}&transferDateMillis={transferDateMillis}&sourceAccountError={sourceAccountError}&destAccountError={destAccountError}",
+            route = "editTransfer/{transferId}?sourceAccountName={sourceAccountName}&destAccountName={destAccountName}&amount={amount}&destAmount={destAmount}&transferDateMillis={transferDateMillis}&sourceAccountError={sourceAccountError}&destAccountError={destAccountError}&defaultAccountUsed={defaultAccountUsed}",
             arguments = listOf(
                 navArgument("transferId") { type = NavType.IntType },
                 navArgument("sourceAccountName") { type = NavType.StringType; nullable = true; defaultValue = null },
@@ -114,7 +117,8 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
                 navArgument("destAmount") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("transferDateMillis") { type = NavType.LongType; defaultValue = 0L },
                 navArgument("sourceAccountError") { type = NavType.BoolType; defaultValue = false },
-                navArgument("destAccountError") { type = NavType.BoolType; defaultValue = false }
+                navArgument("destAccountError") { type = NavType.BoolType; defaultValue = false },
+                navArgument("defaultAccountUsed") { type = NavType.BoolType; defaultValue = false }
             )
         ) {
             val transferId = it.arguments?.getInt("transferId") ?: 0
@@ -127,6 +131,7 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             val transferDateMillis = it.arguments?.getLong("transferDateMillis") ?: 0L
             val sourceAccountError = it.arguments?.getBoolean("sourceAccountError") ?: false
             val destAccountError = it.arguments?.getBoolean("destAccountError") ?: false
+            val defaultAccountUsed = it.arguments?.getBoolean("defaultAccountUsed") ?: false
             
             EditTransferScreen(
                 transferId = transferId,
@@ -138,7 +143,8 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
                 initialDestAmount = destAmount,
                 initialTransferDateMillis = transferDateMillis,
                 initialSourceAccountError = sourceAccountError,
-                initialDestAccountError = destAccountError
+                initialDestAccountError = destAccountError,
+                defaultAccountUsed = defaultAccountUsed
             )
         }
     }

@@ -1071,6 +1071,64 @@ class VoiceFlowContentTest {
         // Verify Save button is now disabled (isSaving = true)
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).assertIsNotEnabled()
     }
+    // --- Voice Expense: Default Account Used Warning ---
+    @Test
+    fun voiceExpense_defaultAccountUsed_showsWarning() {
+        val state = EditExpenseState(
+            expenseId = 0,
+            amount = "25",
+            accountName = "Test1",
+            category = "default",
+            currency = "EUR",
+            expenseDate = jan1_2026,
+            defaultAccountUsed = true
+        )
+
+        composeTestRule.setContent {
+            EditExpenseScreenContent(
+                state = state,
+                accounts = testAccounts,
+                categories = testCategories,
+                keywords = testKeywords,
+                callbacks = EditExpenseCallbacks()
+            )
+        }
+
+        // Verify account is filled
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE).assertTextContains("Test1")
+
+        // Verify Warning
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND).assertExists()
+        composeTestRule.onNodeWithText("Account not found. Default account is used. You can change it from the menu.").assertExists()
+    }
+
+    // --- Voice Transfer: Default Source Account Used Warning ---
+    @Test
+    fun voiceTransfer_defaultAccountUsed_showsWarning() {
+        val state = EditTransferState(
+            transferId = 0,
+            sourceAccountName = "Test1",
+            destAccountName = "Test2",
+            amount = "50",
+            currency = "EUR",
+            defaultAccountUsed = true
+        )
+
+        composeTestRule.setContent {
+            EditTransferScreenContent(
+                state = state,
+                accounts = testAccounts,
+                callbacks = EditTransferCallbacks()
+            )
+        }
+
+        // Verify source account filled
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SOURCE_VALUE).assertTextContains("Test1")
+
+        // Verify Warning
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND).assertExists()
+        composeTestRule.onNodeWithText("Account not found. Default account is used. You can change it from the menu.").assertExists()
+    }
 }
 
 /**
