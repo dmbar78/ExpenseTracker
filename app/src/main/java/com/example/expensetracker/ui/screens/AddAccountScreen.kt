@@ -19,7 +19,8 @@ import kotlinx.coroutines.launch
 fun AddAccountScreen(
     viewModel: ExpenseViewModel,
     navController: NavController,
-    accountName: String? = null
+    accountName: String? = null,
+    currencyCode: String? = null
 ) {
     // Track the current account name for savedStateHandle result passing
     var currentName by remember { mutableStateOf(accountName ?: "") }
@@ -28,6 +29,7 @@ fun AddAccountScreen(
     var isSaving by remember { mutableStateOf(false) }
 
     val currencies by viewModel.allCurrencies.collectAsState()
+    val defaultCurrency by viewModel.defaultCurrencyCode.collectAsState("EUR")
     val scope = rememberCoroutineScope()
 
     // Error dialog (side-effect owned by wrapper)
@@ -46,7 +48,10 @@ fun AddAccountScreen(
 
     // Delegate UI to Content composable
     AddAccountScreenContent(
-        state = AddAccountState(name = currentName),
+        state = AddAccountState(
+            name = currentName,
+            currencyCode = currencyCode ?: defaultCurrency
+        ),
         currencies = currencies,
         callbacks = AddAccountCallbacks(
             onNameChange = { currentName = it },
