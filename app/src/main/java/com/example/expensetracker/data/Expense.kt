@@ -22,5 +22,8 @@ data class Expense(
     /** Exchange rate from expense currency to originalDefaultCurrency at expense date */
     val exchangeRateToOriginalDefault: BigDecimal? = null,
     /** Amount expressed in originalDefaultCurrencyCode (amount * exchangeRateToOriginalDefault) */
-    val amountInOriginalDefault: BigDecimal? = null
+    val amountInOriginalDefault: BigDecimal? = null,
+    
+    /** ID of the Debt this expense is paying off (if any) */
+    val relatedDebtId: Int? = null
 )

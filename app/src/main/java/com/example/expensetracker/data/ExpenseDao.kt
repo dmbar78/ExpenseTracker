@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ExpenseDao {
     @Insert
-    suspend fun insert(expense: Expense)
+    suspend fun insert(expense: Expense): Long
 
     @Update
     suspend fun update(expense: Expense)
@@ -24,6 +24,9 @@ interface ExpenseDao {
 
     @Query("SELECT * FROM expenses WHERE id = :expenseId")
     fun getExpenseById(expenseId: Int): Flow<Expense>
+    
+    @Query("SELECT * FROM expenses WHERE relatedDebtId = :debtId ORDER BY expenseDate DESC")
+    fun getExpensesByRelatedDebtId(debtId: Int): Flow<List<Expense>>
 
     @Query("SELECT COUNT(*) FROM expenses WHERE account = :accountName")
     suspend fun getCountByAccount(accountName: String): Int

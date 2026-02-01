@@ -55,17 +55,22 @@ sealed class TotalState {
 @Composable
 fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
     val selectedTabIndex by viewModel.selectedTab.collectAsState()
-    val tabs = listOf("Expense", "Income", "Transfers")
+    val tabs = listOf("Expense", "Income", "Transfers", "Debts")
     
     // Filter state and data
     val filterState by viewModel.filterState.collectAsState()
     val accounts by viewModel.allAccounts.collectAsState()
     val categories by viewModel.allCategories.collectAsState()
     
-    // Filtered lists
+    // Filtered lists for main tabs
     val filteredExpenses by viewModel.filteredExpenses.collectAsState()
     val filteredIncomes by viewModel.filteredIncomes.collectAsState()
     val filteredTransfers by viewModel.filteredTransfers.collectAsState()
+    
+    // Data for Debts tab
+    val allDebts by viewModel.allDebts.collectAsState()
+    val allExpenses by viewModel.allExpenses.collectAsState()
+    val allIncomes by viewModel.allIncomes.collectAsState()
     
     // Default currency for totals
     val defaultCurrency by viewModel.defaultCurrencyCode.collectAsState()
@@ -121,7 +126,8 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Filter chips row (above tabs)
+            // Filter chips row (above tabs) (Hide for Debts tab logic if desired, or keep globally)
+            // Keeping globally for now, though arguably filters might not apply to Debts in this simplistic implementation
             FilterChipsRow(
                 filterState = filterState,
                 onTimeFilterClick = {
@@ -168,6 +174,10 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                 2 -> {
                     TotalHeader(totalState = transfersTotal)
                     TransfersTab(filteredTransfers, navController)
+                }
+                3 -> {
+                    // No total header for Debts for now (or could calculate net debt)
+                    DebtsTab(allDebts, allExpenses, allIncomes, filteredExpenses, filteredIncomes, navController)
                 }
             }
         }
@@ -486,6 +496,121 @@ private fun TransfersTab(transfers: List<TransferHistory>, navController: NavCon
                     Text(it.destinationAccount, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
                     Text(formatMoney(it.amount), modifier = Modifier.weight(0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
                     Text(it.currency, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DebtsTab(
+    debts: List<com.example.expensetracker.data.Debt>, 
+    allExpenses: List<Expense>,
+    allIncomes: List<Expense>,
+    filteredExpenses: List<Expense>,
+    filteredIncomes: List<Expense>,
+    navController: NavController
+) {
+    // Helper to find parent expense
+    fun findParent(debt: com.example.expensetracker.data.Debt): Expense? {
+        return allExpenses.find { it.id == debt.parentExpenseId } 
+            ?: allIncomes.find { it.id == debt.parentExpenseId }
+    }
+    
+    // Filter Logic: Only show debts where parent is in currently filtered lists
+    // This allows Time/Account filters to apply to Debts tab based on parent creation
+    val filteredParentIds = remember(filteredExpenses, filteredIncomes) {
+        (filteredExpenses.map { it.id } + filteredIncomes.map { it.id }).toSet()
+    }
+    
+    val validDebts = debts.mapNotNull { debt -> 
+        findParent(debt)?.let { parent ->
+             if (parent.id in filteredParentIds) debt to parent else null
+        }
+    }
+    
+    val groupedDebts = validDebts.groupBy { (_, parent) ->
+        SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(parent.expenseDate)
+    }
+
+    LazyColumn(
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 88.dp)
+    ) {
+        // Handle empty
+        if (groupedDebts.isEmpty()) {
+            item {
+                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                    Text("No debts found matching filters", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        }
+        
+        groupedDebts.forEach { (date, items) ->
+            stickyHeader {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(8.dp)
+                ) {
+                    Text(date, style = MaterialTheme.typography.titleMedium)
+                }
+            }
+
+            items(items) { (debt, parent) ->
+                val isClosed = debt.status == "CLOSED"
+                val textDecoration = if (isClosed) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
+                val textColor = if (isClosed) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp, horizontal = 8.dp)
+                        .clickable { navController.navigate("editExpense/${parent.id}?type=${parent.type}") },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Account
+                    Text(
+                        text = parent.account,
+                        modifier = Modifier.weight(0.8f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall,
+                        textDecoration = textDecoration,
+                        color = textColor
+                    )
+
+                    // Description / Notes
+                    Column(modifier = Modifier.weight(1.2f).padding(horizontal = 4.dp)) {
+                        Text(
+                            text = parent.comment ?: parent.category,
+                            style = MaterialTheme.typography.bodyMedium, 
+                            maxLines = 1, 
+                            overflow = TextOverflow.Ellipsis,
+                            textDecoration = textDecoration,
+                            color = textColor
+                        )
+                        if (!debt.notes.isNullOrBlank()) {
+                            Text(debt.notes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    
+                    // Amount and Status
+                    Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "${formatMoney(parent.amount)} ${parent.currency}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            textDecoration = textDecoration,
+                            color = textColor
+                        )
+                        Text(
+                            text = debt.status,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (debt.status == "OPEN") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
         }

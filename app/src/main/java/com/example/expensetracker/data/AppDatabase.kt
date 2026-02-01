@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Expense::class, Account::class, Category::class, Currency::class, Keyword::class, TransferHistory::class, ExchangeRate::class, ExpenseKeywordCrossRef::class], version = 15, exportSchema = false)
+@Database(entities = [Expense::class, Account::class, Category::class, Currency::class, Keyword::class, TransferHistory::class, ExchangeRate::class, ExpenseKeywordCrossRef::class, Debt::class], version = 16, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -20,6 +20,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun transferHistoryDao(): TransferHistoryDao
     abstract fun ledgerDao(): LedgerDao
     abstract fun exchangeRateDao(): ExchangeRateDao
+    abstract fun debtDao(): DebtDao
 
     companion object {
         @Volatile
@@ -164,21 +165,8 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_keywords_name ON keywords (name)")
             }
         }
-
-        fun getDatabase(context: Context): AppDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "expense_database"
-                )
-                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)                .build()
-                INSTANCE = instance
-                instance
-            }
-        }
-
-        /**
+        
+         /**
          * Migration from version 14 to 15: Add destinationAmount and destinationCurrency to transfer_history.
          * - Adds nullable columns for separate destination amount/currency (multi-currency support).
          * - Backfills existing rows: destinationCurrency = source currency, destinationAmount = NULL.
@@ -194,6 +182,43 @@ abstract class AppDatabase : RoomDatabase() {
                 // destinationAmount defaults to NULL (which implies same as source amount logic in Repo)
                 // Explicitly setting it to NULL just to be safe, though existing columns default to NULL usually.
                 database.execSQL("UPDATE transfer_history SET destinationAmount = NULL")
+            }
+        }
+
+        /**
+         * Migration from version 15 to 16: Add Debt functionality.
+         * - Creates debts table
+         * - Adds relatedDebtId column to expenses table
+         */
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create debts table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS debts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        parentExpenseId INTEGER NOT NULL,
+                        notes TEXT,
+                        status TEXT NOT NULL,
+                        FOREIGN KEY (parentExpenseId) REFERENCES expenses(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                
+                // Add relatedDebtId to expenses
+                database.execSQL("ALTER TABLE expenses ADD COLUMN relatedDebtId INTEGER")
+            }
+        }
+
+        fun getDatabase(context: Context): AppDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
+                    context.applicationContext,
+                    AppDatabase::class.java,
+                    "expense_database"
+                )
+                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
+                .build()
+                INSTANCE = instance
+                instance
             }
         }
     }

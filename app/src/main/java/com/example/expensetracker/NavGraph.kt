@@ -73,7 +73,7 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             SettingsScreen(viewModel = viewModel, navController = navController)
         }
         composable(
-            route = "editExpense/{expenseId}?accountName={accountName}&amount={amount}&categoryName={categoryName}&type={type}&expenseDateMillis={expenseDateMillis}&accountError={accountError}&categoryError={categoryError}&defaultAccountUsed={defaultAccountUsed}",
+            route = "editExpense/{expenseId}?accountName={accountName}&amount={amount}&categoryName={categoryName}&type={type}&expenseDateMillis={expenseDateMillis}&accountError={accountError}&categoryError={categoryError}&defaultAccountUsed={defaultAccountUsed}&relatedDebtId={relatedDebtId}",
             arguments = listOf(
                 navArgument("expenseId") { type = NavType.IntType },
                 navArgument("accountName") { type = NavType.StringType; nullable = true },
@@ -83,7 +83,8 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
                 navArgument("expenseDateMillis") { type = NavType.LongType; defaultValue = 0L },
                 navArgument("accountError") { type = NavType.BoolType; defaultValue = false },
                 navArgument("categoryError") { type = NavType.BoolType; defaultValue = false },
-                navArgument("defaultAccountUsed") { type = NavType.BoolType; defaultValue = false }
+                navArgument("defaultAccountUsed") { type = NavType.BoolType; defaultValue = false },
+                navArgument("relatedDebtId") { type = NavType.IntType; defaultValue = -1 }
             )
         ) {
             val expenseId = it.arguments?.getInt("expenseId") ?: 0
@@ -96,6 +97,8 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             val accountError = it.arguments?.getBoolean("accountError") ?: false
             val categoryError = it.arguments?.getBoolean("categoryError") ?: false
             val defaultAccountUsed = it.arguments?.getBoolean("defaultAccountUsed") ?: false
+            val relatedDebtIdArg = it.arguments?.getInt("relatedDebtId") ?: -1
+            val relatedDebtId = if (relatedDebtIdArg == -1) null else relatedDebtIdArg
 
             EditExpenseScreen(
                 expenseId = expenseId,
@@ -108,7 +111,8 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
                 initialExpenseDateMillis = expenseDateMillis,
                 initialAccountError = accountError,
                 initialCategoryError = categoryError,
-                defaultAccountUsed = defaultAccountUsed
+                defaultAccountUsed = defaultAccountUsed,
+                relatedDebtId = relatedDebtId
             )
         }
         composable(

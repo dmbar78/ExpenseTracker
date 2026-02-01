@@ -12,8 +12,8 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
     }
 
     // Suspend function to insert an expense
-    suspend fun insert(expense: Expense) {
-        expenseDao.insert(expense)
+    suspend fun insert(expense: Expense): Long {
+        return expenseDao.insert(expense)
     }
 
     suspend fun update(expense: Expense) {
@@ -22,6 +22,10 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
 
     fun getExpenseById(expenseId: Int): Flow<Expense> {
         return expenseDao.getExpenseById(expenseId)
+    }
+    
+    fun getExpensesByRelatedDebtId(debtId: Int): Flow<List<Expense>> {
+        return expenseDao.getExpensesByRelatedDebtId(debtId)
     }
 
     suspend fun getCountByAccount(accountName: String): Int {

@@ -41,7 +41,8 @@ fun EditExpenseScreen(
     initialExpenseDateMillis: Long = 0L,
     initialAccountError: Boolean = false,
     initialCategoryError: Boolean = false,
-    defaultAccountUsed: Boolean = false
+    defaultAccountUsed: Boolean = false,
+    relatedDebtId: Int? = null
 ) {
     // Retrieve the result from AddCategoryScreen if available
     val createdCategoryName = navController.currentBackStackEntry
@@ -67,7 +68,26 @@ fun EditExpenseScreen(
     val categories by viewModel.allCategories.collectAsState()
     val keywords by viewModel.allKeywords.collectAsState()
     val defaultExpenseAccountId by viewModel.defaultExpenseAccountId.collectAsState()
-
+    
+    // Debt State
+    // We need to know if this expense has a linked Debt record
+    val debt by viewModel.getDebtForExpense(expenseId).collectAsState(initial = null)
+    
+    // If we have a debt, load payments for it
+    val debtPayments by remember(debt?.id) {
+        if (debt != null) viewModel.getPaymentsForDebt(debt!!.id) else kotlinx.coroutines.flow.flowOf(emptyList())
+    }.collectAsState(initial = emptyList())
+    
+    // Calculate paid amount
+    var debtPaidAmount by remember { mutableStateOf(BigDecimal.ZERO) }
+    LaunchedEffect(debt, debtPayments) {
+        if (debt != null) {
+             val account = accounts.find { it.name == expense?.account }
+             val currency = account?.currency ?: expense?.currency ?: "USD" // Fallback
+             debtPaidAmount = viewModel.calculateDebtPaidAmount(debt!!.id, currency)
+        }
+    }
+    
     // Snackbar state for error and success messages
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -83,6 +103,17 @@ fun EditExpenseScreen(
     var comment by rememberSaveable { mutableStateOf("") }
     var type by rememberSaveable { mutableStateOf(initialType ?: "Expense") }
     
+    // Debt Checkbox State
+    // Initialize from existing debt existence, or false if new
+    var isDebt by rememberSaveable { mutableStateOf(false) }
+    
+    // Update isDebt when debt data loads
+    LaunchedEffect(debt) {
+        if (debt != null) {
+            isDebt = true
+        }
+    }
+
     // Error states using rememberSaveable
     var accountError by rememberSaveable { mutableStateOf(initialAccountError) }
     var categoryError by rememberSaveable { mutableStateOf(initialCategoryError) }
@@ -261,7 +292,12 @@ fun EditExpenseScreen(
             amountError = false,
             existingExpense = if (expenseId > 0) expense else null,
             selectedKeywordIds = selectedKeywordIds,
-            defaultAccountUsed = defaultAccountUsed
+            defaultAccountUsed = defaultAccountUsed,
+            isDebt = isDebt,
+            relatedDebtId = relatedDebtId,
+            debtId = debt?.id,
+            debtPayments = debtPayments,
+            debtPaidAmount = debtPaidAmount
         ),
         accounts = accounts,
         categories = categories,
@@ -285,65 +321,60 @@ fun EditExpenseScreen(
             },
             onDateClick = { datePickerDialog.show() },
             onCommentChange = { comment = it },
-            onSave = { expenseToSave ->
-                if (isSaving) return@EditExpenseCallbacks
-                isSaving = true
-                
-                scope.launch {
-                    val result = if (expenseId > 0) {
-                        viewModel.updateExpenseAndReturn(expenseToSave)
-                    } else {
-                        viewModel.insertExpenseAndReturn(expenseToSave)
-                    }
-                    
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        result.fold(
-                            onSuccess = {
-                                val message = if (expenseId > 0) "$type updated" else "$type created"
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        message = message,
-                                        duration = SnackbarDuration.Short
-                                    )
-                                }
-                                navController.navigateUp()
-                            },
-                            onFailure = { error ->
-                                snackbarHostState.showSnackbar(error.message ?: "Failed to save $type.")
-                                isSaving = false
-                            }
-                        )
-                    }
-                }
+            onDebtCheckedChange = { isDebt = it },
+            onPaymentClick = { payment -> 
+                navController.navigate("editExpense/${payment.id}") 
             },
-            onSaveWithKeywords = { expenseToSave, keywordIds ->
-                if (isSaving) return@EditExpenseCallbacks
-                isSaving = true
+            onAddPaymentClick = {
+                 // Logic: If Debt is Expense, add Income payment? Or Expense payment?
+                 // Usually calculating net debt. If I have a Debt (I owe money), I pay it with an Expense.
+                 // If I have a Debt (someone owes me - maybe modeled as Income/Asset?), then they pay me with Income.
+                 // Here, the 'type' of the parent expense determines the nature of the debt.
+                 // If Parent is 'Expense' (I spent money -> I borrowed it? Or I lent it?).
+                 // Let's assume:
+                 // Expense + Debt = I owe someone (e.g. Credit Card later). I pay it off with another Expense (transfer?) No, usually Debt is liability.
+                 // The requirement: "The '+' button should open EditExpenseScreen of type Income if a debt is created from an expense, and vice versa."
+                 // So: Parent=Expense -> Payment=Income. Parent=Income -> Payment=Expense.
+                 val paymentType = if (type == "Expense") "Income" else "Expense"
+                 val relatedDebtIdVal = debt?.id
+                 if (relatedDebtIdVal != null) {
+                     navController.navigate("editExpense/0?type=$paymentType&relatedDebtId=$relatedDebtIdVal")
+                 }
+            },
+            onSaveDebt = { expenseToSave, keywordIds, isDebtChecked ->
+                 if (isSaving) return@EditExpenseCallbacks
+                 isSaving = true
                 
-                scope.launch {
-                    val result = if (expenseId > 0) {
-                        viewModel.updateExpenseWithKeywordsAndReturn(expenseToSave, keywordIds)
-                    } else {
-                        viewModel.insertExpenseWithKeywordsAndReturn(expenseToSave, keywordIds)
-                    }
-                    
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        result.fold(
-                            onSuccess = {
-                                val message = if (expenseId > 0) "$type updated" else "$type created"
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        message = message,
-                                        duration = SnackbarDuration.Short
-                                    )
+                 scope.launch {
+                    // Update relatedDebtId in expense if passed
+                    val finalExpense = if (relatedDebtId != null) expenseToSave.copy(relatedDebtId = relatedDebtId) else expenseToSave
+
+                    if (expenseId > 0) {
+                        val result = viewModel.updateExpenseWithKeywordsAndReturn(finalExpense, keywordIds)
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            result.fold(
+                                onSuccess = {
+                                    handleSaveSuccess(expenseId, isDebtChecked, type, snackbarHostState, scope, navController, viewModel)
+                                },
+                                onFailure = { error ->
+                                    snackbarHostState.showSnackbar(error.message ?: "Failed to save $type.")
+                                    isSaving = false
                                 }
-                                navController.navigateUp()
-                            },
-                            onFailure = { error ->
-                                snackbarHostState.showSnackbar(error.message ?: "Failed to save $type.")
-                                isSaving = false
-                            }
-                        )
+                            )
+                        }
+                    } else {
+                        val result = viewModel.insertExpenseWithKeywordsAndReturn(finalExpense, keywordIds)
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            result.fold(
+                                onSuccess = { createdExpenseId ->
+                                    handleSaveSuccess(createdExpenseId.toInt(), isDebtChecked, type, snackbarHostState, scope, navController, viewModel)
+                                },
+                                onFailure = { error ->
+                                    snackbarHostState.showSnackbar(error.message ?: "Failed to save $type.")
+                                    isSaving = false
+                                }
+                            )
+                        }
                     }
                 }
             },
@@ -372,4 +403,35 @@ fun EditExpenseScreen(
         )
         )
     }
+}
+
+private suspend fun handleSaveSuccess(
+    targetId: Int,
+    isDebtChecked: Boolean,
+    type: String,
+    snackbarHostState: SnackbarHostState,
+    scope: kotlinx.coroutines.CoroutineScope,
+    navController: NavController,
+    viewModel: ExpenseViewModel
+) {
+    // Logic:
+    // If isDebtChecked = true AND existing debt = null -> Create Debt
+    // If isDebtChecked = false AND existing debt != null -> Delete Debt
+    val currentDebt = viewModel.getDebtForExpenseSync(targetId)
+    
+    if (isDebtChecked && currentDebt == null) {
+        viewModel.createDebt(targetId)
+    } else if (!isDebtChecked && currentDebt != null) {
+        // Verify conditions again just in case (empty history, 0 paid) - enforced by UI but safe to double check or just delete
+        viewModel.deleteDebt(currentDebt.id) 
+    }
+
+    val message = "$type saved"
+    scope.launch {
+        snackbarHostState.showSnackbar(
+            message = message,
+            duration = SnackbarDuration.Short
+        )
+    }
+    navController.navigateUp()
 }

@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,7 +48,13 @@ data class EditExpenseState(
     val amountError: Boolean = false,
     val existingExpense: Expense? = null,
     val selectedKeywordIds: Set<Int> = emptySet(),
-    val defaultAccountUsed: Boolean = false
+    val defaultAccountUsed: Boolean = false,
+    // Debt fields
+    val isDebt: Boolean = false,
+    val relatedDebtId: Int? = null, // If paying a debt, this is the debt ID
+    val debtId: Int? = null, // If this is a debt, this is its ID
+    val debtPayments: List<Expense> = emptyList(), // History of payments if this is a debt
+    val debtPaidAmount: BigDecimal = BigDecimal.ZERO // Total paid amount if this is a debt
 )
 
 /**
@@ -63,9 +71,13 @@ data class EditExpenseCallbacks(
     val onCommentChange: (String) -> Unit = {},
     val onSave: (Expense) -> Unit = {},
     val onSaveWithKeywords: (Expense, Set<Int>) -> Unit = { _, _ -> },
+    val onSaveDebt: (Expense, Set<Int>, Boolean) -> Unit = { _, _, _ -> }, // New save callback with debt flag
     val onDelete: (Expense) -> Unit = {},
     val onValidationFailed: (accountError: Boolean, categoryError: Boolean, amountError: Boolean) -> Unit = { _, _, _ -> },
-    val onCreateKeyword: suspend (String) -> Long = { 0L }
+    val onCreateKeyword: suspend (String) -> Long = { 0L },
+    val onDebtCheckedChange: (Boolean) -> Unit = {},
+    val onPaymentClick: (Expense) -> Unit = {},
+    val onAddPaymentClick: () -> Unit = {}
 )
 
 /**
@@ -115,7 +127,36 @@ fun EditExpenseScreenContent(
         ) {
             item {
                 val headerText = if (state.expenseId > 0) "Edit ${state.type}" else "Add ${state.type}"
-                Text(headerText, style = MaterialTheme.typography.headlineSmall)
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(headerText, style = MaterialTheme.typography.headlineSmall)
+                    
+                    // Debt Checkbox
+                    // Editable if: New Record OR (History empty AND paid amount == 0)
+                    // If paying a debt (relatedDebtId != null), this shouldn't be visible/checkable as 'Debt' itself? 
+                    // Requirement says: "when checkbox Debt is clicked, Debt record is created"
+                    // So this is for *creating* a debt.
+                    val isEditable = state.expenseId == 0 || (state.debtPayments.isEmpty() && state.debtPaidAmount <= BigDecimal.ZERO)
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable(enabled = isEditable) {
+                            callbacks.onDebtCheckedChange(!state.isDebt)
+                        }
+                    ) {
+                        Checkbox(
+                            checked = state.isDebt,
+                            onCheckedChange = { callbacks.onDebtCheckedChange(it) },
+                            enabled = isEditable
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Debt")
+                    }
+                }
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Date field
@@ -412,6 +453,76 @@ fun EditExpenseScreenContent(
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Payment History for Debt
+                if (state.isDebt && state.expenseId > 0) {
+                    Text(
+                        "Payment History",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    if (state.debtPayments.isEmpty()) {
+                        Text(
+                            "No payments yet",
+                            style = MaterialTheme.typography.bodyMedium,
+                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        state.debtPayments.forEach { payment ->
+                             Surface(
+                                 modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .clickable { callbacks.onPaymentClick(payment) },
+                                 shape = RoundedCornerShape(8.dp),
+                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                             ) {
+                                 Row(
+                                     modifier = Modifier
+                                        .padding(12.dp)
+                                        .fillMaxWidth(),
+                                     horizontalArrangement = Arrangement.SpaceBetween,
+                                     verticalAlignment = Alignment.CenterVertically
+                                 ) {
+                                     Column {
+                                         val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
+                                         Text(
+                                             text = dateFormat.format(Date(payment.expenseDate)),
+                                             style = MaterialTheme.typography.bodyMedium
+                                         )
+                                     }
+                                     Text(
+                                         text = "${payment.amount} ${payment.currency}",
+                                         style = MaterialTheme.typography.bodyLarge,
+                                         fontWeight = FontWeight.Bold
+                                     )
+                                 }
+                             }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Add Payment Button
+                    // Logic: If Debt is Expense, add Income; if Debt is Income, add Expense
+                    // The '+' Button here is specific to this debt.
+                    // Actually, the requirement says "The '+' button should open EditExpenseScreen of type Income if a debt is created from an expense..."
+                    // Is this the main FAB or a button here?
+                    // "Make the 'Debt' text clickable... The '+' button should open..."
+                    // It implies a way to add payment. A dedicated button here is clear.
+                    
+                    Button(
+                        onClick = { callbacks.onAddPaymentClick() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Payment")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
         
@@ -483,7 +594,7 @@ fun EditExpenseScreenContent(
                                     comment = localComment
                                 )
                             }
-                            callbacks.onSaveWithKeywords(expenseToSave, localSelectedKeywordIds)
+                            callbacks.onSaveDebt(expenseToSave, localSelectedKeywordIds, state.isDebt)
                         }
                     },
                     enabled = !isSaving,

@@ -31,7 +31,8 @@ class ExpenseViewModel(
     private val userPreferences: UserPreferences,
     private val exchangeRateRepository: ExchangeRateRepository,
     private val backupRepository: BackupRepository,
-    private val keywordDao: KeywordDao
+    private val keywordDao: KeywordDao,
+    private val debtRepository: DebtRepository
 ) : AndroidViewModel(application) {
 
     companion object {
@@ -68,7 +69,8 @@ class ExpenseViewModel(
                         )
                     ),
                     BackupRepository(database, userPrefs),
-                    database.keywordDao()
+                    database.keywordDao(),
+                    DebtRepository(database.debtDao())
                 ) as T
             }
         }
@@ -84,6 +86,7 @@ class ExpenseViewModel(
     val allCurrencies: StateFlow<List<Currency>>
     val allTransfers: StateFlow<List<TransferHistory>>
     val allKeywords: StateFlow<List<Keyword>>
+    val allDebts: StateFlow<List<Debt>>
     
     // Default currency
     private val _defaultCurrencyCode = MutableStateFlow(UserPreferences.INITIAL_DEFAULT_CURRENCY)
@@ -155,6 +158,7 @@ class ExpenseViewModel(
         allCurrencies = currencyRepository.allCurrencies.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allTransfers = transferHistoryRepository.allTransfers.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         allKeywords = keywordDao.getAllKeywords().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        allDebts = debtRepository.getAllDebts().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         
         // Build a map of expenseId -> list of keyword names for text query filtering
         val expenseKeywordNamesMap: StateFlow<Map<Int, List<String>>> = combine(
@@ -673,6 +677,84 @@ class ExpenseViewModel(
     }
     
     // ==================== End Currency/Exchange Rate Methods ====================
+    
+    // ==================== Debt Methods ====================
+
+    fun createDebt(parentExpenseId: Int, notes: String? = null) = viewModelScope.launch {
+        try {
+            val debt = Debt(
+                parentExpenseId = parentExpenseId,
+                notes = notes,
+                status = "OPEN"
+            )
+            debtRepository.insertDebt(debt)
+        } catch (e: Exception) {
+            _errorChannel.send("Failed to create debt record: ${e.message}")
+        }
+    }
+    
+    fun getDebtForExpense(expenseId: Int): Flow<Debt?> {
+        return debtRepository.getDebtForExpense(expenseId)
+    }
+    
+    suspend fun getDebtForExpenseSync(expenseId: Int): Debt? {
+        return debtRepository.getDebtForExpenseSync(expenseId)
+    }
+
+    fun getPaymentsForDebt(debtId: Int): Flow<List<Expense>> {
+        return expenseRepository.getExpensesByRelatedDebtId(debtId)
+    }
+    
+    fun deleteDebt(debtId: Int) = viewModelScope.launch {
+        try {
+            debtRepository.deleteDebt(debtId)
+        } catch (e: Exception) {
+             _errorChannel.send("Failed to delete debt: ${e.message}")
+        }
+    }
+    
+    /**
+     * Calculates the total amount paid towards a debt in the debt's original currency.
+     * Payments (which are expenses/incomes) are converted to the debt's currency based on the exchange rate
+     * at the time of the payment.
+     */
+    suspend fun calculateDebtPaidAmount(debtId: Int, debtCurrency: String): BigDecimal {
+        val payments = expenseRepository.getExpensesByRelatedDebtId(debtId).first()
+        var totalPaid = BigDecimal.ZERO
+        
+        for (payment in payments) {
+             // We need to convert payment.amount (in payment.currency) to debtCurrency
+             val amountInDebtCurrency = getAmountInTargetCurrency(
+                 amount = payment.amount,
+                 sourceCurrency = payment.currency,
+                 targetCurrency = debtCurrency,
+                 date = payment.expenseDate
+             )
+             
+             if (amountInDebtCurrency != null) {
+                 totalPaid = totalPaid.add(amountInDebtCurrency)
+             }
+        }
+        
+        return totalPaid
+    }
+    
+    /**
+     * Helper to convert an amount between arbitrary currencies at a specific date.
+     */
+    private suspend fun getAmountInTargetCurrency(
+        amount: BigDecimal,
+        sourceCurrency: String,
+        targetCurrency: String,
+        date: Long
+    ): BigDecimal? {
+        if (sourceCurrency == targetCurrency) return amount
+        
+        val rate = exchangeRateRepository.getMostRecentRateOnOrBefore(sourceCurrency, targetCurrency, date)
+        return rate?.multiply(amount)
+    }
+
+    // ==================== End Debt Methods ====================
 
     fun onVoiceRecognitionResult(spokenText: String) {
         viewModelScope.launch {
@@ -1014,12 +1096,12 @@ class ExpenseViewModel(
     }
 
     /**
-     * Insert expense and return result directly (for local navigation handling).
+     * Insert expense and return the ID directly.
      */
-    suspend fun insertExpenseAndReturn(expense: Expense): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    suspend fun insertExpenseAndReturn(expense: Expense): Result<Long> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            ledgerRepository.addExpense(expense)
-            Result.success(Unit)
+            val id = ledgerRepository.addExpense(expense)
+            Result.success(id)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -1077,13 +1159,13 @@ class ExpenseViewModel(
     /**
      * Insert expense with keywords and return result directly (for local navigation handling).
      */
-    suspend fun insertExpenseWithKeywordsAndReturn(expense: Expense, keywordIds: Set<Int>): Result<Unit> {
+    suspend fun insertExpenseWithKeywordsAndReturn(expense: Expense, keywordIds: Set<Int>): Result<Long> {
         return try {
             val expenseId = ledgerRepository.addExpense(expense)
             if (keywordIds.isNotEmpty()) {
                 keywordDao.setKeywordsForExpense(expenseId.toInt(), keywordIds)
             }
-            Result.success(Unit)
+            Result.success(expenseId)
         } catch (e: Exception) {
             Result.failure(e)
         }
