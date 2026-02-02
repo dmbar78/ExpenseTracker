@@ -44,4 +44,51 @@ class DebtUiTest {
         composeTestRule.onNodeWithTag("addPaymentButton").assertIsDisplayed()
         composeTestRule.onNodeWithText("Add Expense").assertIsDisplayed()
     }
+
+    @Test
+    fun createPayment_debtCheckboxIsHidden() {
+        composeTestRule.waitForIdle()
+
+        // 1. Navigate to Create Expense
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_EXPENSE).performClick()
+
+        // 2. Check "Debt" and wait for UI update
+        composeTestRule.onNodeWithText("Debt").performClick()
+        composeTestRule.waitForIdle()
+        
+        // 3. Create parent debt process
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).performTextInput("100")
+        
+        // Create account
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN).performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_CREATE_NEW).performClick()
+        composeTestRule.onNodeWithTag(TestTags.ADD_ACCOUNT_NAME_FIELD).performTextInput("DebtAccount")
+        composeTestRule.onNodeWithTag(TestTags.ADD_ACCOUNT_CURRENCY_DROPDOWN).performClick()
+        composeTestRule.onAllNodesWithTag(TestTags.CURRENCY_OPTION_PREFIX + "USD").onFirst().performClick()
+        composeTestRule.onNodeWithTag(TestTags.ADD_ACCOUNT_SAVE).performClick()
+        
+        // Select Category
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN).performClick()
+        composeTestRule.onNodeWithText("Default").performClick()
+        
+        // Save Parent Debt
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+        composeTestRule.waitForIdle()
+        
+        // 4. Navigate to the created Debt Expense
+        composeTestRule.onNodeWithText("DebtAccount").performClick()
+        composeTestRule.waitForIdle()
+        
+        // 5. Add Payment
+        composeTestRule.onNodeWithText("Add Payment").performClick() // Using text matcher as button inside lazy column might need scrolling or specific tag access
+        composeTestRule.waitForIdle()
+        
+        // 6. Verify we are on "Add Income"
+        composeTestRule.onNodeWithText("Add Income").assertIsDisplayed()
+        
+        // 7. CRITICAL CHECK: "Debt" checkbox should NOT be visible
+        composeTestRule.onNodeWithText("Debt").assertDoesNotExist()
+    }
 }

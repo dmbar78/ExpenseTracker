@@ -138,25 +138,25 @@ fun EditExpenseScreenContent(
                     Text(headerText, style = MaterialTheme.typography.headlineSmall)
                     
                     // Debt Checkbox
-                    // Editable if: New Record OR (History empty AND paid amount == 0)
-                    // If paying a debt (relatedDebtId != null), this shouldn't be visible/checkable as 'Debt' itself? 
-                    // Requirement says: "when checkbox Debt is clicked, Debt record is created"
-                    // So this is for *creating* a debt.
-                    val isEditable = state.expenseId == 0 || (state.debtPayments.isEmpty() && state.debtPaidAmount <= BigDecimal.ZERO)
-                    
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable(enabled = isEditable) {
-                            callbacks.onDebtCheckedChange(!state.isDebt)
+                    // 1. Not visible if this is a child payment (has relatedDebtId)
+                    // 2. Editable if: New Record OR (History empty AND paid amount == 0)
+                    if (state.relatedDebtId == null) {
+                        val isEditable = state.expenseId == 0 || (state.debtPayments.isEmpty() && state.debtPaidAmount <= BigDecimal.ZERO)
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable(enabled = isEditable) {
+                                callbacks.onDebtCheckedChange(!state.isDebt)
+                            }
+                        ) {
+                            Checkbox(
+                                checked = state.isDebt,
+                                onCheckedChange = { callbacks.onDebtCheckedChange(it) },
+                                enabled = isEditable
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Debt")
                         }
-                    ) {
-                        Checkbox(
-                            checked = state.isDebt,
-                            onCheckedChange = { callbacks.onDebtCheckedChange(it) },
-                            enabled = isEditable
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Debt")
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -459,7 +459,7 @@ fun EditExpenseScreenContent(
                 // Payment History for Debt
                 if (state.isDebt) {
                     Text(
-                        "Payment History",
+                        "Payment History (Paid: ${state.debtPaidAmount} ${state.currency})",
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -492,7 +492,7 @@ fun EditExpenseScreenContent(
                                              text = dateFormat.format(Date(payment.expenseDate)),
                                              style = MaterialTheme.typography.bodyMedium
                                          )
-                                     }
+                                     
                                      
                                      // Currency conversion display
                                      Column(horizontalAlignment = Alignment.End) {
@@ -514,6 +514,7 @@ fun EditExpenseScreenContent(
                                              }
                                          }
                                      }
+                                 }
                              }
                         }
                     }
