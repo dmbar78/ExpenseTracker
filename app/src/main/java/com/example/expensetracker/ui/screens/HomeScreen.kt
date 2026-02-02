@@ -157,7 +157,14 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                 tabs.forEachIndexed { index, title ->
                     Tab(selected = selectedTabIndex == index,
                         onClick = { viewModel.onTabSelected(index) },
-                        text = { Text(text = title) })
+                        text = { 
+                            Text(
+                                text = title,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                softWrap = false
+                            )
+                        })
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
