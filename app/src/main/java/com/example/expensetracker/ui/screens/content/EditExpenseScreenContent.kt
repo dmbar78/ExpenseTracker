@@ -459,7 +459,7 @@ fun EditExpenseScreenContent(
                 // Payment History for Debt
                 if (state.isDebt) {
                     Text(
-                        "Payment History (Paid: ${state.debtPaidAmount} ${state.currency})",
+                        "Payment History (Paid: ${state.debtPaidAmount.setScale(2, RoundingMode.HALF_UP)} ${state.currency})",
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )

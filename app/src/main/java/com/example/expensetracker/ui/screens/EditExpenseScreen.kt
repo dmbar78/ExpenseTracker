@@ -297,7 +297,7 @@ fun EditExpenseScreen(
             selectedKeywordIds = selectedKeywordIds,
             defaultAccountUsed = defaultAccountUsed,
             isDebt = isDebt,
-            relatedDebtId = relatedDebtId,
+            relatedDebtId = expense?.relatedDebtId ?: relatedDebtId,
             debtId = debt?.id,
             debtPayments = debtPayments,
             debtPaidAmount = debtPaidAmount,
