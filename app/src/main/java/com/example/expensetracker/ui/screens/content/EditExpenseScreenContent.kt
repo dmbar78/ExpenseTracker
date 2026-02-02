@@ -506,7 +506,7 @@ fun EditExpenseScreenContent(
                                              val converted = state.debtPaymentConvertedAmounts[payment.id]
                                              if (converted != null) {
                                                   Text(
-                                                     text = "(≈ $converted ${state.currency})",
+                                                     text = "(≈ ${converted.setScale(2, RoundingMode.HALF_UP)} ${state.currency})",
                                                      style = MaterialTheme.typography.bodySmall,
                                                      color = MaterialTheme.colorScheme.onSurfaceVariant
                                                   )
