@@ -78,7 +78,8 @@ data class EditExpenseCallbacks(
     val onCreateKeyword: suspend (String) -> Long = { 0L },
     val onDebtCheckedChange: (Boolean) -> Unit = {},
     val onPaymentClick: (Expense) -> Unit = {},
-    val onAddPaymentClick: () -> Unit = {}
+    val onAddPaymentClick: () -> Unit = {},
+    val onShowSnackbar: (String) -> Unit = {}
 )
 
 /**
@@ -456,7 +457,7 @@ fun EditExpenseScreenContent(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Payment History for Debt
-                if (state.isDebt && state.expenseId > 0) {
+                if (state.isDebt) {
                     Text(
                         "Payment History",
                         style = MaterialTheme.typography.titleMedium,
@@ -528,8 +529,15 @@ fun EditExpenseScreenContent(
                     // It implies a way to add payment. A dedicated button here is clear.
                     
                     Button(
-                        onClick = { callbacks.onAddPaymentClick() },
-                        modifier = Modifier.fillMaxWidth()
+                        onClick = { 
+                            if (state.expenseId > 0) {
+                                callbacks.onAddPaymentClick() 
+                            } else {
+                                val msg = "Save ${state.type.lowercase(Locale.getDefault())} before creating the payment!"
+                                callbacks.onShowSnackbar(msg)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().testTag("addPaymentButton")
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))

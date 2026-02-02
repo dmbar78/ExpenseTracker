@@ -403,6 +403,11 @@ fun EditExpenseScreen(
             },
             onCreateKeyword = { name ->
                 viewModel.insertKeyword(name)
+            },
+            onShowSnackbar = { message ->
+                scope.launch {
+                    snackbarHostState.showSnackbar(message)
+                }
             }
         )
         )
