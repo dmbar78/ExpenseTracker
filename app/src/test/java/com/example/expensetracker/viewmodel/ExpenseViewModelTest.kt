@@ -68,6 +68,9 @@ class ExpenseViewModelTest {
     @Mock
     private lateinit var keywordDao: KeywordDao
 
+    @Mock
+    private lateinit var debtRepository: DebtRepository
+
     private lateinit var viewModel: ExpenseViewModel
 
     @Before
@@ -87,6 +90,7 @@ class ExpenseViewModelTest {
         whenever(userPreferences.defaultTransferAccountId).thenReturn(MutableStateFlow(null))
         whenever(filterPreferences.filterState).thenReturn(MutableStateFlow(FilterState()))
         whenever(expenseRepository.getExpensesByType(anyString())).thenReturn(MutableStateFlow(emptyList()))
+        whenever(debtRepository.getAllDebts()).thenReturn(MutableStateFlow(emptyList()))
 
         viewModel = ExpenseViewModel(
             application,
@@ -100,7 +104,8 @@ class ExpenseViewModelTest {
             userPreferences,
             exchangeRateRepository,
             backupRepository,
-            keywordDao
+            keywordDao,
+            debtRepository
         )
     }
 

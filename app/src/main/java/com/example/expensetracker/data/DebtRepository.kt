@@ -15,10 +15,18 @@ class DebtRepository(private val debtDao: DebtDao) {
         return debtDao.getDebtForExpenseSync(expenseId)
     }
 
+    suspend fun getDebtById(id: Int): Debt? {
+        return debtDao.getDebtById(id)
+    }
+
     fun getAllDebts(): Flow<List<Debt>> {
         return debtDao.getAllDebts()
     }
     
+    suspend fun updateDebt(debt: Debt) {
+        debtDao.update(debt)
+    }
+
     suspend fun deleteDebt(debtId: Int) {
         debtDao.deleteDebt(debtId)
     }

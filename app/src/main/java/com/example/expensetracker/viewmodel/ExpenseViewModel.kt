@@ -739,6 +739,20 @@ class ExpenseViewModel(
         return totalPaid
     }
     
+    fun checkAndUpdateDebtStatus(debtId: Int) = viewModelScope.launch {
+        val debt = debtRepository.getDebtById(debtId) ?: return@launch
+        val parentExpense = expenseRepository.getExpenseById(debt.parentExpenseId).first() ?: return@launch
+        
+        val paidAmount = calculateDebtPaidAmount(debtId, parentExpense.currency)
+        
+        // Use compareTo for BigDecimal
+        val newStatus = if (paidAmount >= parentExpense.amount) "CLOSED" else "OPEN"
+        
+        if (debt.status != newStatus) {
+            debtRepository.updateDebt(debt.copy(status = newStatus))
+        }
+    }
+    
     /**
      * Helper to convert an amount between arbitrary currencies at a specific date.
      */
@@ -754,6 +768,22 @@ class ExpenseViewModel(
         return rate?.multiply(amount)
     }
 
+    suspend fun getConvertedPaymentAmounts(payments: List<Expense>, targetCurrency: String): Map<Int, BigDecimal> {
+        val conversionMap = mutableMapOf<Int, BigDecimal>()
+        for (payment in payments) {
+             val convertedAmount = getAmountInTargetCurrency(
+                 amount = payment.amount,
+                 sourceCurrency = payment.currency,
+                 targetCurrency = targetCurrency,
+                 date = payment.expenseDate
+             )
+             if (convertedAmount != null) {
+                 conversionMap[payment.id] = convertedAmount
+             }
+        }
+        return conversionMap
+    }
+    
     // ==================== End Debt Methods ====================
 
     fun onVoiceRecognitionResult(spokenText: String) {
@@ -1165,6 +1195,12 @@ class ExpenseViewModel(
             if (keywordIds.isNotEmpty()) {
                 keywordDao.setKeywordsForExpense(expenseId.toInt(), keywordIds)
             }
+            
+            // If this new expense is related to a debt, update that debt's status
+            if (expense.relatedDebtId != null) {
+                checkAndUpdateDebtStatus(expense.relatedDebtId)
+            }
+            
             Result.success(expenseId)
         } catch (e: Exception) {
             Result.failure(e)
@@ -1178,6 +1214,12 @@ class ExpenseViewModel(
         return try {
             ledgerRepository.updateExpense(expense)
             keywordDao.setKeywordsForExpense(expense.id, keywordIds)
+            
+            // If this expense is related to a debt, update that debt's status
+            if (expense.relatedDebtId != null) {
+                checkAndUpdateDebtStatus(expense.relatedDebtId)
+            }
+            
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

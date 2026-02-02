@@ -78,13 +78,16 @@ fun EditExpenseScreen(
         if (debt != null) viewModel.getPaymentsForDebt(debt!!.id) else kotlinx.coroutines.flow.flowOf(emptyList())
     }.collectAsState(initial = emptyList())
     
-    // Calculate paid amount
+    // Calculate paid amount and conversions
     var debtPaidAmount by remember { mutableStateOf(BigDecimal.ZERO) }
+    var debtPaymentConvertedAmounts by remember { mutableStateOf<Map<Int, BigDecimal>>(emptyMap()) }
+    
     LaunchedEffect(debt, debtPayments) {
         if (debt != null) {
              val account = accounts.find { it.name == expense?.account }
              val currency = account?.currency ?: expense?.currency ?: "USD" // Fallback
              debtPaidAmount = viewModel.calculateDebtPaidAmount(debt!!.id, currency)
+             debtPaymentConvertedAmounts = viewModel.getConvertedPaymentAmounts(debtPayments, currency)
         }
     }
     
@@ -297,7 +300,8 @@ fun EditExpenseScreen(
             relatedDebtId = relatedDebtId,
             debtId = debt?.id,
             debtPayments = debtPayments,
-            debtPaidAmount = debtPaidAmount
+            debtPaidAmount = debtPaidAmount,
+            debtPaymentConvertedAmounts = debtPaymentConvertedAmounts
         ),
         accounts = accounts,
         categories = categories,

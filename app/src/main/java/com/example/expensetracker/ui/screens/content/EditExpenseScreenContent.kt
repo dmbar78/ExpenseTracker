@@ -54,7 +54,8 @@ data class EditExpenseState(
     val relatedDebtId: Int? = null, // If paying a debt, this is the debt ID
     val debtId: Int? = null, // If this is a debt, this is its ID
     val debtPayments: List<Expense> = emptyList(), // History of payments if this is a debt
-    val debtPaidAmount: BigDecimal = BigDecimal.ZERO // Total paid amount if this is a debt
+    val debtPaidAmount: BigDecimal = BigDecimal.ZERO, // Total paid amount if this is a debt
+    val debtPaymentConvertedAmounts: Map<Int, BigDecimal> = emptyMap() // Helper to show converted amounts
 )
 
 /**
@@ -485,19 +486,33 @@ fun EditExpenseScreenContent(
                                      horizontalArrangement = Arrangement.SpaceBetween,
                                      verticalAlignment = Alignment.CenterVertically
                                  ) {
-                                     Column {
                                          val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
                                          Text(
                                              text = dateFormat.format(Date(payment.expenseDate)),
                                              style = MaterialTheme.typography.bodyMedium
                                          )
                                      }
-                                     Text(
-                                         text = "${payment.amount} ${payment.currency}",
-                                         style = MaterialTheme.typography.bodyLarge,
-                                         fontWeight = FontWeight.Bold
-                                     )
-                                 }
+                                     
+                                     // Currency conversion display
+                                     Column(horizontalAlignment = Alignment.End) {
+                                         Text(
+                                             text = "${payment.amount} ${payment.currency}",
+                                             style = MaterialTheme.typography.bodyLarge,
+                                             fontWeight = FontWeight.Bold
+                                         )
+                                         
+                                         // Show converted amount if currency differs
+                                         if (payment.currency != state.currency) {
+                                             val converted = state.debtPaymentConvertedAmounts[payment.id]
+                                             if (converted != null) {
+                                                  Text(
+                                                     text = "(≈ $converted ${state.currency})",
+                                                     style = MaterialTheme.typography.bodySmall,
+                                                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                  )
+                                             }
+                                         }
+                                     }
                              }
                         }
                     }
@@ -546,7 +561,7 @@ fun EditExpenseScreenContent(
                         val resolvedCategory = categories.find { it.name.equals(localCategory, ignoreCase = true) }
                         val newAccountError = localAccountName.isBlank() || resolvedAccount == null
                         val newCategoryError = localCategory.isBlank() || resolvedCategory == null
-                        val parsedAmount = parseMoneyInputContent(localAmount)
+                        val parsedAmount = parseMoneyInput(localAmount)
                         val newAmountError = parsedAmount == null || parsedAmount <= BigDecimal.ZERO
 
                         if (newAccountError) {
@@ -734,7 +749,7 @@ private fun KeywordChip(
 /**
  * Parses a money input string handling both dot and comma decimal separators.
  */
-internal fun parseMoneyInputContent(input: String): BigDecimal? {
+internal fun parseMoneyInput(input: String): BigDecimal? {
     if (input.isBlank()) return null
 
     val cleaned = input.trim()
