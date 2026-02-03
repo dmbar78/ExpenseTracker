@@ -190,4 +190,126 @@ class ExpenseViewModelTest {
         verify(categoryRepository).update(org.mockito.kotlin.argThat { name == "NewCat" })
         verify(expenseRepository).updateCategoryName("OldCat", "NewCat")
     }
+
+    @Test
+    fun copyExpense_verifiesClonedState() = runTest {
+        // GIVEN
+        val sourceId = 100
+        val originalDate = 1000L
+        val sourceExpense = Expense(
+            id = sourceId,
+            amount = BigDecimal("50.00"),
+            account = "Bank",
+            category = "Food",
+            currency = "USD",
+            expenseDate = originalDate,
+            type = "Expense",
+            comment = "Lunch",
+            relatedDebtId = 55 // Should be null in copy
+        )
+        val sourceKeywords = listOf(1, 2, 3)
+
+        whenever(expenseRepository.getExpenseByIdOnce(sourceId)).thenReturn(sourceExpense)
+        whenever(keywordDao.getKeywordIdsForExpense(sourceId)).thenReturn(sourceKeywords)
+        
+        // Use a background collector to keep the StateFlow active
+        val results = mutableListOf<Expense?>()
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.selectedExpense.collect { results.add(it) }
+        }
+        
+        // Additional collector for keywords
+        val keywordResults = mutableListOf<Set<Int>>()
+        val keywordJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.selectedExpenseKeywords.collect { keywordResults.add(it) }
+        }
+
+        // WHEN
+        viewModel.loadExpense(0, copyFromId = sourceId)
+        advanceUntilIdle()
+
+        // Capture emissions (get the last non-null if possible, or just the last)
+        // results might contain [null, clonedExpense] or just [null] if failed
+        val clonedExpense = results.lastOrNull { it != null }
+        val clonedKeywords = keywordResults.lastOrNull { it.isNotEmpty() } ?: keywordResults.lastOrNull()
+        
+        assertNotNull("Cloned expense should have been emitted", clonedExpense)
+
+        // THEN
+        // Identify check: ID should be 0 (ready for new insert)
+        assertEquals("ID should be 0", 0, clonedExpense!!.id)
+        
+        // Value checks: Should match original
+        assertEquals("Amount should match", sourceExpense.amount, clonedExpense.amount)
+        assertEquals("Account should match", sourceExpense.account, clonedExpense.account)
+        assertEquals("Category should match", sourceExpense.category, clonedExpense.category)
+        assertEquals("Currency should match", sourceExpense.currency, clonedExpense.currency)
+        assertEquals("Type should match", sourceExpense.type, clonedExpense.type)
+        assertEquals("Comment should match", sourceExpense.comment, clonedExpense.comment)
+
+        // Date check: Should NOT match original (should be recent)
+        assertNotEquals("Date should be reset", originalDate, clonedExpense.expenseDate)
+        assertTrue("Date should be recent", clonedExpense.expenseDate > originalDate)
+
+        // Debt check: Should be reset
+        assertNull("Related Debt ID should be null (unchecked)", clonedExpense.relatedDebtId)
+        
+        // Keyword check
+        assertEquals("Keywords should be copied", sourceKeywords.toSet(), clonedKeywords)
+        
+        job.cancel()
+        keywordJob.cancel()
+    }
+
+    @Test
+    fun copyTransfer_verifiesClonedState() = runTest {
+        // GIVEN
+        val sourceId = 200
+        val originalDate = 2000L
+        val sourceTransfer = TransferHistory(
+            id = sourceId,
+            sourceAccount = "Bank",
+            destinationAccount = "Cash",
+            amount = BigDecimal("100.00"),
+            currency = "USD",
+            date = originalDate,
+            comment = "Withdrawal",
+            destinationAmount = BigDecimal("100.00"),
+            destinationCurrency = "USD"
+        )
+        
+        whenever(transferHistoryRepository.getTransferByIdOnce(sourceId)).thenReturn(sourceTransfer)
+
+        // Use a background collector
+        val results = mutableListOf<TransferHistory?>()
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.selectedTransfer.collect { results.add(it) }
+        }
+
+        // WHEN
+        viewModel.loadTransfer(0, copyFromId = sourceId)
+        advanceUntilIdle()
+        
+        // Capture emissions
+        val clonedTransfer = results.lastOrNull { it != null }
+
+        // THEN
+        assertNotNull("Cloned transfer should have been emitted", clonedTransfer)
+        
+        // Identity check
+        assertEquals("ID should be 0", 0, clonedTransfer!!.id)
+        
+        // Value checks
+        assertEquals("Source Account should match", sourceTransfer.sourceAccount, clonedTransfer.sourceAccount)
+        assertEquals("Dest Account should match", sourceTransfer.destinationAccount, clonedTransfer.destinationAccount)
+        assertEquals("Amount should match", sourceTransfer.amount, clonedTransfer.amount)
+        assertEquals("Currency should match", sourceTransfer.currency, clonedTransfer.currency)
+        assertEquals("Comment should match", sourceTransfer.comment, clonedTransfer.comment)
+        
+        // Date check
+        assertNotEquals("Date should be reset", originalDate, clonedTransfer.date)
+        assertTrue("Date should be recent", clonedTransfer.date > originalDate)
+        
+        job.cancel()
+    }
 }

@@ -212,23 +212,21 @@ fun EditExpenseScreen(
         }
     }
 
-    // Update state if loading an existing expense from DB
+    // Update state if loading an existing expense from DB OR if we have a cloned expense
     LaunchedEffect(expense) {
-        if (expenseId > 0) {
-            expense?.let {
-                amount = it.amount.toPlainString()
-                accountName = it.account
-                category = it.category
-                currency = it.currency
-                expenseDate = it.expenseDate
-                comment = it.comment ?: ""
-                type = it.type
-                // Reset errors when loading existing expense
-                accountError = false
-                categoryError = false
-            }
-        } else {
-             // If creating new from voice, try to set currency if account is valid
+        if (expense != null) {
+            amount = expense!!.amount.toPlainString()
+            accountName = expense!!.account
+            category = expense!!.category
+            currency = expense!!.currency
+            expenseDate = expense!!.expenseDate
+            comment = expense!!.comment ?: ""
+            type = expense!!.type
+            // Reset errors when loading valid expense data
+            accountError = false
+            categoryError = false
+        } else if (expenseId == 0) {
+             // If creating new from voice (and no cloned expense), try to set currency if account is valid
              if (initialAccountName != null && !initialAccountError) {
                  val account = accounts.find { it.name.equals(initialAccountName, ignoreCase = true) }
                  if (account != null) {
