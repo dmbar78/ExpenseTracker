@@ -400,7 +400,10 @@ fun EditExpenseScreenContent(
                 ) {
                     OutlinedTextField(
                         value = keywordQuery,
-                        onValueChange = { keywordQuery = it },
+                        onValueChange = { 
+                            keywordQuery = it
+                            isKeywordDropdownExpanded = true 
+                        },
                         label = { Text("Search or add keywords") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isKeywordDropdownExpanded) },
                         modifier = Modifier
