@@ -300,9 +300,14 @@ fun EditExpenseScreenContent(
                 ) {
                     OutlinedTextField(
                         value = localCategory,
-                        onValueChange = {},
+                        onValueChange = {
+                            localCategory = it
+                            localCategoryError = false
+                            isCategoryDropdownExpanded = true
+                            // Do not call onCategorySelect here to avoid cursor jumps due to state recombination
+                        },
                         label = { Text("Category") },
-                        readOnly = true,
+                        // readOnly = true, // Removed to allow typing
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryDropdownExpanded) },
                         modifier = Modifier
                             .menuAnchor()
@@ -311,6 +316,12 @@ fun EditExpenseScreenContent(
                             .then(if (localCategoryError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
                         isError = localCategoryError
                     )
+
+                    // Filter categories
+                    val filteredCategories = categories.filter { 
+                        it.name.contains(localCategory, ignoreCase = true) 
+                    }.sortedBy { it.name }
+
                     ExposedDropdownMenu(
                         expanded = isCategoryDropdownExpanded,
                         onDismissRequest = { isCategoryDropdownExpanded = false }
@@ -324,7 +335,8 @@ fun EditExpenseScreenContent(
                             modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_CATEGORY_CREATE_NEW)
                         )
                         HorizontalDivider()
-                        categories.forEach { categoryItem ->
+                        
+                        filteredCategories.forEach { categoryItem ->
                             DropdownMenuItem(
                                 text = { Text(categoryItem.name) },
                                 onClick = {
@@ -334,6 +346,14 @@ fun EditExpenseScreenContent(
                                     callbacks.onCategorySelect(categoryItem)
                                 },
                                 modifier = Modifier.testTag(TestTags.CATEGORY_OPTION_PREFIX + categoryItem.id)
+                            )
+                        }
+
+                        if (filteredCategories.isEmpty() && localCategory.isNotEmpty()) {
+                             DropdownMenuItem(
+                                text = { Text("(No match found)") },
+                                onClick = { },
+                                enabled = false
                             )
                         }
                     }
