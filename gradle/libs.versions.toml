@@ -2,6 +2,7 @@
 # Your core plugin versions are very modern and correct.
 agp = "8.13.2"
 kotlin = "2.0.0"
+ksp = "2.0.0-1.0.21"
 navigationCompose = "2.9.6"
 
 # --- CONSOLIDATED LIBRARY VERSIONS ---
@@ -63,3 +64,4 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
