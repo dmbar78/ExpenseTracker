@@ -23,7 +23,7 @@ interface ExpenseDao {
     fun getExpensesByType(type: String): Flow<List<Expense>>
 
     @Query("SELECT * FROM expenses WHERE id = :expenseId")
-    fun getExpenseById(expenseId: Int): Flow<Expense>
+    fun getExpenseById(expenseId: Int): Flow<Expense?>
     
     @Query("SELECT * FROM expenses WHERE relatedDebtId = :debtId ORDER BY expenseDate DESC")
     fun getExpensesByRelatedDebtId(debtId: Int): Flow<List<Expense>>

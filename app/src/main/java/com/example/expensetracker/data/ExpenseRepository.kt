@@ -20,7 +20,7 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
         expenseDao.update(expense)
     }
 
-    fun getExpenseById(expenseId: Int): Flow<Expense> {
+    fun getExpenseById(expenseId: Int): Flow<Expense?> {
         return expenseDao.getExpenseById(expenseId)
     }
     
