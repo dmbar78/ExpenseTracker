@@ -641,10 +641,18 @@ fun EditExpenseScreenContent(
 
     // Delete confirmation dialog
     if (showDeleteDialog && state.existingExpense != null) {
+        val hasRelatedPayments = state.debtPayments.isNotEmpty()
+        val title = if (hasRelatedPayments) "Delete Record?" else "Delete ${state.type}"
+        val message = if (hasRelatedPayments) {
+            "There're related payments. If you delete this record, they will be also deleted. Are you sure?"
+        } else {
+            "Are you sure you want to delete this ${state.type}?"
+        }
+        
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete ${state.type}") },
-            text = { Text("Are you sure you want to delete this ${state.type}?") },
+            title = { Text(title) },
+            text = { Text(message) },
             confirmButton = {
                 Button(
                     onClick = {

@@ -1102,8 +1102,23 @@ class ExpenseViewModel(
 
     fun deleteExpense(expense: Expense) = viewModelScope.launch {
         try {
+            // Check if there is an associated debt
+            val debt = debtRepository.getDebtForExpenseSync(expense.id)
+            if (debt != null) {
+                // Delete all related payments first
+                // Using LedgerRepository.deleteExpense to ensure balances are updated
+                val payments = expenseRepository.getExpensesByRelatedDebtId(debt.id).first()
+                for (payment in payments) {
+                     ledgerRepository.deleteExpense(payment.id)
+                }
+                
+                // Delete the debt record
+                debtRepository.deleteDebt(debt.id)
+            }
+            
+            // Delete the expense itself
             ledgerRepository.deleteExpense(expense.id)
-        } catch (e: IllegalStateException) {
+        } catch (e: Exception) {
             _errorChannel.send(e.message ?: "Failed to delete expense.")
         }
     }
