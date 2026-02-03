@@ -99,6 +99,8 @@ class AccountDeletionSafeguardTest {
         // Setup
         val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
         val db = com.example.expensetracker.data.AppDatabase.getDatabase(context)
+        
+        // Use a clearer simplified flow with waits
         kotlinx.coroutines.runBlocking {
             clearDatabase()
             db.currencyDao().insert(Currency(code = "USD", name = "United States Dollar"))
@@ -116,13 +118,20 @@ class AccountDeletionSafeguardTest {
 
         navigateToEditAccount("ExpenseTestAccount")
 
+        // Wait a bit to ensure screen is ready and loaded
+        composeTestRule.waitForIdle()
+
         // Attempt delete - should fail
         attemptDeleteAndExpectError()
 
-        // Clear the blocking data
+        // Clear the blocking data in a way that the UI might notice? 
+        // The UI doesn't auto-refresh the blocking check unless we trigger the delete again.
         kotlinx.coroutines.runBlocking {
             db.expenseDao().deleteAll()
         }
+        
+        // Give time for any background sync (though Room is direct usually)
+        Thread.sleep(500) 
 
         // Attempt delete again - should succeed
         attemptDeleteAndExpectSuccess()

@@ -23,7 +23,7 @@ interface AccountDao {
     fun getAllAccounts(): Flow<List<Account>>
 
     @Query("SELECT * FROM accounts WHERE id = :accountId")
-    fun getAccountById(accountId: Int): Flow<Account>
+    fun getAccountById(accountId: Int): Flow<Account?>
 
     // Backup/Restore operations
     @Query("SELECT * FROM accounts ORDER BY id ASC")

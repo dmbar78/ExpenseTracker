@@ -18,7 +18,7 @@ class AccountRepository(private val accountDao: AccountDao) {
         accountDao.delete(account)
     }
 
-    fun getAccountById(accountId: Int): Flow<Account> {
+    fun getAccountById(accountId: Int): Flow<Account?> {
         return accountDao.getAccountById(accountId)
     }
 }
