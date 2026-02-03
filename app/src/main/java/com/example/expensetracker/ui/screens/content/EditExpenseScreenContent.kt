@@ -531,7 +531,7 @@ fun EditExpenseScreenContent(
                     
                     Button(
                         onClick = { 
-                            if (state.expenseId > 0) {
+                            if (state.expenseId > 0 && state.debtId != null) {
                                 callbacks.onAddPaymentClick() 
                             } else {
                                 val msg = "Save ${state.type.lowercase(Locale.getDefault())} before creating the payment!"
