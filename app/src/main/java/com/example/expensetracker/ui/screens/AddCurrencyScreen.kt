@@ -292,6 +292,24 @@ fun AddCurrencyScreen(
         
         Button(
             onClick = {
+                // Validation: Check if Code and Name match a valid ISO 4217 currency
+                // We perform this check strictly for new currencies to ensure compliance.
+                // For editing, we might be more lenient if we allowed custom names, but based on request, we enforce compliance.
+                // Actually, for Edit mode, Code is fixed. If we only validate on creation, it solves "entered in code and name fields".
+                
+                if (!isEditMode) {
+                   val isValid = allCurrencies.any { 
+                       it.currencyCode.equals(code, ignoreCase = true) && 
+                       it.displayName.equals(name, ignoreCase = true) 
+                   }
+                   
+                   if (!isValid) {
+                       errorMessage = "Invalid currency. Please select a valid currency (Code and Name) from the list."
+                       showErrorDialog = true
+                       return@Button
+                   }
+                }
+
                 if (isEditMode) {
                     val updatedCurrency = currency?.copy(name = name)
                     updatedCurrency?.let { 
