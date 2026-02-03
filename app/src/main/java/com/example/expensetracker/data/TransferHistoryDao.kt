@@ -23,7 +23,10 @@ interface TransferHistoryDao {
     fun getAllTransfers(): Flow<List<TransferHistory>>
 
     @Query("SELECT * FROM transfer_history WHERE id = :transferId")
-    fun getTransferById(transferId: Int): Flow<TransferHistory>
+    fun getTransferById(transferId: Int): Flow<TransferHistory?>
+
+    @Query("SELECT * FROM transfer_history WHERE id = :transferId")
+    suspend fun getTransferByIdOnce(transferId: Int): TransferHistory?
 
     @Query("SELECT COUNT(*) FROM transfer_history WHERE sourceAccount = :accountName OR destinationAccount = :accountName")
     suspend fun getCountByAccount(accountName: String): Int

@@ -133,14 +133,39 @@ class ExpenseViewModel(
         if (categoryId == null) flowOf(null) else categoryRepository.getCategoryById(categoryId)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
+    private val _clonedExpense = MutableStateFlow<Pair<Expense, Set<Int>>?>(null)
     private val _selectedExpenseId = MutableStateFlow<Int?>(null)
-    val selectedExpense: StateFlow<Expense?> = _selectedExpenseId.flatMapLatest { expenseId ->
-        if (expenseId == null) flowOf(null) else expenseRepository.getExpenseById(expenseId)
+    val selectedExpense: StateFlow<Expense?> = combine(_selectedExpenseId, _clonedExpense) { id, cloned ->
+        if (cloned != null && (id == null || id == 0)) {
+            cloned.first
+        } else if (id != null) {
+            expenseRepository.getExpenseById(id).firstOrNull()
+        } else {
+            null
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
+    
+    // Expose cloned keywords to UI
+    val selectedExpenseKeywords: StateFlow<Set<Int>> = combine(_selectedExpenseId, _clonedExpense) { id, cloned ->
+        if (cloned != null && (id == null || id == 0)) {
+            cloned.second
+        } else if (id != null) {
+            keywordDao.getKeywordIdsForExpense(id).toSet() 
+        } else {
+            emptySet()
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptySet())
 
+    private val _clonedTransfer = MutableStateFlow<TransferHistory?>(null)
     private val _selectedTransferId = MutableStateFlow<Int?>(null)
-    val selectedTransfer: StateFlow<TransferHistory?> = _selectedTransferId.flatMapLatest { transferId ->
-        if (transferId == null) flowOf(null) else transferHistoryRepository.getTransferById(transferId)
+    val selectedTransfer: StateFlow<TransferHistory?> = combine(_selectedTransferId, _clonedTransfer) { id, cloned ->
+        if (cloned != null && (id == null || id == 0)) {
+             cloned
+        } else if (id != null) {
+             transferHistoryRepository.getTransferById(id).firstOrNull()
+        } else {
+             null
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
     private val _selectedCurrencyId = MutableStateFlow<Int?>(null)
@@ -233,8 +258,73 @@ class ExpenseViewModel(
 
     fun loadAccount(accountId: Int) { _selectedAccountId.value = accountId }
     fun loadCategory(categoryId: Int) { _selectedCategoryId.value = categoryId }
-    fun loadExpense(expenseId: Int) { _selectedExpenseId.value = expenseId }
-    fun loadTransfer(transferId: Int) { _selectedTransferId.value = transferId }
+    
+    fun loadExpense(expenseId: Int, copyFromId: Int? = null) { 
+        if (copyFromId != null && expenseId == 0) {
+            // "Clone" mode: Load the source expense, but emit it as a new unpersisted expense (id=0)
+            // We launch a coroutine to fetch the source data once
+            viewModelScope.launch {
+                val sourceExpense = expenseRepository.getExpenseByIdOnce(copyFromId)
+                if (sourceExpense != null) {
+                    // Fetch source keywords
+                    val sourceKeywordIds = keywordDao.getKeywordIdsForExpense(copyFromId)
+                    
+                    // Create a copy with ID=0, Date=Now, Debt=Null
+                    val newExpense = sourceExpense.copy(
+                        id = 0,
+                        expenseDate = System.currentTimeMillis(),
+                        relatedDebtId = null
+                    )
+                    
+                    // Emit this "new" expense to the relevant flows/state
+                    // Since _selectedExpenseId is just an ID, we need a way to pass this "transient" expense object
+                    // to the UI. However, the UI listens to `selectedExpense` flow which comes from DB.
+                    // A better approach: The UI should call a dedicated function to "prepare" the copy.
+                    // But `EditExpenseScreen` expects to observe `selectedExpense`.
+                    //
+                    // Workaround: We can't push a non-DB entity into `selectedExpense` easily because it's a FlatMap 
+                    // on `_selectedExpenseId`.
+                    //
+                    // Alternative: We expose a `_clonedExpense` state flow.
+                    // When `copyFromId` is used, the UI observes this instead? Or `selectedExpense` logic is adjusted.
+                    //
+                    // Let's adjust `selectedExpense`:
+                    // It currently does: `_selectedExpenseId.flatMapLatest { id -> getExpenseById(id) }`
+                    // We can change it to: `combine(_selectedExpenseId, _clonedExpense) { id, cloned -> ... }`
+                    //
+                    // But actually, `loadExpense` just sets `_selectedExpenseId`.
+                    // If we set ID=0, it returns null (empty).
+                    //
+                    // Let's store the cloned expense in a MutableStateFlow `_clonedExpense`.
+                    _clonedExpense.value = newExpense to sourceKeywordIds.toSet()
+                }
+            }
+            _selectedExpenseId.value = 0 // Ensure we are in "Add" mode
+        } else {
+            _clonedExpense.value = null // Clear any previous clone
+            _selectedExpenseId.value = expenseId 
+        }
+    }
+
+    fun loadTransfer(transferId: Int, copyFromId: Int? = null) { 
+        if (copyFromId != null && transferId == 0) {
+             viewModelScope.launch {
+                val sourceTransfer = transferHistoryRepository.getTransferByIdOnce(copyFromId)
+                if (sourceTransfer != null) {
+                    val newTransfer = sourceTransfer.copy(
+                        id = 0,
+                        date = System.currentTimeMillis()
+                    )
+                     _clonedTransfer.value = newTransfer
+                }
+             }
+             _selectedTransferId.value = 0
+        } else {
+            _clonedTransfer.value = null
+            _selectedTransferId.value = transferId 
+        }
+    }
+    
     fun loadCurrency(currencyId: Int) { _selectedCurrencyId.value = currencyId }
 
     // ==================== Keyword Methods ====================

@@ -56,7 +56,8 @@ data class EditTransferCallbacks(
     val onCommentChange: (String) -> Unit = {},
     val onSave: (TransferHistory) -> Unit = {},
     val onDelete: (TransferHistory) -> Unit = {},
-    val onShowSnackbar: (String) -> Unit = {} // Callback to show snackbar messages (owned by wrapper)
+    val onShowSnackbar: (String) -> Unit = {},
+    val onCopy: (Int) -> Unit = {}
 )
 
 /**
@@ -459,6 +460,15 @@ fun EditTransferScreenContent(
                     Text("Save")
                 }
                 if (state.isEditMode) {
+                    // Copy Button
+                    Button(
+                        onClick = { callbacks.onCopy(state.transferId) },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
+                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp).testTag(TestTags.COPY_BUTTON)
+                    ) {
+                        Text("Copy")
+                    }
+
                     Button(
                         onClick = { showDeleteDialog = true },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Red),

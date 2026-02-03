@@ -82,7 +82,8 @@ data class EditExpenseCallbacks(
     val onAddPaymentClick: () -> Unit = {},
     val onAddExistingPaymentClick: () -> Unit = {},
     val onRemovePayment: (Expense) -> Unit = {},
-    val onShowSnackbar: (String) -> Unit = {}
+    val onShowSnackbar: (String) -> Unit = {},
+    val onCopy: (Int) -> Unit = {}
 )
 
 /**
@@ -683,6 +684,14 @@ fun EditExpenseScreenContent(
                     Text("Save")
                 }
                 if (state.expenseId > 0) {
+                    Button(
+                        onClick = { callbacks.onCopy(state.expenseId) },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
+                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp).testTag(TestTags.COPY_BUTTON)
+                    ) {
+                        Text("Copy")
+                    }
+                    
                     Button(
                         onClick = { showDeleteDialog = true },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Red),

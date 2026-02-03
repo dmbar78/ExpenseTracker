@@ -24,6 +24,7 @@ object TestTags {
     const val EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND = "editExpense_error_accountNotFound"
     const val EDIT_EXPENSE_ERROR_CATEGORY_NOT_FOUND = "editExpense_error_categoryNotFound"
     const val EDIT_EXPENSE_ERROR_AMOUNT = "editExpense_error_amount"
+    const val COPY_BUTTON = "copyButton"
 
     // AddCategoryScreen
     const val ADD_CATEGORY_ROOT = "addCategory_root"

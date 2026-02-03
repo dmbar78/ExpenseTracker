@@ -48,7 +48,8 @@ fun EditExpenseScreen(
     initialAccountError: Boolean = false,
     initialCategoryError: Boolean = false,
     defaultAccountUsed: Boolean = false,
-    relatedDebtId: Int? = null
+    relatedDebtId: Int? = null,
+    copyFromId: Int? = null
 ) {
     // Retrieve the result from AddCategoryScreen if available
     val createdCategoryName = navController.currentBackStackEntry
@@ -62,10 +63,10 @@ fun EditExpenseScreen(
         ?.getLiveData<String>("createdAccountName")
         ?.observeAsState()
 
-    // Only load from DB if it's an existing expense (ID > 0)
-    LaunchedEffect(expenseId) {
-        if (expenseId > 0) {
-            viewModel.loadExpense(expenseId)
+    // Only load from DB if it's an existing expense (ID > 0) or if we are copying
+    LaunchedEffect(expenseId, copyFromId) {
+        if (expenseId > 0 || copyFromId != null) {
+            viewModel.loadExpense(expenseId, copyFromId)
         }
     }
 
@@ -73,6 +74,8 @@ fun EditExpenseScreen(
     val accounts by viewModel.allAccounts.collectAsState()
     val categories by viewModel.allCategories.collectAsState()
     val keywords by viewModel.allKeywords.collectAsState()
+    // Observe selected/cloned keywords
+    val loadedKeywordIds by viewModel.selectedExpenseKeywords.collectAsState()
     val defaultExpenseAccountId by viewModel.defaultExpenseAccountId.collectAsState()
     
     // Debt State
@@ -135,10 +138,10 @@ fun EditExpenseScreen(
     // Selected keywords state
     var selectedKeywordIds by rememberSaveable { mutableStateOf(emptySet<Int>()) }
     
-    // Load keywords for existing expense
-    LaunchedEffect(expenseId) {
-        if (expenseId > 0) {
-            selectedKeywordIds = viewModel.getKeywordIdsForExpense(expenseId)
+    // Load keywords for existing expense or cloned expense
+    LaunchedEffect(loadedKeywordIds) {
+        if (selectedKeywordIds.isEmpty() && loadedKeywordIds.isNotEmpty()) {
+             selectedKeywordIds = loadedKeywordIds
         }
     }
 
@@ -425,6 +428,9 @@ fun EditExpenseScreen(
                 scope.launch {
                     snackbarHostState.showSnackbar(message)
                 }
+            },
+            onCopy = { sourceId ->
+                navController.navigate("editExpense/0?copyFromId=$sourceId")
             }
         )
         )

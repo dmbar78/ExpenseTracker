@@ -23,6 +23,10 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
     fun getExpenseById(expenseId: Int): Flow<Expense?> {
         return expenseDao.getExpenseById(expenseId)
     }
+
+    suspend fun getExpenseByIdOnce(expenseId: Int): Expense? {
+        return expenseDao.getExpenseByIdOnce(expenseId)
+    }
     
     fun getExpensesByRelatedDebtId(debtId: Int): Flow<List<Expense>> {
         return expenseDao.getExpensesByRelatedDebtId(debtId)

@@ -42,7 +42,8 @@ fun EditTransferScreen(
     initialTransferDateMillis: Long = 0L,
     initialSourceAccountError: Boolean = false,
     initialDestAccountError: Boolean = false,
-    defaultAccountUsed: Boolean = false
+    defaultAccountUsed: Boolean = false,
+    copyFromId: Int? = null
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -54,10 +55,10 @@ fun EditTransferScreen(
     var showSourceError by rememberSaveable { mutableStateOf(initialSourceAccountError) }
     var showDestError by rememberSaveable { mutableStateOf(initialDestAccountError) }
 
-    // Load existing transfer if in edit mode
-    LaunchedEffect(transferId) {
-        if (isEditMode) {
-            viewModel.loadTransfer(transferId)
+    // Load existing transfer if in edit mode or copying
+    LaunchedEffect(transferId, copyFromId) {
+        if (isEditMode || copyFromId != null) {
+            viewModel.loadTransfer(transferId, copyFromId)
         }
     }
 
@@ -108,9 +109,9 @@ fun EditTransferScreen(
         calendar.get(Calendar.DAY_OF_MONTH)
     )
 
-    // Update state from loaded transfer in edit mode
+    // Update state from loaded transfer in edit mode or clone mode
     LaunchedEffect(transfer) {
-        if (isEditMode) {
+        if (isEditMode || copyFromId != null) {
             transfer?.let {
                 sourceAccountName = it.sourceAccount
                 destAccountName = it.destinationAccount
@@ -278,6 +279,9 @@ fun EditTransferScreen(
                 },
                 onShowSnackbar = { message ->
                     scope.launch { snackbarHostState.showSnackbar(message) }
+                },
+                onCopy = { sourceId ->
+                     navController.navigate("editTransfer/0?copyFromId=$sourceId")
                 }
             ),
             modifier = Modifier.padding(paddingValues)

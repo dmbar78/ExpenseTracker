@@ -18,8 +18,12 @@ class TransferHistoryRepository(private val transferHistoryDao: TransferHistoryD
         transferHistoryDao.delete(transferHistory)
     }
 
-    fun getTransferById(transferId: Int): Flow<TransferHistory> {
+    fun getTransferById(transferId: Int): Flow<TransferHistory?> {
         return transferHistoryDao.getTransferById(transferId)
+    }
+
+    suspend fun getTransferByIdOnce(transferId: Int): TransferHistory? {
+        return transferHistoryDao.getTransferByIdOnce(transferId)
     }
 
     suspend fun getCountByAccount(accountName: String): Int {
