@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.expensetracker.data.*
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -18,8 +19,10 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
-class ExpenseViewModel(
+@HiltViewModel
+class ExpenseViewModel @Inject constructor(
     application: Application,
     private val expenseRepository: ExpenseRepository,
     private val accountRepository: AccountRepository,
@@ -38,6 +41,10 @@ class ExpenseViewModel(
     companion object {
         private const val TAG = "VoiceDateParse"
 
+        /**
+         * @deprecated Use Hilt injection instead. This factory is kept for backward compatibility.
+         */
+        @Deprecated("Use Hilt injection instead")
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(

@@ -33,14 +33,16 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.expensetracker.ui.dialogs.VoiceRecognitionDialogs
 import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
 import com.example.expensetracker.viewmodel.ExpenseViewModel
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+@AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
     private var speechRecognizer: SpeechRecognizer? = null
-    internal val viewModel: ExpenseViewModel by viewModels { ExpenseViewModel.Factory }
+    internal val viewModel: ExpenseViewModel by viewModels()
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
