@@ -40,17 +40,17 @@ fun FilterIconButton(
         onClick = onClick,
         modifier = modifier,
         containerColor = if (hasActiveFilters) 
-            MaterialTheme.colorScheme.primary 
+            MaterialTheme.colorScheme.tertiary 
         else 
-            MaterialTheme.colorScheme.surfaceVariant
+            MaterialTheme.colorScheme.primary,
+        contentColor = if (hasActiveFilters)
+            MaterialTheme.colorScheme.onTertiary
+        else
+            MaterialTheme.colorScheme.onPrimary
     ) {
         Icon(
             imageVector = Icons.Default.FilterList,
-            contentDescription = "Filter",
-            tint = if (hasActiveFilters) 
-                MaterialTheme.colorScheme.onPrimary 
-            else 
-                MaterialTheme.colorScheme.onSurfaceVariant
+            contentDescription = "Filter"
         )
     }
 }

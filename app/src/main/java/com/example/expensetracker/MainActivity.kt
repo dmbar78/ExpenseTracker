@@ -146,7 +146,11 @@ class MainActivity : FragmentActivity() {
                 },
                 floatingActionButton = {
                     if (showFabs) {
-                        FloatingActionButton(onClick = { startVoiceRecognition() }) {
+                        FloatingActionButton(
+                            onClick = { startVoiceRecognition() },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ) {
                             Icon(Icons.Default.Mic, contentDescription = "Start Recognition")
                         }
                     }
@@ -166,7 +170,9 @@ class MainActivity : FragmentActivity() {
                         ) {
                             FloatingActionButton(
                                 onClick = { isPlusMenuExpanded = true },
-                                modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_BUTTON)
+                                modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_BUTTON),
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "Create")
                             }
