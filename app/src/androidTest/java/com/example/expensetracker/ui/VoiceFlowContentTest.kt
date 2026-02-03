@@ -102,7 +102,8 @@ class VoiceFlowContentTest {
 
         val callbacks = EditExpenseCallbacks(
             onSave = { savedExpense = it },
-            onSaveWithKeywords = { expense, _ -> savedExpense = expense }
+            onSaveWithKeywords = { expense, _ -> savedExpense = expense },
+            onSaveDebt = { expense, _, _ -> savedExpense = expense }
         )
 
         composeTestRule.setContent {
@@ -160,6 +161,7 @@ class VoiceFlowContentTest {
         val callbacks = EditExpenseCallbacks(
             onSave = { savedExpense = it },
             onSaveWithKeywords = { expense, _ -> savedExpense = expense },
+            onSaveDebt = { expense, _, _ -> savedExpense = expense },
             onCreateNewCategory = { categoryText ->
                 createNewCategoryCalled = true
                 passedCategoryText = categoryText
@@ -213,7 +215,8 @@ class VoiceFlowContentTest {
 
         val callbacks = EditExpenseCallbacks(
             onSave = { savedExpense = it },
-            onSaveWithKeywords = { expense, _ -> savedExpense = expense }
+            onSaveWithKeywords = { expense, _ -> savedExpense = expense },
+            onSaveDebt = { expense, _, _ -> savedExpense = expense }
         )
 
         composeTestRule.setContent {
@@ -265,7 +268,8 @@ class VoiceFlowContentTest {
 
         val callbacks = EditExpenseCallbacks(
             onSave = { savedExpense = it },
-            onSaveWithKeywords = { expense, _ -> savedExpense = expense }
+            onSaveWithKeywords = { expense, _ -> savedExpense = expense },
+            onSaveDebt = { expense, _, _ -> savedExpense = expense }
         )
 
         composeTestRule.setContent {
@@ -372,6 +376,7 @@ class VoiceFlowContentTest {
         val callbacks = EditExpenseCallbacks(
             onSave = { savedExpense = it },
             onSaveWithKeywords = { expense, _ -> savedExpense = expense },
+            onSaveDebt = { expense, _, _ -> savedExpense = expense },
             onValidationFailed = { _, _, _ -> validationFailedCalled = true }
         )
 
@@ -791,6 +796,7 @@ class VoiceFlowContentTest {
         val callbacks = EditExpenseCallbacks(
             onSave = { savedExpense = it },
             onSaveWithKeywords = { expense, _ -> savedExpense = expense },
+            onSaveDebt = { expense, _, _ -> savedExpense = expense },
             onAccountSelect = {}
         )
 
@@ -852,7 +858,8 @@ class VoiceFlowContentTest {
 
         val callbacks = EditExpenseCallbacks(
             onSave = { savedExpense = it },
-            onSaveWithKeywords = { expense, _ -> savedExpense = expense }
+            onSaveWithKeywords = { expense, _ -> savedExpense = expense },
+            onSaveDebt = { expense, _, _ -> savedExpense = expense }
         )
 
         composeTestRule.setContent {
@@ -961,6 +968,7 @@ class VoiceFlowContentTest {
 
         val callbacks = EditExpenseCallbacks(
             onSaveWithKeywords = { expense, _ -> savedExpense = expense },
+            onSaveDebt = { expense, _, _ -> savedExpense = expense },
             onAccountSelect = {}
         )
 
@@ -1048,7 +1056,8 @@ class VoiceFlowContentTest {
         )
 
         val callbacks = EditExpenseCallbacks(
-            onSaveWithKeywords = { _, _ -> saveCount++ }
+            onSaveWithKeywords = { _, _ -> saveCount++ },
+            onSaveDebt = { _, _, _ -> saveCount++ }
         )
 
         composeTestRule.setContent {
