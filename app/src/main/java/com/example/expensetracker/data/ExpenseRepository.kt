@@ -43,4 +43,7 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
     suspend fun updateCategoryName(oldName: String, newName: String) {
         expenseDao.updateCategoryName(oldName, newName)
     }
+    suspend fun getPotentialDebtPayments(type: String): List<Expense> {
+        return expenseDao.getPotentialDebtPayments(type)
+    }
 }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -79,6 +80,8 @@ data class EditExpenseCallbacks(
     val onDebtCheckedChange: (Boolean) -> Unit = {},
     val onPaymentClick: (Expense) -> Unit = {},
     val onAddPaymentClick: () -> Unit = {},
+    val onAddExistingPaymentClick: () -> Unit = {},
+    val onRemovePayment: (Expense) -> Unit = {},
     val onShowSnackbar: (String) -> Unit = {}
 )
 
@@ -537,6 +540,18 @@ fun EditExpenseScreenContent(
                                              }
                                          }
                                      }
+                                     
+                                     // Remove Button
+                                     IconButton(
+                                         onClick = { callbacks.onRemovePayment(payment) },
+                                         modifier = Modifier.testTag("removePaymentButton_${payment.id}")
+                                     ) {
+                                         Icon(
+                                             imageVector = Icons.Default.Remove,
+                                             contentDescription = "Remove Payment",
+                                             tint = MaterialTheme.colorScheme.error
+                                         )
+                                     }
                                  }
                              }
                         }
@@ -552,20 +567,38 @@ fun EditExpenseScreenContent(
                     // "Make the 'Debt' text clickable... The '+' button should open..."
                     // It implies a way to add payment. A dedicated button here is clear.
                     
-                    Button(
-                        onClick = { 
-                            if (state.expenseId > 0 && state.debtId != null) {
-                                callbacks.onAddPaymentClick() 
-                            } else {
-                                val msg = "Save ${state.type.lowercase(Locale.getDefault())} before creating the payment!"
-                                callbacks.onShowSnackbar(msg)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().testTag("addPaymentButton")
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Payment")
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = { 
+                                if (state.expenseId > 0 && state.debtId != null) {
+                                    callbacks.onAddPaymentClick() 
+                                } else {
+                                    val msg = "Save ${state.type.lowercase(Locale.getDefault())} before creating the payment!"
+                                    callbacks.onShowSnackbar(msg)
+                                }
+                            },
+                            modifier = Modifier.weight(1f).padding(end = 4.dp).testTag("addPaymentButton")
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Add New")
+                        }
+
+                        Button(
+                            onClick = {
+                                if (state.expenseId > 0 && state.debtId != null) {
+                                    callbacks.onAddExistingPaymentClick()
+                                } else {
+                                    val msg = "Save ${state.type.lowercase(Locale.getDefault())} before adding payments!"
+                                    callbacks.onShowSnackbar(msg)
+                                }
+                            },
+                            modifier = Modifier.weight(1f).padding(start = 4.dp).testTag("addExistingPaymentButton")
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Add Existing")
+                        }
                     }
                 }
 

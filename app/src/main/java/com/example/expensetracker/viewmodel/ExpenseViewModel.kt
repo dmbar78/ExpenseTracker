@@ -783,6 +783,27 @@ class ExpenseViewModel(
         }
         return conversionMap
     }
+
+    suspend fun getPotentialDebtPayments(type: String): List<Expense> {
+        return expenseRepository.getPotentialDebtPayments(type)
+    }
+
+    fun linkExpenseToDebt(expenseId: Int, debtId: Int) = viewModelScope.launch {
+        // We need to update the expense to have relatedDebtId
+        val expense = expenseRepository.getExpenseById(expenseId).firstOrNull()
+        if (expense != null) {
+            updateExpense(expense.copy(relatedDebtId = debtId))
+            // Recalculate debt status
+            checkAndUpdateDebtStatus(debtId)
+        }
+    }
+
+    fun unlinkExpenseFromDebt(expense: Expense) = viewModelScope.launch {
+        // Set relatedDebtId to null
+        updateExpense(expense.copy(relatedDebtId = null))
+        // Recalculate debt status if it was linked
+        expense.relatedDebtId?.let { checkAndUpdateDebtStatus(it) }
+    }
     
     // ==================== End Debt Methods ====================
 

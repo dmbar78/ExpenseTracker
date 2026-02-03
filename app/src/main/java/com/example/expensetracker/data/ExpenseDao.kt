@@ -47,6 +47,9 @@ interface ExpenseDao {
     @Query("UPDATE expenses SET category = :newName WHERE category = :oldName")
     suspend fun updateCategoryName(oldName: String, newName: String)
 
+    @Query("SELECT * FROM expenses WHERE type = :type AND relatedDebtId IS NULL ORDER BY expenseDate DESC")
+    suspend fun getPotentialDebtPayments(type: String): List<Expense>
+
     @Query("DELETE FROM expenses")
     suspend fun deleteAll()
 }

@@ -18,6 +18,12 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.repeatOnLifecycle
 import java.math.BigDecimal
 import java.util.*
+import androidx.compose.ui.res.painterResource
+import com.example.expensetracker.data.Expense
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.items
 
 /**
  * Thin wrapper for EditExpenseScreen.
@@ -88,8 +94,13 @@ fun EditExpenseScreen(
              val currency = account?.currency ?: expense?.currency ?: "USD" // Fallback
              debtPaidAmount = viewModel.calculateDebtPaidAmount(debt!!.id, currency)
              debtPaymentConvertedAmounts = viewModel.getConvertedPaymentAmounts(debtPayments, currency)
+             debtPaymentConvertedAmounts = viewModel.getConvertedPaymentAmounts(debtPayments, currency)
         }
     }
+    
+    // Dialog state for "Add Existing"
+    var showAddExistingDialog by remember { mutableStateOf(false) }
+    var potentialPayments by remember { mutableStateOf<List<Expense>>(emptyList()) }
     
     // Snackbar state for error and success messages
     val snackbarHostState = remember { SnackbarHostState() }
@@ -326,23 +337,29 @@ fun EditExpenseScreen(
             onDateClick = { datePickerDialog.show() },
             onCommentChange = { comment = it },
             onDebtCheckedChange = { isDebt = it },
+
             onPaymentClick = { payment -> 
                 navController.navigate("editExpense/${payment.id}") 
             },
             onAddPaymentClick = {
-                 // Logic: If Debt is Expense, add Income payment? Or Expense payment?
-                 // Usually calculating net debt. If I have a Debt (I owe money), I pay it with an Expense.
-                 // If I have a Debt (someone owes me - maybe modeled as Income/Asset?), then they pay me with Income.
-                 // Here, the 'type' of the parent expense determines the nature of the debt.
-                 // If Parent is 'Expense' (I spent money -> I borrowed it? Or I lent it?).
-                 // Let's assume:
-                 // Expense + Debt = I owe someone (e.g. Credit Card later). I pay it off with another Expense (transfer?) No, usually Debt is liability.
-                 // The requirement: "The '+' button should open EditExpenseScreen of type Income if a debt is created from an expense, and vice versa."
-                 // So: Parent=Expense -> Payment=Income. Parent=Income -> Payment=Expense.
                  val paymentType = if (type == "Expense") "Income" else "Expense"
                  val relatedDebtIdVal = debt?.id
                  if (relatedDebtIdVal != null) {
-                     navController.navigate("editExpense/0?type=$paymentType&relatedDebtId=$relatedDebtIdVal")
+                     // Prefill category from parent expense
+                     val categoryNameArg = if (category.isNotEmpty()) "&categoryName=$category" else ""
+                     navController.navigate("editExpense/0?type=$paymentType&relatedDebtId=$relatedDebtIdVal$categoryNameArg")
+                 }
+            },
+            onAddExistingPaymentClick = {
+                 val paymentType = if (type == "Expense") "Income" else "Expense"
+                 scope.launch {
+                     potentialPayments = viewModel.getPotentialDebtPayments(paymentType)
+                     showAddExistingDialog = true
+                 }
+            },
+            onRemovePayment = { paymentToRemove ->
+                 scope.launch {
+                     viewModel.unlinkExpenseFromDebt(paymentToRemove)
                  }
             },
             onSaveDebt = { expenseToSave, keywordIds, isDebtChecked ->
@@ -410,6 +427,48 @@ fun EditExpenseScreen(
                 }
             }
         )
+        )
+    }
+    
+    if (showAddExistingDialog) {
+        val paymentType = if (type == "Expense") "Income" else "Expense"
+        AlertDialog(
+            onDismissRequest = { showAddExistingDialog = false },
+            title = { Text("Select Existing Payment") },
+            text = {
+                if (potentialPayments.isEmpty()) {
+                    Text("No unlinked $paymentType records found.")
+                } else {
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        modifier = Modifier.heightIn(max = 300.dp)
+                    ) {
+                        items(potentialPayments.size) { index ->
+                            val payment = potentialPayments[index]
+                            ListItem(
+                                headlineContent = { Text("${payment.amount} ${payment.currency}") },
+                                supportingContent = { 
+                                    Text("${payment.category} • ${java.text.SimpleDateFormat("MMM dd", Locale.getDefault()).format(Date(payment.expenseDate))}") 
+                                },
+                                modifier = Modifier.clickable {
+                                    val currentDebtId = debt?.id
+                                    if (currentDebtId != null) {
+                                        scope.launch {
+                                            viewModel.linkExpenseToDebt(payment.id, currentDebtId)
+                                            showAddExistingDialog = false
+                                        }
+                                    }
+                                }
+                            )
+                            Divider()
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAddExistingDialog = false }) {
+                    Text("Close")
+                }
+            }
         )
     }
 }
