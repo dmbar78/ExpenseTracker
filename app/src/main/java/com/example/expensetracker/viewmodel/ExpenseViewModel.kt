@@ -1118,6 +1118,12 @@ class ExpenseViewModel(
             
             // Delete the expense itself
             ledgerRepository.deleteExpense(expense.id)
+
+            // CAUTION: If this expense was a payment for a debt, we must update that debt's status
+            // e.g. if it was Closed, it might need to become Open again if we deleted the final payment.
+            expense.relatedDebtId?.let { debtId ->
+                checkAndUpdateDebtStatus(debtId)
+            }
         } catch (e: Exception) {
             _errorChannel.send(e.message ?: "Failed to delete expense.")
         }
