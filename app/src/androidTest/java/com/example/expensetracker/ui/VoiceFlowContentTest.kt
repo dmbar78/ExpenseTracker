@@ -1167,6 +1167,15 @@ class PlusMenuWiringTest {
     @Before
     fun init() {
         hiltRule.inject()
+        // Ensure clean state
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val db = com.example.expensetracker.data.AppDatabase.getDatabase(context)
+        kotlinx.coroutines.runBlocking {
+            db.expenseDao().deleteAll()
+            db.transferHistoryDao().deleteAll()
+            db.accountDao().deleteAll()
+            db.categoryDao().deleteAll()
+        }
     }
 
     @Test
@@ -1184,34 +1193,87 @@ class PlusMenuWiringTest {
     }
 
     @Test
-    fun plusMenu_createExpense_navigatesToEditExpense_andPlusHidden() {
+    fun plusMenu_createExpense_navigatesToEditExpense_andVerifyInitialState() {
+        // 1. Open Menu and Click Expense
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_EXPENSE).performClick()
 
-        // Assert we reached EditExpenseScreen (real screen tag)
+        // 2. Assert Navigation and Plus Button Hidden
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_DATE_FIELD).assertIsDisplayed()
-
-        // Plus button should be hidden on edit screens
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).assertDoesNotExist()
+
+        // 3. Verify Initial State (Empty/Default)
+        // Date: Should be today
+        val today = java.text.SimpleDateFormat("dd MMMM yyyy", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        composeTestRule.onNodeWithText(today).assertExists()
+
+        // Amount: Empty (Displays Label "Amount")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
+            .assertTextContains("Amount")
+
+        // Account: Empty (Displays Label "Account")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE)
+            .assertTextContains("Account")
+
+        // Category: Empty (Displays Label "Category")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE)
+            .assertTextContains("Category")
+
+        // Comment: Empty (Displays Label "Comment")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD)
+            .assertTextContains("Comment")
     }
 
     @Test
-    fun plusMenu_createIncome_navigatesToEditExpense_andPlusHidden() {
+    fun plusMenu_createIncome_navigatesToEditExpense_andVerifyInitialState() {
+        // 1. Open Menu and Click Income
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_INCOME).performClick()
 
+        // 2. Assert Navigation
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_DATE_FIELD).assertIsDisplayed()
-        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).assertDoesNotExist()
+        
+        // 3. Verify Initial State
+        val today = java.text.SimpleDateFormat("dd MMMM yyyy", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        composeTestRule.onNodeWithText(today).assertExists()
+
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains("Amount")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE).assertTextContains("Account")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE).assertTextContains("Category")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD).assertTextContains("Comment")
     }
 
     @Test
-    fun plusMenu_createTransfer_navigatesToEditTransfer_andPlusHidden() {
+    fun plusMenu_createTransfer_navigatesToEditTransfer_andVerifyInitialState() {
+        // 1. Open Menu and Click Transfer
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_TRANSFER).performClick()
 
-        // Assert we reached EditTransferScreen (real screen tag)
+        // 2. Assert Navigation
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DATE_FIELD).assertIsDisplayed()
-
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).assertDoesNotExist()
+
+        // 3. Verify Initial State
+        val today = java.text.SimpleDateFormat("dd MMMM yyyy", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        composeTestRule.onNodeWithText(today).assertExists()
+
+        // Amount: Empty (Label "Source Amount")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD)
+            .assertTextContains("Source Amount")
+
+        // Source Account: Empty (Label "From")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SOURCE_VALUE)
+            .assertTextContains("From")
+
+        // Destination Account: Empty (Label "To")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DESTINATION_VALUE)
+            .assertTextContains("To")
+
+        // Comment: Empty (Label "Comment")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_COMMENT_FIELD)
+            .assertTextContains("Comment")
     }
 }
