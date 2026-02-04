@@ -7,6 +7,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import com.example.expensetracker.MainActivity
 import com.example.expensetracker.viewmodel.VoiceRecognitionState
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Before
@@ -19,20 +21,25 @@ import org.junit.runner.RunWith
  * These tests run the full app with MainActivity and test voice recognition
  * behavior with various database states.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class VoiceRecognitionIntegrationTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val permissionRule: GrantPermissionRule =
         GrantPermissionRule.grant(Manifest.permission.RECORD_AUDIO)
 
-    @get:Rule
+    @get:Rule(order = 2)
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
     private lateinit var viewModel: com.example.expensetracker.viewmodel.ExpenseViewModel
 
     @Before
     fun setup() {
+        hiltRule.inject()
         composeTestRule.waitForIdle()
         
         // Get the ViewModel from the activity
@@ -54,8 +61,13 @@ class VoiceRecognitionIntegrationTest {
             // Voice tests depend on "Food" category in one test case.
         }
         
-        // Wait for ViewModel to reflect state
-        composeTestRule.waitUntil(timeoutMillis = 5000) {
+        // Give ViewModel StateFlows time to initialize and collect from the database
+        // After Hilt migration, StateFlows need a moment to collect their initial values
+        Thread.sleep(300)
+        composeTestRule.waitForIdle()
+        
+        // Verify state is ready (with increased timeout for Hilt initialization)
+        composeTestRule.waitUntil(timeoutMillis = 10000) {
             viewModel.allAccounts.value.isEmpty()
         }
     }

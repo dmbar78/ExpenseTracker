@@ -13,7 +13,10 @@ import com.example.expensetracker.data.Expense
 import com.example.expensetracker.data.Keyword
 import com.example.expensetracker.data.TransferHistory
 import com.example.expensetracker.ui.screens.content.*
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -1144,18 +1147,27 @@ class VoiceFlowContentTest {
  * Instrumented wiring tests for the global "+" create menu.
  * These run the real app NavGraph via MainActivity and verify the menu navigates correctly.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class PlusMenuWiringTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val permissionRule: GrantPermissionRule =
         GrantPermissionRule.grant(
             Manifest.permission.RECORD_AUDIO
             // add others if your app requests them
         )
     
-    @get:Rule
+    @get:Rule(order = 2)
     val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Before
+    fun init() {
+        hiltRule.inject()
+    }
 
     @Test
     fun plusMenu_opensAndShowsAllItems() {

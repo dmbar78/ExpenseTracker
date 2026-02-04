@@ -11,20 +11,32 @@ import com.example.expensetracker.data.Category
 import com.example.expensetracker.data.Currency
 import com.example.expensetracker.data.Expense
 import com.example.expensetracker.data.TransferHistory
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.math.BigDecimal
 
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class AccountDeletionSafeguardTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val permissionRule: GrantPermissionRule =
         GrantPermissionRule.grant(Manifest.permission.RECORD_AUDIO)
 
-    @get:Rule
+    @get:Rule(order = 2)
     val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Before
+    fun init() {
+        hiltRule.inject()
+    }
 
     private fun clearDatabase() {
         val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -49,8 +61,13 @@ class AccountDeletionSafeguardTest {
         composeTestRule.onNodeWithText("Accounts").performClick()
         composeTestRule.waitForIdle()
 
-        // Wait for the account to appear
-        composeTestRule.waitUntil(timeoutMillis = 5000) {
+        // Give ViewModel StateFlows time to initialize and load accounts after Hilt injection
+        // After Hilt migration, StateFlows need a moment to collect their initial values
+        Thread.sleep(300)
+        composeTestRule.waitForIdle()
+
+        // Wait for the account to appear (increased timeout for Hilt initialization)
+        composeTestRule.waitUntil(timeoutMillis = 10000) {
             composeTestRule.onAllNodesWithText(accountName, substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }

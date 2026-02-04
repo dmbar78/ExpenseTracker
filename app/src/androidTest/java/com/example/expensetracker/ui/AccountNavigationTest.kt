@@ -6,17 +6,28 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.expensetracker.MainActivity
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Expense
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.math.BigDecimal
 
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class AccountNavigationTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
+    @Before
+    fun init() {
+        hiltRule.inject()
+    }
 
     private fun clearDatabase() {
         val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
