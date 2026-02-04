@@ -165,6 +165,29 @@ class ExpenseViewModel @Inject constructor(
 
     private val _clonedTransfer = MutableStateFlow<TransferHistory?>(null)
     private val _selectedTransferId = MutableStateFlow<Int?>(null)
+    
+    /**
+     * Synchronously clears any cloned expense data.
+     * Call this when creating a new expense (not copying) to ensure no stale data.
+     */
+    /**
+     * Synchronously clears any cloned expense data AND selected ID.
+     * Call this when creating a new expense (not copying) to ensure no stale data.
+     */
+    fun clearClonedExpense() {
+        _clonedExpense.value = null
+        _selectedExpenseId.value = null
+    }
+    
+    /**
+     * Synchronously clears any cloned transfer data AND selected ID.
+     * Call this when creating a new transfer (not copying) to ensure no stale data.
+     */
+    fun clearClonedTransfer() {
+        _clonedTransfer.value = null
+        _selectedTransferId.value = null
+    }
+    
     val selectedTransfer: StateFlow<TransferHistory?> = combine(_selectedTransferId, _clonedTransfer) { id, cloned ->
         if (cloned != null && (id == null || id == 0)) {
              cloned

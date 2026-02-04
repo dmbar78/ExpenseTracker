@@ -55,11 +55,10 @@ fun EditTransferScreen(
     var showSourceError by rememberSaveable { mutableStateOf(initialSourceAccountError) }
     var showDestError by rememberSaveable { mutableStateOf(initialDestAccountError) }
 
-    // Load existing transfer if in edit mode or copying
+    // Load from DB if editing, copying, OR creating new (to clear any previous clone state)
     LaunchedEffect(transferId, copyFromId) {
-        if (isEditMode || copyFromId != null) {
-            viewModel.loadTransfer(transferId, copyFromId)
-        }
+        // Always call loadTransfer to ensure clean state
+        viewModel.loadTransfer(transferId, copyFromId)
     }
 
     // Track saving state to prevent double-saves
@@ -80,6 +79,14 @@ fun EditTransferScreen(
         viewModel.errorFlow.collect { message ->
             snackbarHostState.showSnackbar(message)
         }
+    }
+
+    // CRITICAL: Clear any stale cloned data SYNCHRONOUSLY before observing flows
+    remember(transferId, copyFromId) {
+        if (transferId == 0 && copyFromId == null) {
+            viewModel.clearClonedTransfer()
+        }
+        true
     }
 
     val transfer by viewModel.selectedTransfer.collectAsState()
@@ -110,7 +117,8 @@ fun EditTransferScreen(
     )
 
     // Update state from loaded transfer in edit mode or clone mode
-    LaunchedEffect(transfer) {
+    // Also RESET fields when creating new transfer
+    LaunchedEffect(transfer, transferId, copyFromId) {
         if (isEditMode || copyFromId != null) {
             transfer?.let {
                 sourceAccountName = it.sourceAccount
@@ -120,6 +128,27 @@ fun EditTransferScreen(
                 currency = it.currency
                 date = it.date
                 comment = it.comment ?: ""
+            }
+        } else if (transferId == 0 && copyFromId == null && transfer == null) {
+            // Creating new transfer - reset form fields
+            // Force reset to initial values (empty or voice) to clear any stale state
+            // This is CRITICAL for Voice Flow to prevent rememberSaveable from restoring stale data
+            sourceAccountName = initialSourceAccountName ?: ""
+            destAccountName = initialDestAccountName ?: ""
+            amount = initialAmount?.toPlainString() ?: ""
+            destAmount = initialDestAmount?.toPlainString() ?: ""
+            comment = ""
+            
+            date = if (initialTransferDateMillis > 0L) initialTransferDateMillis else System.currentTimeMillis()
+            currency = ""
+            
+            // If creating new from voice, try to set currency if source account is valid
+            // We replicate this here because the separate LaunchedEffect might have already run and we just overwrote currency=""
+            if (initialSourceAccountName != null && !initialSourceAccountError) {
+                val sourceAccount = accounts.find { it.name.equals(initialSourceAccountName, ignoreCase = true) }
+                if (sourceAccount != null) {
+                    currency = sourceAccount.currency
+                }
             }
         }
     }
@@ -135,7 +164,8 @@ fun EditTransferScreen(
     }
     
     // Pre-populate default source account logic
-    LaunchedEffect(accounts, defaultTransferAccountId) {
+    // Add sourceAccountName to keys to re-trigger when reset
+    LaunchedEffect(accounts, defaultTransferAccountId, sourceAccountName) {
         if (!isEditMode && sourceAccountName.isEmpty() && initialSourceAccountName.isNullOrBlank()) {
              defaultTransferAccountId?.let { id ->
                  val defaultAccount = accounts.find { it.id == id }

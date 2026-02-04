@@ -63,11 +63,19 @@ fun EditExpenseScreen(
         ?.getLiveData<String>("createdAccountName")
         ?.observeAsState()
 
-    // Only load from DB if it's an existing expense (ID > 0) or if we are copying
-    LaunchedEffect(expenseId, copyFromId) {
-        if (expenseId > 0 || copyFromId != null) {
-            viewModel.loadExpense(expenseId, copyFromId)
+    // CRITICAL: Clear any stale cloned data SYNCHRONOUSLY before observing flows
+    // This fixes the race condition where stale cloned data is observed before LaunchedEffect runs
+    remember(expenseId, copyFromId) {
+        if (expenseId == 0 && copyFromId == null) {
+            viewModel.clearClonedExpense()
         }
+        true // Return value for remember
+    }
+
+    // Load from DB if editing, copying, OR creating new (to clear any previous clone state)
+    LaunchedEffect(expenseId, copyFromId) {
+        // Always call loadExpense to ensure clean state (clears _clonedExpense when creating new)
+        viewModel.loadExpense(expenseId, copyFromId)
     }
 
     val expense by viewModel.selectedExpense.collectAsState()
@@ -213,7 +221,8 @@ fun EditExpenseScreen(
     }
 
     // Update state if loading an existing expense from DB OR if we have a cloned expense
-    LaunchedEffect(expense) {
+    // Also RESET fields when expense becomes null for new expense creation
+    LaunchedEffect(expense, expenseId, copyFromId) {
         if (expense != null) {
             amount = expense!!.amount.toPlainString()
             accountName = expense!!.account
@@ -225,14 +234,35 @@ fun EditExpenseScreen(
             // Reset errors when loading valid expense data
             accountError = false
             categoryError = false
-        } else if (expenseId == 0) {
-             // If creating new from voice (and no cloned expense), try to set currency if account is valid
-             if (initialAccountName != null && !initialAccountError) {
-                 val account = accounts.find { it.name.equals(initialAccountName, ignoreCase = true) }
-                 if (account != null) {
-                     currency = account.currency
-                 }
-             }
+        } else if (expenseId == 0 && copyFromId == null) {
+            // Creating new expense (not editing, not copying) - reset form fields
+            // Force reset to initial values (empty or voice detection) to clear any stale state
+            // This is CRITICAL for Voice Flow: prevent rememberSaveable from restoring stale data
+            amount = initialAmount?.toPlainString() ?: ""
+            comment = ""
+            selectedKeywordIds = emptySet()
+            
+            // Reset to current date for new expenses
+            expenseDate = if (initialExpenseDateMillis > 0L) initialExpenseDateMillis else System.currentTimeMillis()
+            
+            // Reset account and category
+            accountName = initialAccountName ?: ""
+            category = initialCategoryName ?: ""
+            
+            // Type comes from nav arg for new expenses
+            type = initialType ?: "Expense"
+            isDebt = false
+            
+            // Currency will be set when account is selected or default is applied
+            currency = ""
+            
+            // If creating new from voice (and no cloned expense), try to set currency if account is valid
+            if (initialAccountName != null && !initialAccountError) {
+                val account = accounts.find { it.name.equals(initialAccountName, ignoreCase = true) }
+                if (account != null) {
+                    currency = account.currency
+                }
+            }
         }
     }
 
@@ -256,7 +286,8 @@ fun EditExpenseScreen(
     }
 
     // Pre-populate default account if creating new expense and no account specified
-    LaunchedEffect(accounts, defaultExpenseAccountId) {
+    // Add accountName to keys so it re-runs when accountName is reset to empty
+    LaunchedEffect(accounts, defaultExpenseAccountId, accountName) {
         if (expenseId == 0 && accountName.isEmpty() && (initialAccountName.isNullOrBlank())) {
              defaultExpenseAccountId?.let { id ->
                  val defaultAccount = accounts.find { it.id == id }
