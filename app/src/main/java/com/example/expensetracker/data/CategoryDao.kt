@@ -23,7 +23,7 @@ interface CategoryDao {
     fun getAllCategories(): Flow<List<Category>>
 
     @Query("SELECT * FROM categories WHERE id = :categoryId")
-    fun getCategoryById(categoryId: Int): Flow<Category>
+    fun getCategoryById(categoryId: Int): Flow<Category?>
 
     // Backup/Restore operations
     @Query("SELECT * FROM categories ORDER BY id ASC")
