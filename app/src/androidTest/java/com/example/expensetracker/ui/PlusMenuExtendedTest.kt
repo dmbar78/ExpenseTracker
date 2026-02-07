@@ -324,4 +324,46 @@ class PlusMenuExtendedTest {
     // Manual testing verifies this behavior works correctly.
 
 
+    @Test
+    fun plusMenu_createExpense_addNewCategory_preservesFields() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val db = com.example.expensetracker.data.AppDatabase.getDatabase(context)
+
+        // Step 1: Open new expense
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
+        composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_EXPENSE).performClick()
+        composeTestRule.waitForIdle()
+
+        // Step 2: Fill amount and comment
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
+            .performClick()
+            .performTextInput("123.45")
+
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD)
+            .performClick()
+            .performTextInput("Test Comment Preservation")
+
+        // Step 3: Open Category Dropdown and Select 'Create New...'
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN).performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_CREATE_NEW).performClick()
+        composeTestRule.waitForIdle()
+
+        // Step 4: Add New Category
+        composeTestRule.onNodeWithTag(TestTags.ADD_CATEGORY_NAME_FIELD).performTextInput("New Cat From Test")
+        composeTestRule.onNodeWithTag(TestTags.ADD_CATEGORY_SAVE).performClick()
+        composeTestRule.waitForIdle()
+
+        // Step 5: Verify preservation
+        // The screen should now be EditExpenseScreen again
+        // Fields should be preserved
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD).assertTextContains("Test Comment Preservation")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains("123.45")
+        
+        // Category should be updated
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE).assertTextContains("New Cat From Test")
+    }
+
+
+
 }

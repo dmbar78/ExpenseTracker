@@ -255,10 +255,13 @@ fun EditExpenseScreen(
         }
     }
 
+    // State to track if the form has been initialized to prevent resetting on navigation return
+    var hasInitialized by rememberSaveable { mutableStateOf(false) }
+
     // Update state if loading an existing expense from DB OR if we have a cloned expense
     // Also RESET fields when expense becomes null for new expense creation
     LaunchedEffect(expense, expenseId, copyFromId) {
-        if (expense != null) {
+        if (expense != null && expense!!.id == expenseId) {
             amount = expense!!.amount.toPlainString()
             accountName = expense!!.account
             category = expense!!.category
@@ -269,34 +272,39 @@ fun EditExpenseScreen(
             // Reset errors when loading valid expense data
             accountError = false
             categoryError = false
+            hasInitialized = true
         } else if (expenseId == 0 && copyFromId == null) {
-            // Creating new expense (not editing, not copying) - reset form fields
-            // Force reset to initial values (empty or voice detection) to clear any stale state
-            // This is CRITICAL for Voice Flow: prevent rememberSaveable from restoring stale data
-            amount = initialAmount?.toPlainString() ?: ""
-            comment = ""
-            selectedKeywordIds = emptySet()
-            
-            // Reset to current date for new expenses
-            expenseDate = if (initialExpenseDateMillis > 0L) initialExpenseDateMillis else System.currentTimeMillis()
-            
-            // Reset account and category
-            accountName = initialAccountName ?: ""
-            category = initialCategoryName ?: ""
-            
-            // Type comes from nav arg for new expenses
-            type = initialType ?: "Expense"
-            isDebt = false
-            
-            // Currency will be set when account is selected or default is applied
-            currency = ""
-            
-            // If creating new from voice (and no cloned expense), try to set currency if account is valid
-            if (initialAccountName != null && !initialAccountError) {
-                val account = accounts.find { it.name.equals(initialAccountName, ignoreCase = true) }
-                if (account != null) {
-                    currency = account.currency
+            // Creating new expense (not editing, not copying)
+            // Only reset if we haven't initialized yet (to preserve state when returning from sub-screens)
+            if (!hasInitialized) {
+                // Force reset to initial values (empty or voice detection) to clear any stale state
+                // This is CRITICAL for Voice Flow: prevent rememberSaveable from restoring stale data
+                amount = initialAmount?.toPlainString() ?: ""
+                comment = ""
+                selectedKeywordIds = emptySet()
+                
+                // Reset to current date for new expenses
+                expenseDate = if (initialExpenseDateMillis > 0L) initialExpenseDateMillis else System.currentTimeMillis()
+                
+                // Reset account and category
+                accountName = initialAccountName ?: ""
+                category = initialCategoryName ?: ""
+                
+                // Type comes from nav arg for new expenses
+                type = initialType ?: "Expense"
+                isDebt = false
+                
+                // Currency will be set when account is selected or default is applied
+                currency = ""
+                
+                // If creating new from voice (and no cloned expense), try to set currency if account is valid
+                if (initialAccountName != null && !initialAccountError) {
+                    val account = accounts.find { it.name.equals(initialAccountName, ignoreCase = true) }
+                    if (account != null) {
+                        currency = account.currency
+                    }
                 }
+                hasInitialized = true
             }
         }
     }
