@@ -147,9 +147,44 @@ fun EditExpenseScreen(
     var selectedKeywordIds by rememberSaveable { mutableStateOf(emptySet<Int>()) }
     
     // Load keywords for existing expense or cloned expense
-    LaunchedEffect(loadedKeywordIds) {
-        if (selectedKeywordIds.isEmpty() && loadedKeywordIds.isNotEmpty()) {
-             selectedKeywordIds = loadedKeywordIds
+    // Load keywords for existing expense or cloned expense
+    // CRITICAL FIX: Only update if the loaded keywords match the CURRENT expense ID
+    LaunchedEffect(loadedKeywordIds, expenseId) {
+        val (loadedId, keywords) = loadedKeywordIds
+        
+        // Match condition:
+        // 1. If editing existing (expenseId > 0), loadedId must match expenseId
+        // 2. If creating new/cloning (expenseId == 0), loadedId must be 0 (from our ViewModel logic)
+        val isMatchingId = (expenseId > 0 && loadedId == expenseId) || (expenseId == 0 && (loadedId == 0 || loadedId == null))
+        
+        if (isMatchingId && keywords.isNotEmpty()) {
+             // If we have matching keywords, use them.
+             // We overwrite even if selectedKeywordIds is not empty because this is the source of truth from DB/Clone
+             // BUT we should respect user changes if they've already edited?
+             // Actually, this effect runs when 'loadedKeywordIds' changes (load from DB).
+             // Ideally we only set it initially.
+             if (selectedKeywordIds.isEmpty()) {
+                 selectedKeywordIds = keywords
+             } else if (selectedKeywordIds != keywords) {
+                 // Should we overwrite?
+                 // If the user navigates between expenses, 'selectedKeywordIds' is rememberSaveable.
+                 // It might hold the OLD expense's keywords if the key is the same (nav graph node).
+                 // So yes, if the DB says "Expense 2 has Keyword B", and we are viewing Expense 2,
+                 // and our state says "Keyword A" (stale), we should update to "Keyword B".
+                 // BUT what if the user just added a keyword?
+                 // The flow updates from DB only if saved.
+                 // Wait, loadedKeywordIds comes from DB.
+                 // If I just opened the screen, selectedKeywordIds might be stale.
+                 // So we should overwrite it.
+                 selectedKeywordIds = keywords
+             }
+        } else if (isMatchingId && keywords.isEmpty()) {
+            // If DB/Clone says no keywords, and we match ID, clear current keywords
+            // This fixes the case where Expense 1 (Keywords) -> Expense 2 (No Keywords)
+            // Stale keywords would persist if we didn't clear them.
+             if (selectedKeywordIds.isNotEmpty()) {
+                 selectedKeywordIds = emptySet()
+             }
         }
     }
 

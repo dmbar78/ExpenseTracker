@@ -153,15 +153,19 @@ class ExpenseViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
     
     // Expose cloned keywords to UI
-    val selectedExpenseKeywords: StateFlow<Set<Int>> = combine(_selectedExpenseId, _clonedExpense) { id, cloned ->
+    // Expose cloned keywords to UI - now includes the ID to prevent stale data issues
+    val selectedExpenseKeywords: StateFlow<Pair<Int?, Set<Int>>> = combine(_selectedExpenseId, _clonedExpense) { id, cloned ->
         if (cloned != null && (id == null || id == 0)) {
-            cloned.second
+            // Cloned expense (ID 0 for new)
+            0 to cloned.second
         } else if (id != null) {
-            keywordDao.getKeywordIdsForExpense(id).toSet() 
+            // Existing expense
+            id to keywordDao.getKeywordIdsForExpense(id).toSet() 
         } else {
-            emptySet()
+            // No expense selected
+            null to emptySet()
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptySet())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), 0 to emptySet())
 
     private val _clonedTransfer = MutableStateFlow<TransferHistory?>(null)
     private val _selectedTransferId = MutableStateFlow<Int?>(null)
