@@ -128,8 +128,15 @@ fun EditExpenseScreenContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .imePadding() // Resize list when keyboard opens
                 .testTag(TestTags.EDIT_EXPENSE_ROOT),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 88.dp)
+            // Bottom padding to clear the floating buttons (approx 88dp) + navigation bars
+            contentPadding = PaddingValues(
+                start = 16.dp, 
+                end = 16.dp, 
+                top = 0.dp, 
+                bottom = 88.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            )
         ) {
             item {
                 val headerText = if (state.expenseId > 0) "Edit ${state.type}" else "Add ${state.type}"
