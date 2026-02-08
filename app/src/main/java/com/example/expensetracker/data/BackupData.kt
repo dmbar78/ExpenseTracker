@@ -39,6 +39,7 @@ data class BackupPayload(
     val currencies: List<Currency>,
     val exchangeRates: List<ExchangeRate>,
     val expenseKeywordCrossRefs: List<ExpenseKeywordCrossRef>,
+    val debts: List<Debt>,
     val userPreferences: BackupUserPreferences?
 )
 

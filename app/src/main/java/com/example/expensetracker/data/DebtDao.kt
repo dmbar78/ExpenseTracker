@@ -15,6 +15,13 @@ interface DebtDao {
     @androidx.room.Update
     suspend fun update(debt: Debt)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(debts: List<Debt>)
+
+    @Query("SELECT * FROM debts")
+    suspend fun getAllDebtsOnce(): List<Debt>
+
+
     @Query("SELECT * FROM debts WHERE parentExpenseId = :expenseId LIMIT 1")
     fun getDebtForExpense(expenseId: Int): Flow<Debt?>
     
@@ -29,4 +36,7 @@ interface DebtDao {
     
     @Query("DELETE FROM debts WHERE id = :debtId")
     suspend fun deleteDebt(debtId: Int)
+
+    @Query("DELETE FROM debts")
+    suspend fun deleteAll()
 }

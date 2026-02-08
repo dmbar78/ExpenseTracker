@@ -60,7 +60,7 @@ class BackupRestoreTest {
         // Then: backup data should be valid with empty lists
         assertNotNull(backupData)
         assertNotNull(backupData.metadata)
-        assertEquals(2, backupData.metadata.schemaVersion)
+        assertEquals(3, backupData.metadata.schemaVersion)
         assertNotNull(backupData.data)
         assertTrue(backupData.data.accounts.isEmpty())
         assertTrue(backupData.data.expenses.isEmpty())
@@ -69,6 +69,7 @@ class BackupRestoreTest {
         assertTrue(backupData.data.transferHistories.isEmpty())
         assertTrue(backupData.data.currencies.isEmpty())
         assertTrue(backupData.data.exchangeRates.isEmpty())
+        assertTrue(backupData.data.debts.isEmpty())
     }
 
     @Test
@@ -236,6 +237,51 @@ class BackupRestoreTest {
         assertEquals("OriginalAccount", accounts[0].name)
     }
 
+    @Test
+    fun restore_includesDebts() = runBlocking {
+        // Given: backup with a debt and parent expense
+        val expense = Expense(id = 1, account = "BackupAccount", amount = BigDecimal("10.00"), currency = "EUR", category = "BackupCategory", type = "Expense")
+        val debt = Debt(id = 1, parentExpenseId = 1, status = "OPEN")
+
+        val backupData = createSampleBackupData().copy(
+            data = createSampleBackupData().data.copy(
+                expenses = listOf(expense),
+                debts = listOf(debt)
+            )
+        )
+
+        // When: we restore the backup
+        val result = backupRepository.restoreBackupData(backupData)
+
+        // Then: success and debt exists
+        if (result.isFailure) {
+            fail("Restore failed: ${result.exceptionOrNull()?.message}")
+        }
+        assertTrue(result.isSuccess)
+        val debts = database.debtDao().getAllDebtsOnce()
+        assertEquals(1, debts.size)
+        assertEquals(1, debts[0].parentExpenseId)
+    }
+
+    @Test
+    fun restore_failsIfDebtParentMissing() = runBlocking {
+        // Given: backup with debt but missing parent expense
+        val debt = Debt(id = 1, parentExpenseId = 999, status = "OPEN")
+        val backupData = createSampleBackupData().copy(
+            data = createSampleBackupData().data.copy(
+                debts = listOf(debt)
+            )
+        )
+
+        // When: we attempt to restore
+        val result = backupRepository.restoreBackupData(backupData)
+
+        // Then: should fail due to validation
+        assertTrue(result.isFailure)
+        val errorMsg = result.exceptionOrNull()?.message
+        assertTrue("Error message was: $errorMsg", errorMsg?.contains("non-existent parent expense") == true)
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
     // Serialization Tests
     // ─────────────────────────────────────────────────────────────────────────────
@@ -317,7 +363,7 @@ class BackupRestoreTest {
         return BackupData(
             metadata = BackupMetadata(
                 appVersion = "1.0.0",
-                schemaVersion = 2,
+                schemaVersion = 3,
                 timestamp = System.currentTimeMillis(),
                 device = "Android"
             ),
@@ -330,6 +376,7 @@ class BackupRestoreTest {
                 currencies = emptyList(),
                 exchangeRates = emptyList(),
                 expenseKeywordCrossRefs = emptyList(),
+                debts = emptyList(),
                 userPreferences = null
             ),
             integrityCheck = IntegrityCheck(recordCount = 3, checksum = null)
@@ -341,7 +388,7 @@ class BackupRestoreTest {
         return BackupData(
             metadata = BackupMetadata(
                 appVersion = "1.0.0",
-                schemaVersion = 2,
+                schemaVersion = 3,
                 timestamp = System.currentTimeMillis(),
                 device = "Android"
             ),
@@ -354,6 +401,7 @@ class BackupRestoreTest {
                 currencies = emptyList(),
                 exchangeRates = emptyList(),
                 expenseKeywordCrossRefs = emptyList(),
+                debts = emptyList(),
                 userPreferences = null
             ),
             integrityCheck = IntegrityCheck(recordCount = 0, checksum = null)
@@ -365,7 +413,7 @@ class BackupRestoreTest {
         return BackupData(
             metadata = BackupMetadata(
                 appVersion = "1.0.0",
-                schemaVersion = 2,
+                schemaVersion = 3,
                 timestamp = System.currentTimeMillis(),
                 device = "Android"
             ),
@@ -387,6 +435,7 @@ class BackupRestoreTest {
                 currencies = emptyList(),
                 exchangeRates = emptyList(),
                 expenseKeywordCrossRefs = emptyList(),
+                debts = emptyList(),
                 userPreferences = null
             ),
             integrityCheck = IntegrityCheck(recordCount = 2, checksum = null)
@@ -397,7 +446,7 @@ class BackupRestoreTest {
         return BackupData(
             metadata = BackupMetadata(
                 appVersion = "1.0.0",
-                schemaVersion = 2,
+                schemaVersion = 3,
                 timestamp = System.currentTimeMillis(),
                 device = "Android"
             ),
@@ -446,6 +495,7 @@ class BackupRestoreTest {
                     )
                 ),
                 expenseKeywordCrossRefs = emptyList(),
+                debts = emptyList(),
                 userPreferences = BackupUserPreferences(defaultCurrencyCode = "EUR")
             ),
             integrityCheck = IntegrityCheck(recordCount = 10, checksum = null)

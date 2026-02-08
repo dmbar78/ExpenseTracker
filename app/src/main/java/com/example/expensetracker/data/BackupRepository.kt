@@ -21,7 +21,7 @@ class BackupRepository(
 ) {
     companion object {
         /** Current schema version for backups */
-        const val CURRENT_SCHEMA_VERSION = 2
+        const val CURRENT_SCHEMA_VERSION = 3
         
         /** App version - should be read from BuildConfig in production */
         const val APP_VERSION = "1.0.0"
@@ -46,6 +46,7 @@ class BackupRepository(
         val currencies = database.currencyDao().getAllCurrenciesOnce()
         val exchangeRates = database.exchangeRateDao().getAllRatesOnce()
         val expenseKeywordCrossRefs = database.keywordDao().getAllCrossRefsOnce()
+        val debts = database.debtDao().getAllDebtsOnce()
 
         // Get current default currency from UserPreferences
         val defaultCurrency = userPreferences.defaultCurrencyCode.first()
@@ -59,13 +60,15 @@ class BackupRepository(
             currencies = currencies,
             exchangeRates = exchangeRates,
             expenseKeywordCrossRefs = expenseKeywordCrossRefs,
+            debts = debts,
             userPreferences = BackupUserPreferences(defaultCurrencyCode = defaultCurrency)
         )
 
         val totalRecords = accounts.size + categories.size + keywords.size + 
                           expenses.size + transferHistories.size + 
                           currencies.size + exchangeRates.size + 
-                          expenseKeywordCrossRefs.size
+                          expenseKeywordCrossRefs.size + debts.size
+
 
         return BackupData(
             metadata = BackupMetadata(
@@ -103,6 +106,7 @@ class BackupRepository(
             database.withTransaction {
                 // Clear all existing data (order matters due to foreign keys)
                 database.keywordDao().deleteAllCrossRefs()
+                database.debtDao().deleteAll() // Delete debts before expenses due to FK
                 database.expenseDao().deleteAll()
                 database.transferHistoryDao().deleteAll()
                 database.exchangeRateDao().deleteAll()
@@ -118,6 +122,7 @@ class BackupRepository(
                 database.keywordDao().insertAllKeywords(backupData.data.keywords)
                 database.exchangeRateDao().insertAll(backupData.data.exchangeRates)
                 database.expenseDao().insertAll(backupData.data.expenses)
+                database.debtDao().insertAll(backupData.data.debts) // Expenses must exist first
                 database.transferHistoryDao().insertAll(backupData.data.transferHistories)
                 database.keywordDao().insertAllCrossRefs(backupData.data.expenseKeywordCrossRefs)
             }
@@ -200,6 +205,7 @@ class BackupRepository(
     suspend fun clearAllData() {
         database.withTransaction {
             database.keywordDao().deleteAllCrossRefs()
+            database.debtDao().deleteAll() // Delete debts before expenses
             database.expenseDao().deleteAll()
             database.transferHistoryDao().deleteAll()
             database.exchangeRateDao().deleteAll()
@@ -301,6 +307,18 @@ class BackupRepository(
                 )
             }
         }
+
+        // Validate debts reference valid expenses
+        backupData.data.debts.forEach { debt ->
+            if (debt.parentExpenseId !in expenseIds) {
+                 return Result.failure(
+                    IllegalArgumentException(
+                        "Invalid backup: Debt ID ${debt.id} references non-existent parent expense ID ${debt.parentExpenseId}"
+                    )
+                )
+            }
+        }
+
 
         return Result.success(Unit)
     }
