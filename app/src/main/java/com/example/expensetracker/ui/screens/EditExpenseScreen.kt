@@ -1,7 +1,11 @@
 package com.example.expensetracker.ui.screens
 
 import android.app.DatePickerDialog
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -361,13 +365,11 @@ fun EditExpenseScreen(
 
 
     // Wrap content in Scaffold with SnackbarHost
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        // Delegate UI to Content composable
+    // Use Box instead of Scaffold to avoid unwanted padding
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         EditExpenseScreenContent(
-            modifier = Modifier.padding(paddingValues),
-        state = EditExpenseState(
+            modifier = Modifier.fillMaxSize(),
+            state = EditExpenseState(
             expenseId = expenseId,
             amount = amount,
             accountName = accountName,
@@ -505,6 +507,11 @@ fun EditExpenseScreen(
                 navController.navigate("editExpense/0?copyFromId=$sourceId")
             }
         )
+        )
+        
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
     

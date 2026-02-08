@@ -2,7 +2,11 @@ package com.example.expensetracker.ui.screens
 
 import android.app.DatePickerDialog
 import android.widget.DatePicker
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -229,11 +233,10 @@ fun EditTransferScreen(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        // Delegate UI to Content composable
+    // Use Box to avoid implicit Scaffold padding
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         EditTransferScreenContent(
+            modifier = Modifier.fillMaxSize(),
             state = EditTransferState(
                 transferId = transferId,
                 sourceAccountName = sourceAccountName,
@@ -313,8 +316,12 @@ fun EditTransferScreen(
                 onCopy = { sourceId ->
                      navController.navigate("editTransfer/0?copyFromId=$sourceId")
                 }
-            ),
-            modifier = Modifier.padding(paddingValues)
+            )
+        )
+        
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
 }

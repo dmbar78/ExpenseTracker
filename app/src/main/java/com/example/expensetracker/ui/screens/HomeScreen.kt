@@ -125,7 +125,7 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
     var showTextQueryDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
             // Filter chips row (above tabs) (Hide for Debts tab logic if desired, or keep globally)
             // Keeping globally for now, though arguably filters might not apply to Debts in this simplistic implementation
             FilterChipsRow(

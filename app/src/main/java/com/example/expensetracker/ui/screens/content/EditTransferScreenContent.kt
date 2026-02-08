@@ -114,7 +114,7 @@ fun EditTransferScreenContent(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag(TestTags.EDIT_TRANSFER_ROOT),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp)
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 88.dp)
         ) {
             item {
                 Text(
