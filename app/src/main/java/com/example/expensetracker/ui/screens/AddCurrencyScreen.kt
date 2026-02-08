@@ -173,8 +173,10 @@ fun AddCurrencyScreen(
             )
         } else {
             // Filter logic
-            val filteredByCode = allCurrencies.filter {
-                it.currencyCode.contains(code, ignoreCase = true)
+            val filteredByCode = remember(code, allCurrencies) {
+                allCurrencies.filter {
+                    it.currencyCode.contains(code, ignoreCase = true)
+                }
             }
             
             ExposedDropdownMenuBox(
@@ -189,9 +191,9 @@ fun AddCurrencyScreen(
                         codeExpanded = true
                     },
                     label = { Text("Currency Code (Search)") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor().testTag(TestTags.ADD_CURRENCY_CODE_FIELD),
+                    modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).testTag(TestTags.ADD_CURRENCY_CODE_FIELD),
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = codeExpanded) },
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                 )
                 
                 if (filteredByCode.isNotEmpty()) {
@@ -215,8 +217,10 @@ fun AddCurrencyScreen(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            val filteredByName = allCurrencies.filter {
-                it.displayName.contains(name, ignoreCase = true)
+            val filteredByName = remember(name, allCurrencies) {
+                allCurrencies.filter {
+                    it.displayName.contains(name, ignoreCase = true)
+                }
             }
             
             ExposedDropdownMenuBox(
@@ -231,9 +235,9 @@ fun AddCurrencyScreen(
                         nameExpanded = true
                     },
                     label = { Text("Currency Name (Search)") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor().testTag(TestTags.ADD_CURRENCY_NAME_FIELD),
+                    modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).testTag(TestTags.ADD_CURRENCY_NAME_FIELD),
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = nameExpanded) },
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                 )
                 
                 if (filteredByName.isNotEmpty()) {
@@ -365,7 +369,6 @@ private fun OverrideRateDialog(
                     label = { Text("1 $currencyCode = ? $defaultCurrencyCode") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
                 )
             }
         },

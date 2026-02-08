@@ -314,17 +314,19 @@ fun EditExpenseScreenContent(
                         // readOnly = true, // Removed to allow typing
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryDropdownExpanded) },
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
                             .fillMaxWidth()
                             .testTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE)
                             .then(if (localCategoryError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
-                        isError = localCategoryError
+                        isError = localCategoryError,
                     )
 
-                    // Filter categories
-                    val filteredCategories = categories.filter { 
-                        it.name.contains(localCategory, ignoreCase = true) 
-                    }.sortedBy { it.name }
+                    // Filter categories (Cached)
+                    val filteredCategories = remember(localCategory, categories) {
+                        categories.filter {
+                            it.name.contains(localCategory, ignoreCase = true)
+                        }.sortedBy { it.name }
+                    }
 
                     ExposedDropdownMenu(
                         expanded = isCategoryDropdownExpanded,
@@ -411,9 +413,9 @@ fun EditExpenseScreenContent(
                         label = { Text("Search or add keywords") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isKeywordDropdownExpanded) },
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
                             .fillMaxWidth()
-                            .testTag(TestTags.EDIT_EXPENSE_KEYWORD_SEARCH)
+                            .testTag(TestTags.EDIT_EXPENSE_KEYWORD_SEARCH),
                     )
                     ExposedDropdownMenu(
                         expanded = isKeywordDropdownExpanded,
@@ -429,11 +431,13 @@ fun EditExpenseScreenContent(
                             modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_KEYWORD_CREATE_NEW)
                         )
                         
-                        // Build filtered + sorted keyword list: selected first, then matching by query
+                        // Build filtered + sorted keyword list: selected first, then matching by query (Cached)
                         val trimmedKeywordQuery = keywordQuery.trim()
-                        val filteredKeywords = keywords
-                            .filter { trimmedKeywordQuery.isBlank() || it.name.contains(trimmedKeywordQuery, ignoreCase = true) }
-                            .sortedWith(compareByDescending<Keyword> { it.id in localSelectedKeywordIds }.thenBy { it.name })
+                        val filteredKeywords = remember(keywords, trimmedKeywordQuery, localSelectedKeywordIds) {
+                            keywords
+                                .filter { trimmedKeywordQuery.isBlank() || it.name.contains(trimmedKeywordQuery, ignoreCase = true) }
+                                .sortedWith(compareByDescending<Keyword> { it.id in localSelectedKeywordIds }.thenBy { it.name })
+                        }
                         
                         if (filteredKeywords.isNotEmpty()) {
                             HorizontalDivider()
