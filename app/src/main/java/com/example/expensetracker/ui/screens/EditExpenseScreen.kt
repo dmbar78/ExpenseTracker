@@ -196,6 +196,7 @@ fun EditExpenseScreen(
     var isSaving by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val calendar = remember { Calendar.getInstance() }
     
     // Keep calendar in sync with expenseDate state
@@ -505,6 +506,9 @@ fun EditExpenseScreen(
             },
             onCopy = { sourceId ->
                 navController.navigate("editExpense/0?copyFromId=$sourceId")
+            },
+            onHideKeyboard = {
+                keyboardController?.hide()
             }
         )
         )

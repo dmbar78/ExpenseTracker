@@ -83,6 +83,7 @@ data class EditExpenseCallbacks(
     val onAddExistingPaymentClick: () -> Unit = {},
     val onRemovePayment: (Expense) -> Unit = {},
     val onShowSnackbar: (String) -> Unit = {},
+    val onHideKeyboard: () -> Unit = {},
     val onCopy: (Int) -> Unit = {}
 )
 
@@ -357,6 +358,7 @@ fun EditExpenseScreenContent(
                                     localCategoryError = false
                                     isCategoryDropdownExpanded = false
                                     callbacks.onCategorySelect(categoryItem)
+                                    callbacks.onHideKeyboard()
                                 },
                                 modifier = Modifier.testTag(TestTags.CATEGORY_OPTION_PREFIX + categoryItem.id)
                             )
@@ -471,6 +473,8 @@ fun EditExpenseScreenContent(
                                     } else {
                                         localSelectedKeywordIds + keyword.id
                                     }
+                                    callbacks.onHideKeyboard()
+                                    keywordQuery = ""
                                     // Don't close dropdown on selection
                                 },
                                 modifier = Modifier.testTag(TestTags.KEYWORD_OPTION_PREFIX + keyword.id)
