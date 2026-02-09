@@ -19,7 +19,10 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+
 import javax.inject.Inject
+
+
 
 @HiltViewModel
 class ExpenseViewModel @Inject constructor(
@@ -114,6 +117,13 @@ class ExpenseViewModel @Inject constructor(
     val filteredExpenses: StateFlow<List<Expense>>
     val filteredIncomes: StateFlow<List<Expense>>
     val filteredTransfers: StateFlow<List<TransferHistory>>
+
+    // Sorting state
+    private val _expenseSortOption = MutableStateFlow(SortOption.DATE)
+    val expenseSortOption: StateFlow<SortOption> = _expenseSortOption.asStateFlow()
+
+    private val _incomeSortOption = MutableStateFlow(SortOption.DATE)
+    val incomeSortOption: StateFlow<SortOption> = _incomeSortOption.asStateFlow()
 
     // For voice recognition state
     private val _voiceRecognitionState = MutableStateFlow<VoiceRecognitionState>(VoiceRecognitionState.Idle)
@@ -229,14 +239,16 @@ class ExpenseViewModel @Inject constructor(
                 .mapValues { (_, refs) -> refs.mapNotNull { keywordIdToName[it.keywordId] } }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
         
-        // Derive filtered expenses from allExpenses + filterState + keyword names
-        filteredExpenses = combine(allExpenses, _filterState, expenseKeywordNamesMap) { expenses, filter, keywordMap ->
-            applyExpenseFilters(expenses, filter, keywordMap)
+        // Derive filtered expenses from allExpenses + filterState + keyword names + sortOption
+        filteredExpenses = combine(allExpenses, _filterState, expenseKeywordNamesMap, _expenseSortOption) { expenses, filter, keywordMap, sortOption ->
+            val filtered = applyExpenseFilters(expenses, filter, keywordMap)
+            applySort(filtered, sortOption)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         
-        // Derive filtered incomes from allIncomes + filterState + keyword names
-        filteredIncomes = combine(allIncomes, _filterState, expenseKeywordNamesMap) { incomes, filter, keywordMap ->
-            applyExpenseFilters(incomes, filter, keywordMap)
+        // Derive filtered incomes from allIncomes + filterState + keyword names + sortOption
+        filteredIncomes = combine(allIncomes, _filterState, expenseKeywordNamesMap, _incomeSortOption) { incomes, filter, keywordMap, sortOption ->
+            val filtered = applyExpenseFilters(incomes, filter, keywordMap)
+            applySort(filtered, sortOption)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         
         // Derive filtered transfers from allTransfers + filterState
@@ -282,6 +294,25 @@ class ExpenseViewModel @Inject constructor(
             }
             if (categoryRepository.allCategories.first().isEmpty()) {
                 categoryRepository.insert(Category(name = "Default"))
+            }
+        }
+        
+        // Integrity check for null amountInOriginalDefault as requested
+        viewModelScope.launch {
+            checkIntegrity()
+        }
+    }
+    
+    // Check for expenses with null amountInOriginalDefault
+    private suspend fun checkIntegrity() {
+        // We can't query DB directly for "is null" easily with existing DAO/Repo unless we add a method.
+        // But we can check loaded lists.
+        allExpenses.collectLatest { expenses ->
+            val nullCount = expenses.count { it.amountInOriginalDefault == null }
+            if (nullCount > 0) {
+                Log.w(TAG, "Integrity Check: Found $nullCount expenses with NULL amountInOriginalDefault out of ${expenses.size}.")
+            } else {
+                Log.d(TAG, "Integrity Check: All expenses have amountInOriginalDefault populated.")
             }
         }
     }
@@ -565,6 +596,26 @@ class ExpenseViewModel @Inject constructor(
     }
 
     // ==================== End Filter Methods ====================
+
+    // ==================== Sorting Methods ====================
+
+    fun setExpenseSortOption(option: SortOption) {
+        _expenseSortOption.value = option
+    }
+
+    fun setIncomeSortOption(option: SortOption) {
+        _incomeSortOption.value = option
+    }
+
+    private fun applySort(expenses: List<Expense>, sortOption: SortOption): List<Expense> {
+        return when (sortOption) {
+            SortOption.DATE -> expenses.sortedByDescending { it.expenseDate }
+            SortOption.AMOUNT -> expenses.sortedWith(
+                compareByDescending<Expense> { it.amountInOriginalDefault ?: it.amount }
+                    .thenByDescending { it.expenseDate }
+            )
+        }
+    }
     
     // ==================== Currency/Exchange Rate Methods ====================
     
@@ -1284,7 +1335,8 @@ class ExpenseViewModel @Inject constructor(
 
     fun insertExpense(expense: Expense) = viewModelScope.launch {
         try {
-            ledgerRepository.addExpense(expense)
+            val populatedExpense = ensureOriginalDefaultValues(expense)
+            ledgerRepository.addExpense(populatedExpense)
             _navigateBackChannel.send(Unit)
         } catch (e: IllegalStateException) {
             _errorChannel.send(e.message ?: "Failed to add expense.")
@@ -1296,7 +1348,8 @@ class ExpenseViewModel @Inject constructor(
      */
     suspend fun insertExpenseAndReturn(expense: Expense): Result<Long> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val id = ledgerRepository.addExpense(expense)
+            val populatedExpense = ensureOriginalDefaultValues(expense)
+            val id = ledgerRepository.addExpense(populatedExpense)
             Result.success(id)
         } catch (e: Exception) {
             Result.failure(e)
@@ -1308,7 +1361,8 @@ class ExpenseViewModel @Inject constructor(
      */
     fun insertExpenseWithKeywords(expense: Expense, keywordIds: Set<Int>) = viewModelScope.launch {
         try {
-            val expenseId = ledgerRepository.addExpense(expense)
+            val populatedExpense = ensureOriginalDefaultValues(expense)
+            val expenseId = ledgerRepository.addExpense(populatedExpense)
             if (keywordIds.isNotEmpty()) {
                 keywordDao.setKeywordsForExpense(expenseId.toInt(), keywordIds)
             }
@@ -1320,7 +1374,8 @@ class ExpenseViewModel @Inject constructor(
 
     fun updateExpense(expense: Expense) = viewModelScope.launch {
         try {
-            ledgerRepository.updateExpense(expense)
+            val populatedExpense = ensureOriginalDefaultValues(expense)
+            ledgerRepository.updateExpense(populatedExpense)
             _navigateBackChannel.send(Unit)
         } catch (e: IllegalStateException) {
             _errorChannel.send(e.message ?: "Failed to update expense.")
@@ -1332,7 +1387,8 @@ class ExpenseViewModel @Inject constructor(
      */
     suspend fun updateExpenseAndReturn(expense: Expense): Result<Unit> {
         return try {
-            ledgerRepository.updateExpense(expense)
+            val populatedExpense = ensureOriginalDefaultValues(expense)
+            ledgerRepository.updateExpense(populatedExpense)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -1344,7 +1400,8 @@ class ExpenseViewModel @Inject constructor(
      */
     fun updateExpenseWithKeywords(expense: Expense, keywordIds: Set<Int>) = viewModelScope.launch {
         try {
-            ledgerRepository.updateExpense(expense)
+            val populatedExpense = ensureOriginalDefaultValues(expense)
+            ledgerRepository.updateExpense(populatedExpense)
             keywordDao.setKeywordsForExpense(expense.id, keywordIds)
             _navigateBackChannel.send(Unit)
         } catch (e: IllegalStateException) {
@@ -1357,7 +1414,8 @@ class ExpenseViewModel @Inject constructor(
      */
     suspend fun insertExpenseWithKeywordsAndReturn(expense: Expense, keywordIds: Set<Int>): Result<Long> {
         return try {
-            val expenseId = ledgerRepository.addExpense(expense)
+            val populatedExpense = ensureOriginalDefaultValues(expense)
+            val expenseId = ledgerRepository.addExpense(populatedExpense)
             if (keywordIds.isNotEmpty()) {
                 keywordDao.setKeywordsForExpense(expenseId.toInt(), keywordIds)
             }
@@ -1378,7 +1436,8 @@ class ExpenseViewModel @Inject constructor(
      */
     suspend fun updateExpenseWithKeywordsAndReturn(expense: Expense, keywordIds: Set<Int>): Result<Unit> {
         return try {
-            ledgerRepository.updateExpense(expense)
+            val populatedExpense = ensureOriginalDefaultValues(expense)
+            ledgerRepository.updateExpense(populatedExpense)
             keywordDao.setKeywordsForExpense(expense.id, keywordIds)
             
             // If this expense is related to a debt, update that debt's status
@@ -1881,6 +1940,32 @@ class ExpenseViewModel @Inject constructor(
         }
     }
     
+    /**
+     * Helper to ensure amountInOriginalDefault and related fields are populated.
+     */
+    private suspend fun ensureOriginalDefaultValues(expense: Expense): Expense {
+        val currentDefault = _defaultCurrencyCode.value
+        
+        var rate: BigDecimal? = null
+        var amountInDefault: BigDecimal? = null
+        
+        if (expense.currency == currentDefault) {
+             rate = BigDecimal.ONE
+             amountInDefault = expense.amount
+        } else {
+             rate = exchangeRateRepository.getMostRecentRateOnOrBefore(expense.currency, currentDefault, expense.expenseDate)
+             if (rate != null) {
+                  amountInDefault = expense.amount.multiply(rate)
+             }
+        }
+        
+        return expense.copy(
+            originalDefaultCurrencyCode = currentDefault,
+            exchangeRateToOriginalDefault = rate,
+            amountInOriginalDefault = amountInDefault
+        )
+    }
+
     private fun buildDateMillis(month: Int, day: Int): Long {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.MONTH, month)
@@ -1900,3 +1985,5 @@ sealed class BackupOperationState {
     data class Error(val message: String) : BackupOperationState()
     object RequestPassword : BackupOperationState() // For encrypted backups
 }
+
+

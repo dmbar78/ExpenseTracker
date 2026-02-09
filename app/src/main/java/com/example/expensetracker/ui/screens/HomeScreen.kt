@@ -41,6 +41,13 @@ import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import com.example.expensetracker.viewmodel.SortOption
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 
 /**
  * Represents the state of a total calculation.
@@ -79,6 +86,10 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
     var expensesTotal by remember { mutableStateOf<TotalState>(TotalState.Loading) }
     var incomesTotal by remember { mutableStateOf<TotalState>(TotalState.Loading) }
     var transfersTotal by remember { mutableStateOf<TotalState>(TotalState.Loading) }
+
+    // Sort state
+    val expenseSortOption by viewModel.expenseSortOption.collectAsState()
+    val incomeSortOption by viewModel.incomeSortOption.collectAsState()
     
     // Calculate totals when data or default currency changes
     LaunchedEffect(filteredExpenses, defaultCurrency) {
@@ -171,11 +182,19 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
 
             when (selectedTabIndex) {
                 0 -> {
-                    TotalHeader(totalState = expensesTotal)
+                    TotalHeaderWithSort(
+                        totalState = expensesTotal,
+                        sortOption = expenseSortOption,
+                        onSortChange = { viewModel.setExpenseSortOption(it) }
+                    )
                     TransactionList(filteredExpenses, navController)
                 }
                 1 -> {
-                    TotalHeader(totalState = incomesTotal)
+                    TotalHeaderWithSort(
+                        totalState = incomesTotal,
+                        sortOption = incomeSortOption,
+                        onSortChange = { viewModel.setIncomeSortOption(it) }
+                    )
                     TransactionList(filteredIncomes, navController)
                 }
                 2 -> {
@@ -386,11 +405,95 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
     }
 }
 
+@Composable
+private fun TotalHeaderWithSort(
+    totalState: TotalState,
+    sortOption: SortOption,
+    onSortChange: (SortOption) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        // Center: Total Amount
+        Box(
+            modifier = Modifier.align(Alignment.Center),
+            contentAlignment = Alignment.Center
+        ) {
+            when (totalState) {
+                is TotalState.Loading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(4.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
+                is TotalState.Success -> {
+                    Text(
+                        text = "Total: ${formatMoney(totalState.total)} ${totalState.currencyCode}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                is TotalState.RateMissing -> {
+                    Text(
+                        text = "Total unavailable",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+
+        // Right: Sort Button
+        Box(
+            modifier = Modifier.align(Alignment.CenterEnd)
+        ) {
+            var expanded by remember { mutableStateOf(false) }
+
+            IconButton(onClick = { expanded = true }) {
+                Icon(
+                    imageVector = Icons.Default.Sort,
+                    contentDescription = "Sort",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                SortOption.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = option.displayName,
+                                fontWeight = if (option == sortOption) androidx.compose.ui.text.font.FontWeight.Bold else null
+                            )
+                        },
+                        onClick = {
+                            onSortChange(option)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
 /**
  * Displays the total amount header above transaction lists.
  */
 @Composable
 private fun TotalHeader(totalState: TotalState) {
+   // Reused or deprecated depending on if Transfers need sort. 
+   // Transfers currently don't have sort requirements in prompt, so keeping this for them if needed, 
+   // or just using the new one without sort options if we wanted to enforce consistency.
+   // But Transfers tab helper calls TotalHeader(transfersTotal).
+   // I'll keep this simple implementation for cases without sort.
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -434,8 +537,12 @@ private fun formatMoney(amount: BigDecimal): String {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TransactionList(transactions: List<Expense>, navController: NavController) {
-    val groupedTransactions = transactions.groupBy { 
-        SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(it.expenseDate)
+    // Use bespoke sequential grouping to preserve sort order (e.g. By Amount)
+    // while still grouping consecutive items with the same date header.
+    val groupedTransactions = remember(transactions) {
+        groupSequentially(transactions) {
+            SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(it.expenseDate)
+        }
     }
 
     LazyColumn(
@@ -468,6 +575,33 @@ private fun TransactionList(transactions: List<Expense>, navController: NavContr
             }
         }
     }
+}
+
+/**
+ * Groups items sequentially.
+ * If consecutive items have the same key, they are added to the same group.
+ * If the key changes, a new group is started.
+ * This preserves the original order of items (e.g. when sorted by Amount).
+ */
+private fun <T, K> groupSequentially(items: List<T>, keySelector: (T) -> K): List<Pair<K, List<T>>> {
+    if (items.isEmpty()) return emptyList()
+    val result = mutableListOf<Pair<K, MutableList<T>>>()
+    var currentKey = keySelector(items.first())
+    var currentList = mutableListOf(items.first())
+    
+    for (i in 1 until items.size) {
+        val item = items[i]
+        val key = keySelector(item)
+        if (key == currentKey) {
+            currentList.add(item)
+        } else {
+            result.add(currentKey to currentList)
+            currentKey = key
+            currentList = mutableListOf(item)
+        }
+    }
+    result.add(currentKey to currentList)
+    return result
 }
 
 @OptIn(ExperimentalFoundationApi::class)
