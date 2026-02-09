@@ -211,7 +211,7 @@ fun EditExpenseScreenContent(
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isAccountDropdownExpanded) },
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
                             .fillMaxWidth()
                             .testTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE)
                             .then(if (localAccountError) Modifier.border(2.dp, Color.Red, RoundedCornerShape(4.dp)) else Modifier),
