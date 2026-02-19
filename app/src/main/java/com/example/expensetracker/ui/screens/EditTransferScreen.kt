@@ -123,6 +123,9 @@ fun EditTransferScreen(
         calendar.get(Calendar.DAY_OF_MONTH)
     )
 
+    // Track if we've already initialized to prevent overwriting user input on recomposition/restoration
+    var hasInitialized by rememberSaveable { mutableStateOf(false) }
+
     // Update state from loaded transfer in edit mode or clone mode
     // Also RESET fields when creating new transfer
     LaunchedEffect(transfer, transferId, copyFromId) {
@@ -135,27 +138,31 @@ fun EditTransferScreen(
                 currency = it.currency
                 date = it.date
                 comment = it.comment ?: ""
+                hasInitialized = true
             }
         } else if (transferId == 0 && copyFromId == null && transfer == null) {
-            // Creating new transfer - reset form fields
-            // Force reset to initial values (empty or voice) to clear any stale state
-            // This is CRITICAL for Voice Flow to prevent rememberSaveable from restoring stale data
-            sourceAccountName = initialSourceAccountName ?: ""
-            destAccountName = initialDestAccountName ?: ""
-            amount = initialAmount?.toPlainString() ?: ""
-            destAmount = initialDestAmount?.toPlainString() ?: ""
-            comment = ""
-            
-            date = if (initialTransferDateMillis > 0L) initialTransferDateMillis else System.currentTimeMillis()
-            currency = ""
-            
-            // If creating new from voice, try to set currency if source account is valid
-            // We replicate this here because the separate LaunchedEffect might have already run and we just overwrote currency=""
-            if (initialSourceAccountName != null && !initialSourceAccountError) {
-                val sourceAccount = accounts.find { it.name.equals(initialSourceAccountName, ignoreCase = true) }
-                if (sourceAccount != null) {
-                    currency = sourceAccount.currency
+            // Creating new transfer - reset form fields ONLY ONCE
+            if (!hasInitialized) {
+                // Force reset to initial values (empty or voice) to clear any stale state
+                // This is CRITICAL for Voice Flow to prevent rememberSaveable from restoring stale data
+                sourceAccountName = initialSourceAccountName ?: ""
+                destAccountName = initialDestAccountName ?: ""
+                amount = initialAmount?.toPlainString() ?: ""
+                destAmount = initialDestAmount?.toPlainString() ?: ""
+                comment = ""
+                
+                date = if (initialTransferDateMillis > 0L) initialTransferDateMillis else System.currentTimeMillis()
+                currency = ""
+                
+                // If creating new from voice, try to set currency if source account is valid
+                // We replicate this here because the separate LaunchedEffect might have already run and we just overwrote currency=""
+                if (initialSourceAccountName != null && !initialSourceAccountError) {
+                    val sourceAccount = accounts.find { it.name.equals(initialSourceAccountName, ignoreCase = true) }
+                    if (sourceAccount != null) {
+                        currency = sourceAccount.currency
+                    }
                 }
+                hasInitialized = true
             }
         }
     }

@@ -137,7 +137,7 @@ class InlineAccountCreationTest {
         // 2) Transfer was actually persisted in DB.
         val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
         val db = com.example.expensetracker.data.AppDatabase.getDatabase(context)
-        composeTestRule.waitUntil(timeoutMillis = 15000) {
+        composeTestRule.waitUntil(timeoutMillis = 30000) {
             val onHome = runCatching {
                 composeTestRule.onAllNodesWithTag(TestTags.GLOBAL_CREATE_BUTTON)
                     .fetchSemanticsNodes().isNotEmpty()

@@ -56,8 +56,11 @@ class CurrencyUiTest {
             composeTestRule.onAllNodesWithText("AUD", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
 
-        // Click the dropdown item
-        composeTestRule.onNodeWithText("AUD", substring = true).performClick()
+        // Click the dropdown item. Use onAllNodes to handle potential ambiguity (field vs dropdown item)
+        // The first one is likely the field itself (if it matches text), the second is the dropdown item?
+        // Actually, the field has testTag ADD_CURRENCY_CODE_FIELD.
+        // We want to click the node in the POPUP.
+        composeTestRule.onNode(hasText("AUD", substring = true) and hasAnyAncestor(isPopup())).performClick()
 
         // Verify code remains selected
         composeTestRule.onNodeWithTag(TestTags.ADD_CURRENCY_CODE_FIELD)

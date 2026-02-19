@@ -44,6 +44,11 @@ fun AddCurrencyScreen(
     // Search states for dropdowns
     var codeExpanded by remember { mutableStateOf(false) }
     var nameExpanded by remember { mutableStateOf(false) }
+
+    // Pagination states
+    var codePage by remember { mutableIntStateOf(0) }
+    var namePage by remember { mutableIntStateOf(0) }
+    val pageSize = 30
     
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
@@ -193,6 +198,7 @@ fun AddCurrencyScreen(
                     onValueChange = {
                         code = it.uppercase()
                         codeExpanded = true
+                        codePage = 0 // Reset page on search
                     },
                     label = { Text(stringResource(R.string.lbl_currency_code_search)) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).testTag(TestTags.ADD_CURRENCY_CODE_FIELD),
@@ -205,7 +211,16 @@ fun AddCurrencyScreen(
                         expanded = codeExpanded,
                         onDismissRequest = { codeExpanded = false }
                     ) {
-                        filteredByCode.take(15).forEach { currency ->
+                        // Previous Page
+                        if (codePage > 0) {
+                            DropdownMenuItem(
+                                text = { Text("Previous...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) },
+                                onClick = { codePage-- }
+                            )
+                        }
+
+                        // Items
+                        filteredByCode.drop(codePage * pageSize).take(pageSize).forEach { currency ->
                             DropdownMenuItem(
                                 text = { Text("${currency.currencyCode} - ${currency.displayName}") },
                                 onClick = {
@@ -213,6 +228,14 @@ fun AddCurrencyScreen(
                                     name = currency.displayName
                                     codeExpanded = false
                                 }
+                            )
+                        }
+
+                        // Next Page
+                        if ((codePage + 1) * pageSize < filteredByCode.size) {
+                            DropdownMenuItem(
+                                text = { Text("Next...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) },
+                                onClick = { codePage++ }
                             )
                         }
                     }
@@ -224,7 +247,7 @@ fun AddCurrencyScreen(
             val filteredByName = remember(name, allCurrencies) {
                 allCurrencies.filter {
                     it.displayName.contains(name, ignoreCase = true)
-                }
+                }.sortedBy { it.displayName }
             }
             
             ExposedDropdownMenuBox(
@@ -237,6 +260,7 @@ fun AddCurrencyScreen(
                     onValueChange = {
                         name = it
                         nameExpanded = true
+                        namePage = 0 // Reset page on search
                     },
                     label = { Text(stringResource(R.string.lbl_currency_name_search)) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).testTag(TestTags.ADD_CURRENCY_NAME_FIELD),
@@ -249,7 +273,16 @@ fun AddCurrencyScreen(
                         expanded = nameExpanded,
                         onDismissRequest = { nameExpanded = false }
                     ) {
-                        filteredByName.take(15).forEach { currency ->
+                        // Previous Page
+                        if (namePage > 0) {
+                            DropdownMenuItem(
+                                text = { Text("Previous...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) },
+                                onClick = { namePage-- }
+                            )
+                        }
+
+                        // Items
+                        filteredByName.drop(namePage * pageSize).take(pageSize).forEach { currency ->
                             DropdownMenuItem(
                                 text = { Text(currency.displayName) },
                                 onClick = {
@@ -257,6 +290,14 @@ fun AddCurrencyScreen(
                                     name = currency.displayName
                                     nameExpanded = false
                                 }
+                            )
+                        }
+
+                        // Next Page
+                        if ((namePage + 1) * pageSize < filteredByName.size) {
+                            DropdownMenuItem(
+                                text = { Text("Next...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) },
+                                onClick = { namePage++ }
                             )
                         }
                     }
