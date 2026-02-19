@@ -311,11 +311,21 @@ class ExpenseViewModel @Inject constructor(
         allExpenses.collectLatest { expenses ->
             val nullCount = expenses.count { it.amountInOriginalDefault == null }
             if (nullCount > 0) {
-                Log.w(TAG, "Integrity Check: Found $nullCount expenses with NULL amountInOriginalDefault out of ${expenses.size}.")
+                safeLogW(TAG, "Integrity Check: Found $nullCount expenses with NULL amountInOriginalDefault out of ${expenses.size}.")
             } else {
-                Log.d(TAG, "Integrity Check: All expenses have amountInOriginalDefault populated.")
+                safeLogD(TAG, "Integrity Check: All expenses have amountInOriginalDefault populated.")
             }
         }
+    }
+
+    private fun safeLogD(tag: String, message: String) {
+        runCatching { Log.d(tag, message) }
+            .onFailure { println("$tag: $message") }
+    }
+
+    private fun safeLogW(tag: String, message: String) {
+        runCatching { Log.w(tag, message) }
+            .onFailure { println("$tag: $message") }
     }
 
     fun onTabSelected(tabIndex: Int) {

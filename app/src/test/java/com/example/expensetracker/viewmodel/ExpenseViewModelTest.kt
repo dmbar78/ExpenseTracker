@@ -219,7 +219,7 @@ class ExpenseViewModelTest {
         }
         
         // Additional collector for keywords
-        val keywordResults = mutableListOf<Set<Int>>()
+        val keywordResults = mutableListOf<Pair<Int?, Set<Int>>>()
         val keywordJob = launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.selectedExpenseKeywords.collect { keywordResults.add(it) }
         }
@@ -231,7 +231,7 @@ class ExpenseViewModelTest {
         // Capture emissions (get the last non-null if possible, or just the last)
         // results might contain [null, clonedExpense] or just [null] if failed
         val clonedExpense = results.lastOrNull { it != null }
-        val clonedKeywords = keywordResults.lastOrNull { it.isNotEmpty() } ?: keywordResults.lastOrNull()
+        val clonedKeywordPair = keywordResults.lastOrNull { it.second.isNotEmpty() } ?: keywordResults.lastOrNull()
         
         assertNotNull("Cloned expense should have been emitted", clonedExpense)
 
@@ -255,7 +255,8 @@ class ExpenseViewModelTest {
         assertNull("Related Debt ID should be null (unchecked)", clonedExpense.relatedDebtId)
         
         // Keyword check
-        assertEquals("Keywords should be copied", sourceKeywords.toSet(), clonedKeywords)
+        assertEquals("Cloned expense ID should be 0", 0, clonedKeywordPair?.first)
+        assertEquals("Keywords should be copied", sourceKeywords.toSet(), clonedKeywordPair?.second)
         
         job.cancel()
         keywordJob.cancel()
