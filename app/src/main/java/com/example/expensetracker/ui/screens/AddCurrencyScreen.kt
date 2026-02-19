@@ -13,6 +13,9 @@ import com.example.expensetracker.data.Currency
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import com.example.expensetracker.ui.TestTags
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.example.expensetracker.R
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -26,6 +29,7 @@ fun AddCurrencyScreen(
 ) {
     val isEditMode = currencyId > 0
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     
     // ISO 4217 Data Source
     val allCurrencies = remember { 
@@ -84,11 +88,11 @@ fun AddCurrencyScreen(
     if (showErrorDialog) {
         AlertDialog(
             onDismissRequest = { showErrorDialog = false },
-            title = { Text("Error") },
+            title = { Text(stringResource(R.string.title_error)) },
             text = { Text(errorMessage) },
             confirmButton = {
                 Button(onClick = { showErrorDialog = false }) {
-                    Text("OK")
+                    Text(stringResource(R.string.btn_ok))
                 }
             }
         )
@@ -98,8 +102,8 @@ fun AddCurrencyScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Currency") },
-            text = { Text("Are you sure you want to delete this currency?") },
+            title = { Text(stringResource(R.string.btn_delete_currency)) },
+            text = { Text(stringResource(R.string.msg_delete_currency_confirm)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -109,12 +113,12 @@ fun AddCurrencyScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                 ) {
-                    Text("Delete")
+                    Text(stringResource(R.string.btn_delete))
                 }
             },
             dismissButton = {
                 Button(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -137,7 +141,7 @@ fun AddCurrencyScreen(
                     showOverrideDialog = false
                     overrideRateInput = ""
                 } else {
-                    errorMessage = "Please enter a valid rate greater than 0"
+                    errorMessage = context.getString(R.string.msg_enter_valid_rate)
                     showErrorDialog = true
                 }
             },
@@ -150,7 +154,7 @@ fun AddCurrencyScreen(
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text(
-            text = if (isEditMode) "Edit Currency" else "Add Currency",
+            text = if (isEditMode) stringResource(R.string.title_edit_currency) else stringResource(R.string.title_add_currency),
             style = MaterialTheme.typography.headlineSmall
         )
         Spacer(modifier = Modifier.height(16.dp))
@@ -159,7 +163,7 @@ fun AddCurrencyScreen(
             OutlinedTextField(
                 value = code,
                 onValueChange = {},
-                label = { Text("Currency Code") },
+                label = { Text(stringResource(R.string.lbl_currency_code)) },
                 modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_CURRENCY_CODE_FIELD),
                 enabled = false
             )
@@ -167,7 +171,7 @@ fun AddCurrencyScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = {},
-                label = { Text("Currency Name") },
+                label = { Text(stringResource(R.string.lbl_currency_name)) },
                 modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_CURRENCY_NAME_FIELD),
                 enabled = false
             )
@@ -190,7 +194,7 @@ fun AddCurrencyScreen(
                         code = it.uppercase()
                         codeExpanded = true
                     },
-                    label = { Text("Currency Code (Search)") },
+                    label = { Text(stringResource(R.string.lbl_currency_code_search)) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).testTag(TestTags.ADD_CURRENCY_CODE_FIELD),
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = codeExpanded) },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
@@ -234,7 +238,7 @@ fun AddCurrencyScreen(
                         name = it
                         nameExpanded = true
                     },
-                    label = { Text("Currency Name (Search)") },
+                    label = { Text(stringResource(R.string.lbl_currency_name_search)) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).testTag(TestTags.ADD_CURRENCY_NAME_FIELD),
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = nameExpanded) },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
@@ -270,12 +274,12 @@ fun AddCurrencyScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Exchange Rate",
+                        text = stringResource(R.string.lbl_exchange_rate),
                         style = MaterialTheme.typography.titleSmall
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = latestRateDisplay ?: "No rate available",
+                        text = latestRateDisplay ?: stringResource(R.string.msg_no_rate),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (latestRateDisplay != null) 
                             MaterialTheme.colorScheme.onSurfaceVariant 
@@ -287,7 +291,7 @@ fun AddCurrencyScreen(
                         onClick = { showOverrideDialog = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Override Rate")
+                        Text(stringResource(R.string.action_override_rate))
                     }
                 }
             }
@@ -308,7 +312,7 @@ fun AddCurrencyScreen(
                    }
                    
                    if (!isValid) {
-                       errorMessage = "Invalid currency. Please select a valid currency (Code and Name) from the list."
+                       errorMessage = context.getString(R.string.msg_invalid_currency)
                        showErrorDialog = true
                        return@Button
                    }
@@ -327,7 +331,7 @@ fun AddCurrencyScreen(
             },
             modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_CURRENCY_SAVE)
         ) {
-            Text("Save")
+            Text(stringResource(R.string.btn_save))
         }
         
         // Delete button (edit mode only)
@@ -338,7 +342,7 @@ fun AddCurrencyScreen(
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
             ) {
-                Text("Delete Currency")
+                Text(stringResource(R.string.btn_delete_currency))
             }
         }
     }
@@ -355,18 +359,18 @@ private fun OverrideRateDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Override Exchange Rate") },
+        title = { Text(stringResource(R.string.title_override_rate)) },
         text = {
             Column {
                 Text(
-                    text = "Enter the exchange rate from $currencyCode to $defaultCurrencyCode:",
+                    text = stringResource(R.string.msg_rate_prompt, currencyCode, defaultCurrencyCode),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 OutlinedTextField(
                     value = rateInput,
                     onValueChange = onRateInputChange,
-                    label = { Text("1 $currencyCode = ? $defaultCurrencyCode") },
+                    label = { Text(stringResource(R.string.lbl_rate_input, currencyCode, defaultCurrencyCode)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )

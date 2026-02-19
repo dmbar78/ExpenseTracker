@@ -10,6 +10,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Currency
+import androidx.compose.ui.res.stringResource
+import com.example.expensetracker.R
 import com.example.expensetracker.ui.TestTags
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -51,7 +53,7 @@ fun AddAccountScreenContent(
     var isCurrencyDropdownExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.padding(16.dp).testTag(TestTags.ADD_ACCOUNT_ROOT)) {
-        Text("Add Account", style = MaterialTheme.typography.headlineSmall)
+        Text(stringResource(R.string.title_add_account), style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = localName,
@@ -59,7 +61,7 @@ fun AddAccountScreenContent(
                 localName = it
                 callbacks.onNameChange(it)
             },
-            label = { Text("Account Name") },
+            label = { Text(stringResource(R.string.lbl_account_name)) },
             modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_ACCOUNT_NAME_FIELD)
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -69,7 +71,7 @@ fun AddAccountScreenContent(
                 localBalance = it
                 callbacks.onBalanceChange(it)
             },
-            label = { Text("Balance") },
+            label = { Text(stringResource(R.string.lbl_initial_balance)) },
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(TestTags.ADD_ACCOUNT_BALANCE_FIELD),
@@ -85,7 +87,7 @@ fun AddAccountScreenContent(
             OutlinedTextField(
                 value = currencies.find { it.code == localCurrencyCode }?.name ?: "",
                 onValueChange = {},
-                label = { Text("Currency") },
+                label = { Text(stringResource(R.string.lbl_currency)) },
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCurrencyDropdownExpanded) },
                 modifier = Modifier.menuAnchor().fillMaxWidth().testTag(TestTags.ADD_ACCOUNT_CURRENCY_VALUE)
@@ -121,7 +123,7 @@ fun AddAccountScreenContent(
             },
             modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_ACCOUNT_SAVE)
         ) {
-            Text("Save")
+            Text(stringResource(R.string.btn_save))
         }
     }
 }

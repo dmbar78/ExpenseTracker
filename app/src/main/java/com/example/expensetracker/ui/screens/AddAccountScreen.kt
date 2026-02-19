@@ -3,6 +3,8 @@ package com.example.expensetracker.ui.screens
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.navigation.NavController
+import androidx.compose.ui.res.stringResource
+import com.example.expensetracker.R
 import com.example.expensetracker.ui.screens.content.AddAccountCallbacks
 import com.example.expensetracker.ui.screens.content.AddAccountScreenContent
 import com.example.expensetracker.ui.screens.content.AddAccountState
@@ -23,6 +25,7 @@ fun AddAccountScreen(
     currencyCode: String? = null
 ) {
     // Track the current account name for savedStateHandle result passing
+    val context = androidx.compose.ui.platform.LocalContext.current
     var currentName by remember { mutableStateOf(accountName ?: "") }
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
@@ -36,11 +39,11 @@ fun AddAccountScreen(
     if (showErrorDialog) {
         AlertDialog(
             onDismissRequest = { showErrorDialog = false },
-            title = { Text("Error") },
+            title = { Text(stringResource(R.string.title_error)) },
             text = { Text(errorMessage) },
             confirmButton = {
                 Button(onClick = { showErrorDialog = false }) {
-                    Text("OK")
+                    Text(stringResource(R.string.btn_ok))
                 }
             }
         )
@@ -72,7 +75,7 @@ fun AddAccountScreen(
                                 navController.popBackStack()
                             },
                             onFailure = { error ->
-                                errorMessage = error.message ?: "An unknown error occurred."
+                                errorMessage = error.message ?: context.getString(R.string.err_unknown)
                                 showErrorDialog = true
                                 isSaving = false
                             }
@@ -83,4 +86,3 @@ fun AddAccountScreen(
         )
     )
 }
-

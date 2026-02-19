@@ -20,6 +20,9 @@ import com.example.expensetracker.ui.TestTags
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import com.example.expensetracker.R
 import java.util.*
 
 /**
@@ -72,6 +75,7 @@ fun EditTransferScreenContent(
     callbacks: EditTransferCallbacks,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isSourceAccountDropdownExpanded by remember { mutableStateOf(false) }
     var isDestAccountDropdownExpanded by remember { mutableStateOf(false) }
@@ -118,7 +122,7 @@ fun EditTransferScreenContent(
         ) {
             item {
                 Text(
-                    if (state.isEditMode) "Edit Transfer" else "Add Transfer",
+                    if (state.isEditMode) stringResource(R.string.title_edit_transfer) else stringResource(R.string.title_add_transfer),
                     style = MaterialTheme.typography.headlineSmall
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -133,7 +137,7 @@ fun EditTransferScreenContent(
                     OutlinedTextField(
                         value = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(state.date),
                         onValueChange = {},
-                        label = { Text("Date") },
+                        label = { Text(stringResource(R.string.lbl_date)) },
                         readOnly = true,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = false,
@@ -157,7 +161,7 @@ fun EditTransferScreenContent(
                     OutlinedTextField(
                         value = localSourceAccountName,
                         onValueChange = {},
-                        label = { Text("From") },
+                        label = { Text(stringResource(R.string.lbl_from)) },
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isSourceAccountDropdownExpanded) },
                         modifier = Modifier
@@ -173,7 +177,7 @@ fun EditTransferScreenContent(
                     ) {
                         // "Create New..." option
                         DropdownMenuItem(
-                            text = { Text("Create New…") },
+                            text = { Text(stringResource(R.string.option_create_new)) },
                             onClick = {
                                 isSourceAccountDropdownExpanded = false
                                 callbacks.onCreateNewSourceAccount(localSourceAccountName)
@@ -202,9 +206,9 @@ fun EditTransferScreenContent(
                 }
                 if (showSourceError) {
                     val errorText = if (state.defaultAccountUsed && localSourceAccountName == state.sourceAccountName)
-                        "Account not found. Default account is used. You can change it from the menu."
+                        stringResource(R.string.err_account_not_found_default)
                     else
-                        "Source account not found. Please select a valid account."
+                        stringResource(R.string.err_source_account_not_found)
                         
                     Text(
                         errorText,
@@ -225,7 +229,7 @@ fun EditTransferScreenContent(
                     OutlinedTextField(
                         value = localDestAccountName,
                         onValueChange = {},
-                        label = { Text("To") },
+                        label = { Text(stringResource(R.string.lbl_to)) },
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDestAccountDropdownExpanded) },
                         modifier = Modifier
@@ -241,7 +245,7 @@ fun EditTransferScreenContent(
                     ) {
                         // "Create New..." option
                         DropdownMenuItem(
-                            text = { Text("Create New…") },
+                            text = { Text(stringResource(R.string.option_create_new)) },
                             onClick = {
                                 isDestAccountDropdownExpanded = false
                                 callbacks.onCreateNewDestAccount(localDestAccountName)
@@ -270,7 +274,7 @@ fun EditTransferScreenContent(
                 }
                 if (showDestError) {
                     Text(
-                        "Destination account not found. Please select a valid account.",
+                        stringResource(R.string.err_dest_account_not_found),
                         color = Color.Red,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_ERROR_DEST_NOT_FOUND)
@@ -290,7 +294,7 @@ fun EditTransferScreenContent(
                             localAmount = it
                             callbacks.onAmountChange(it)
                         },
-                        label = { Text("Source Amount") },
+                        label = { Text(stringResource(R.string.lbl_source_amount)) },
                         modifier = Modifier
                             .weight(1f)
                             .testTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD),
@@ -324,7 +328,7 @@ fun EditTransferScreenContent(
                                 localDestAmount = it
                                 callbacks.onDestAmountChange(it)
                             },
-                            label = { Text("Destination Amount") },
+                            label = { Text(stringResource(R.string.lbl_dest_amount)) },
                             modifier = Modifier
                                 .weight(1f)
                                 .testTag(TestTags.EDIT_TRANSFER_DEST_AMOUNT_FIELD), // Needs new TestTag? Or reuse? Using simplified string for now to avoid compilation error if Tag missing.
@@ -357,7 +361,7 @@ fun EditTransferScreenContent(
                         localComment = it
                         callbacks.onCommentChange(it)
                     },
-                    label = { Text("Comment") },
+                    label = { Text(stringResource(R.string.lbl_comment)) },
                     modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_TRANSFER_COMMENT_FIELD)
                 )
 
@@ -381,7 +385,7 @@ fun EditTransferScreenContent(
                         
                         // Validate inputs
                         if (localSourceAccountName.isBlank() || localDestAccountName.isBlank()) {
-                            callbacks.onShowSnackbar("Please select both accounts.")
+                            callbacks.onShowSnackbar(context.getString(R.string.err_select_both_accounts))
                             return@Button
                         }
                         
@@ -391,24 +395,24 @@ fun EditTransferScreenContent(
                         
                         if (resolvedSourceAccount == null) {
                             showSourceError = true
-                            callbacks.onShowSnackbar("Source account not found. Please select a valid account.")
+                            callbacks.onShowSnackbar(context.getString(R.string.err_source_account_not_found))
                             return@Button
                         }
                         if (resolvedDestAccount == null) {
                             showDestError = true
-                            callbacks.onShowSnackbar("Destination account not found. Please select a valid account.")
+                            callbacks.onShowSnackbar(context.getString(R.string.err_dest_account_not_found))
                             return@Button
                         }
                         
                         val parsedAmount = parseTransferMoneyInputContent(localAmount)
                         if (parsedAmount == null || parsedAmount <= BigDecimal.ZERO) {
-                            callbacks.onShowSnackbar("Please enter a valid source amount.")
+                            callbacks.onShowSnackbar(context.getString(R.string.err_invalid_source_amount))
                             return@Button
                         }
                         
                         // Case-insensitive same-account check using canonical names
                         if (resolvedSourceAccount.name.equals(resolvedDestAccount.name, ignoreCase = true)) {
-                            callbacks.onShowSnackbar("Source and destination accounts must be different.")
+                            callbacks.onShowSnackbar(context.getString(R.string.err_same_accounts))
                             return@Button
                         }
                         
@@ -417,7 +421,7 @@ fun EditTransferScreenContent(
                         if (resolvedSourceAccount.currency != resolvedDestAccount.currency) {
                             parsedDestAmount = parseTransferMoneyInputContent(localDestAmount)
                             if (parsedDestAmount == null || parsedDestAmount <= BigDecimal.ZERO) {
-                                callbacks.onShowSnackbar("Please enter a valid destination amount.")
+                                callbacks.onShowSnackbar(context.getString(R.string.err_invalid_dest_amount))
                                 return@Button
                             }
                         }
@@ -457,7 +461,7 @@ fun EditTransferScreenContent(
                     enabled = !isSaving,
                     modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_TRANSFER_SAVE)
                 ) {
-                    Text("Save")
+                    Text(stringResource(R.string.btn_save))
                 }
                 if (state.isEditMode) {
                     // Copy Button
@@ -466,7 +470,7 @@ fun EditTransferScreenContent(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
                         modifier = Modifier.weight(1f).padding(horizontal = 4.dp).testTag(TestTags.COPY_BUTTON)
                     ) {
-                        Text("Copy")
+                        Text(stringResource(R.string.btn_copy))
                     }
 
                     Button(
@@ -474,7 +478,7 @@ fun EditTransferScreenContent(
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                         modifier = Modifier.weight(1f).padding(start = 8.dp).testTag(TestTags.EDIT_TRANSFER_DELETE)
                     ) {
-                        Text("Delete")
+                        Text(stringResource(R.string.btn_delete))
                     }
                 }
             }
@@ -485,8 +489,8 @@ fun EditTransferScreenContent(
     if (showDeleteDialog && state.existingTransfer != null) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Transfer") },
-            text = { Text("Are you sure you want to delete this transfer?") },
+            title = { Text(stringResource(R.string.title_delete_transfer)) },
+            text = { Text(stringResource(R.string.msg_delete_transfer_confirm)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -495,7 +499,7 @@ fun EditTransferScreenContent(
                     },
                     modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_DELETE_CONFIRM)
                 ) {
-                    Text("Yes")
+                    Text(stringResource(R.string.btn_yes))
                 }
             },
             dismissButton = {
@@ -503,7 +507,7 @@ fun EditTransferScreenContent(
                     onClick = { showDeleteDialog = false },
                     modifier = Modifier.testTag(TestTags.EDIT_TRANSFER_DELETE_DISMISS)
                 ) {
-                    Text("No")
+                    Text(stringResource(R.string.btn_no))
                 }
             }
         )

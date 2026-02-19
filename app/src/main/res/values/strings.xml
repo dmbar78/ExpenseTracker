@@ -1,3 +1,206 @@
 <resources>
     <string name="app_name">Expense Tracker</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_accounts">Accounts</string>
+    <string name="nav_categories">Categories</string>
+    <string name="nav_currencies">Currencies</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Actions -->
+    <string name="start_recognition">Start Recognition</string>
+    <string name="menu_desc">Menu</string>
+    <string name="create_desc">Create</string>
+    <string name="action_create_expense">Create Expense</string>
+    <string name="action_create_income">Create Income</string>
+    <string name="action_create_transfer">Create Transfer</string>
+
+    <!-- Home Screen -->
+    <string name="tab_expense">Expense</string>
+    <string name="tab_income">Income</string>
+    <string name="tab_transfers">Transfers</string>
+    <string name="tab_debts">Debts</string>
+    <string name="sort_by_date">By Date</string>
+    <string name="sort_by_amount">By Amount</string>
+    <string name="lbl_total">Total: %1$s %2$s</string>
+    <string name="lbl_total_unavailable">Total unavailable</string>
+    <string name="lbl_total_missing_rates">Total unavailable (missing rates)</string>
+    <string name="msg_no_debts">No debts found matching filters</string>
+    <string name="desc_sort">Sort</string>
+
+    <!-- Edit Expense/Income -->
+    <string name="title_edit_expense">Edit Expense</string>
+    <string name="title_add_expense">Add Expense</string>
+    <string name="title_edit_income">Edit Income</string>
+    <string name="title_add_income">Add Income</string>
+    <string name="lbl_date">Date</string>
+    <string name="lbl_account">Account</string>
+    <string name="lbl_category">Category</string>
+    <string name="lbl_amount">Amount</string>
+    <string name="lbl_comment">Comment</string>
+    <string name="lbl_debt">Debt</string>
+    <string name="lbl_keywords">Keywords</string>
+    <string name="lbl_payment_history">Payment History (Paid: %1$s %2$s)</string>
+    <string name="msg_no_payments">No payments yet</string>
+    <string name="btn_add_new">Add New</string>
+    <string name="btn_add_existing">Add Existing</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_copy">Copy</string>
+    <string name="btn_delete">Delete</string>
+    <string name="btn_yes">Yes</string>
+    <string name="btn_no">No</string>
+    <string name="btn_ok">OK</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_close">Close</string>
+    <string name="option_create_new">Create New…</string>
+    <string name="hint_search_keywords">Search or add keywords</string>
+    <string name="hint_keyword_name">Keyword name</string>
+    <string name="title_create_keyword">Create Keyword</string>
+    <string name="prefix_account">Account: %1$s</string>
+    <string name="prefix_category">Category: %1$s</string>
+    <string name="prefix_search">Search: %1$s</string>
+    <string name="title_filter_account">Filter by Account</string>
+    <string name="title_filter_transfers">Filter Transfers</string>
+    <string name="title_filter_category">Filter by Category</string>
+    <string name="title_search_query">Search Comment/Keyword</string>
+
+    <string name="title_add_account">Add Account</string>
+    <string name="lbl_account_name">Account Name</string>
+    <string name="lbl_initial_balance">Balance</string>
+    <string name="title_select_existing_payment">Select Existing Payment</string>
+    <string name="msg_no_currencies">No currencies yet. Tap \'Create New\' to add one.</string>
+    <string name="lbl_default">Default</string>
+    <string name="title_add_currency">Add Currency</string>
+    <string name="err_unknown">An unknown error occurred.</string>
+    <string name="msg_transfer_created">Transfer created</string>
+    <string name="msg_transfer_updated">Transfer updated</string>
+    <string name="err_transfer_save_failed">Failed to save transfer.</string>
+    <string name="title_edit_currency">Edit Currency</string>
+    <string name="lbl_currency_code">Currency Code</string>
+    <string name="lbl_currency_name">Currency Name</string>
+    <string name="lbl_currency_code_search">Currency Code (Search)</string>
+    <string name="lbl_currency_name_search">Currency Name (Search)</string>
+    <string name="title_error">Error</string>
+    <string name="title_override_rate">Override Exchange Rate</string>
+    <string name="action_override_rate">Override Rate</string>
+    <string name="btn_delete_currency">Delete Currency</string>
+    <string name="msg_delete_currency_confirm">Are you sure you want to delete this currency?</string>
+    <string name="msg_invalid_currency">Invalid currency. Please select a valid currency (Code and Name) from the list.</string>
+    <string name="msg_rate_prompt">Enter the exchange rate from %1$s to %2$s:</string>
+    <string name="lbl_rate_input">1 %1$s = ? %2$s</string>
+    <string name="lbl_exchange_rate">Exchange Rate</string>
+    <string name="msg_no_rate">No rate available</string>
+    <string name="msg_enter_valid_rate">Please enter a valid rate greater than 0</string>
+    <string name="msg_no_unlinked_records">No unlinked %1$s records found.</string>
+    <string name="msg_no_match">(No match found)</string>
+
+    <!-- Delete Dialogs -->
+    <string name="title_delete_record">Delete Record?</string>
+    <string name="msg_delete_record_linked">There\'re related payments. If you delete this record, they will be also deleted. Are you sure?</string>
+    <string name="title_delete_item">Delete %1$s</string>
+    <string name="msg_delete_item_confirm">Are you sure you want to delete this %1$s?</string>
+    <string name="title_delete_transfer">Delete Transfer</string>
+    <string name="msg_delete_transfer_confirm">Are you sure you want to delete this transfer?</string>
+
+    <!-- Errors -->
+    <string name="err_account_not_found">Account not found. Please select a valid account.</string>
+    <string name="err_account_not_found_default">Account not found. Default account is used. You can change it from the menu.</string>
+    <string name="err_category_not_found">Category not found. Please select a valid category.</string>
+    <string name="err_amount_empty">Amount cannot be empty.</string>
+    <string name="err_mic_permission">Microphone permission is required.</string>
+    <string name="err_save_before_payment">Save %1$s before creating the payment!</string>
+    <string name="err_save_before_adding">Save %1$s before adding payments!</string>
+    <string name="msg_saved">%1$s saved</string>
+    <string name="err_select_both_accounts">Please select both accounts.</string>
+    <string name="err_source_account_not_found">Source account not found. Please select a valid account.</string>
+    <string name="err_dest_account_not_found">Destination account not found. Please select a valid account.</string>
+    <string name="err_invalid_source_amount">Please enter a valid source amount.</string>
+    <string name="err_invalid_dest_amount">Please enter a valid destination amount.</string>
+    <string name="err_same_accounts">Source and destination accounts must be different.</string>
+    <string name="err_save_failed">Failed to save %1$s</string>
+
+    <!-- Edit Transfer -->
+    <string name="title_edit_transfer">Edit Transfer</string>
+    <string name="title_add_transfer">Add Transfer</string>
+    <string name="lbl_from">From</string>
+    <string name="lbl_to">To</string>
+    <string name="lbl_source_amount">Source Amount</string>
+    <string name="lbl_dest_amount">Destination Amount</string>
+
+    <!-- Settings -->
+    <string name="title_settings">Settings</string>
+    <string name="header_security">Security</string>
+    <string name="title_change_pin">Change PIN</string>
+    <string name="title_remove_pin">Remove PIN</string>
+    <string name="title_add_pin">Add PIN</string>
+    <string name="val_enable_security">Enable Security</string>
+    <string name="val_disable_security">Disable Security</string>
+    <string name="val_masked_pin">******</string>
+    <string name="title_enable_biometric">Enable Biometric Unlock</string>
+    
+    <string name="header_general">General</string>
+    <string name="title_default_expense_account">Default Expense Account</string>
+    <string name="title_default_transfer_account">Default Transfer Account</string>
+    <string name="msg_choose_account_prefill">Choose an account to pre-fill.</string>
+    <string name="title_default_currency">Default currency</string>
+    
+    <string name="header_data_management">Data Management</string>
+    <string name="title_export_backup">Export Backup</string>
+    <string name="title_restore_backup">Restore from Backup</string>
+    <string name="val_json">JSON</string>
+    <string name="val_select_file">Select File</string>
+    <string name="val_none">None</string>
+
+    <string name="title_processing">Processing</string>
+    <string name="msg_please_wait">Please wait...</string>
+    <string name="title_encrypted_backup">Encrypted Backup</string>
+    <string name="msg_encrypted_backup_password">This backup is encrypted. Please enter the password to restore it.</string>
+    <string name="lbl_password">Password</string>
+    <string name="btn_restore">Restore</string>
+    <string name="title_confirm_restore">Confirm Restore</string>
+    <string name="msg_confirm_restore">Restoring from backup will replace ALL existing data. This action cannot be undone.\n\nAre you sure you want to proceed?</string>
+    <string name="title_encrypt_backup">Encrypt Backup?</string>
+    <string name="msg_encrypt_backup_ask">Do you want to encypt the backup file with a password? This allows you to restore it on any device if you know the password.</string>
+    <string name="title_set_backup_password">Set Backup Password</string>
+    <string name="msg_set_backup_password">Enter a password to encrypt the backup. Important: If you lose this password, the data cannot be recovered.</string>
+    
+    <string name="title_select_default_currency">Select Default Currency</string>
+    <string name="msg_choose_currency">Choose the currency to use for totals and conversions.</string>
+    <string name="lbl_currency">Currency</string>
+    <string name="title_enter_exchange_rate">Enter Exchange Rate</string>
+    <string name="msg_enter_exchange_rate">No exchange rate available for %1$s. Please enter the EUR to %1$s rate:</string>
+    <string name="lbl_exchange_rate_hint">1 EUR = ? %1$s</string>
+    <string name="err_invalid_rate">Please enter a valid rate greater than 0</string>
+
+    
+    <!-- Biometric messages -->
+    <string name="msg_unlock_with_pin">Please unlock with PIN first</string>
+    <string name="title_enable_biometric_dialog">Enable Biometric Unlock</string>
+    <string name="msg_confirm_identity">Confirm your identity to enable biometric unlock</string>
+    <string name="btn_cancel_biometric">Cancel</string>
+    <string name="msg_biometric_enabled">Biometric enabled</string>
+    <string name="err_setup_failed">Setup failed: %1$s</string>
+    <string name="err_finalization_failed">Finalization failed: %1$s</string>
+    <string name="err_auth_error">Auth Error: %1$s</string>
+    <string name="err_biometric_no_hardware">No biometric hardware</string>
+    <string name="err_biometric_hardware_unavailable">Biometric hardware unavailable</string>
+    <string name="err_no_biometrics_enrolled">No biometrics enrolled. Check phone settings.</string>
+    <string name="err_biometric_unavailable">Biometric auth not available (Code: %1$d)</string>
+    <string name="err_context_not_activity">Error: Context is not a FragmentActivity</string>
+
+    <string name="title_recognition_failed">Recognition Failed</string>
+    <string name="title_invalid_transfer">Invalid Transfer</string>
+    <string name="title_success">Success</string>
+
+
+    <string name="desc_remove_keyword">Remove keyword</string>
+    <string name="msg_pin_removed">PIN removed</string>
+
+    <!-- Voice Recognition -->
+    <string name="err_voice_input_unrecognized">Couldn\'t recognize input: \'%1$s\'. Please repeat in one of the formats (example values used):\n            1. Expense from AccountName 50 Category Food (optional date if not today).\n            2. Income to AccountName 50 Category Salary (optional date if not today).\n            3. Transfer from SourceAccountName to DestinationAccountName 50 (optional date if not today).\n            \n            Optional date format can be:\n            - January 1\n            - January 1st\n            - 1st of January.</string>
+    <string name="err_voice_no_accounts">No accounts found. Please create at least one account before adding transfers.</string>
+    <string name="msg_voice_transfer_added">Transfer from %1$s to %2$s for %3$s %4$s on %5$s successfully added.</string>
+    <string name="msg_voice_expense_added">%1$s of %2$s %3$s on %4$s for account %5$s and category %6$s successfully added.</string>
+    <string name="err_voice_failed">Failed to add transfer.</string>
 </resources>

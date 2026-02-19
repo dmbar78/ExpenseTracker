@@ -54,11 +54,11 @@ class AccountDeletionSafeguardTest {
         composeTestRule.waitForIdle()
 
         // Open Drawer
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
+        composeTestRule.onNodeWithContentDescription(composeTestRule.activity.getString(com.example.expensetracker.R.string.menu_desc)).performClick()
         composeTestRule.waitForIdle()
 
         // Navigate to Accounts
-        composeTestRule.onNodeWithText("Accounts").performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(com.example.expensetracker.R.string.nav_accounts)).performClick()
         composeTestRule.waitForIdle()
 
         // Give ViewModel StateFlows time to initialize and load accounts after Hilt injection

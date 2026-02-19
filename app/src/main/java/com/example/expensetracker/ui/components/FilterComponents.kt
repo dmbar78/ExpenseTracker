@@ -24,6 +24,8 @@ import androidx.compose.ui.window.Dialog
 import com.example.expensetracker.data.*
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.res.stringResource
+import com.example.expensetracker.R
 
 // ==================== Filter Icon Button ====================
 
@@ -848,7 +850,7 @@ fun TransferFilterDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Filter Transfers",
+                    text = stringResource(R.string.title_filter_transfers),
                     style = MaterialTheme.typography.headlineSmall
                 )
                 
@@ -1004,7 +1006,7 @@ fun CategoryFilterDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Filter by Category",
+                    text = stringResource(R.string.title_filter_category),
                     style = MaterialTheme.typography.headlineSmall
                 )
                 
@@ -1099,7 +1101,7 @@ fun TextQueryFilterDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Search Comment/Keyword",
+                    text = stringResource(R.string.title_search_query),
                     style = MaterialTheme.typography.headlineSmall
                 )
                 
@@ -1190,7 +1192,7 @@ fun FilterChipsRow(
         if (filterState.hasAccountFilter()) {
             item {
                 FilterChip(
-                    label = "Account: ${filterState.expenseIncomeAccount}",
+                    label = stringResource(R.string.prefix_account, filterState.expenseIncomeAccount.toString()),
                     onClick = onAccountFilterClick,
                     onClear = onClearAccountFilter
                 )
@@ -1201,7 +1203,7 @@ fun FilterChipsRow(
         if (filterState.hasCategoryFilter()) {
             item {
                 FilterChip(
-                    label = "Category: ${filterState.category}",
+                    label = stringResource(R.string.prefix_category, filterState.category.toString()),
                     onClick = onCategoryFilterClick,
                     onClear = onClearCategoryFilter
                 )
@@ -1231,7 +1233,7 @@ fun FilterChipsRow(
         if (filterState.hasTextQueryFilter()) {
             item {
                 FilterChip(
-                    label = "Search: ${filterState.textQuery}",
+                    label = stringResource(R.string.prefix_search, filterState.textQuery.toString()),
                     onClick = onTextQueryFilterClick,
                     onClear = onClearTextQueryFilter
                 )

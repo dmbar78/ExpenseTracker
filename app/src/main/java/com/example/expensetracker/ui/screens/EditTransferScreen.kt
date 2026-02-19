@@ -13,6 +13,8 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.example.expensetracker.R
 import androidx.navigation.NavController
 import com.example.expensetracker.ui.screens.content.EditTransferCallbacks
 import com.example.expensetracker.ui.screens.content.EditTransferScreenContent
@@ -53,6 +55,7 @@ fun EditTransferScreen(
     val scope = rememberCoroutineScope()
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
 
+    val context = LocalContext.current
     val isEditMode = transferId > 0
     
     // Track error states
@@ -106,7 +109,7 @@ fun EditTransferScreen(
     var date by rememberSaveable { mutableStateOf(if (initialTransferDateMillis > 0) initialTransferDateMillis else System.currentTimeMillis()) }
     var comment by rememberSaveable { mutableStateOf("") }
 
-    val context = LocalContext.current
+
     val calendar = Calendar.getInstance()
 
     val datePickerDialog = DatePickerDialog(
@@ -289,7 +292,7 @@ fun EditTransferScreen(
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             result.fold(
                                 onSuccess = {
-                                    val message = if (isEditMode) "Transfer updated" else "Transfer created"
+                                    val message = if (isEditMode) context.getString(R.string.msg_transfer_updated) else context.getString(R.string.msg_transfer_created)
                                     scope.launch {
                                         snackbarHostState.showSnackbar(
                                             message = message,
@@ -299,7 +302,7 @@ fun EditTransferScreen(
                                     navController.popBackStack()
                                 },
                                 onFailure = { error ->
-                                    snackbarHostState.showSnackbar(error.message ?: "Failed to save transfer.")
+                                    snackbarHostState.showSnackbar(error.message ?: context.getString(R.string.err_transfer_save_failed))
                                     isSaving = false
                                 }
                             )

@@ -11,6 +11,7 @@ import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Category
 import com.example.expensetracker.data.Expense
 import com.example.expensetracker.data.Keyword
+import com.example.expensetracker.R
 import com.example.expensetracker.data.TransferHistory
 import com.example.expensetracker.ui.screens.content.*
 import dagger.hilt.android.testing.HiltAndroidRule
@@ -711,7 +712,7 @@ class VoiceFlowContentTest {
         }
 
         // Verify shows "Add Transfer" title
-        composeTestRule.onNodeWithText("Add Transfer").assertExists()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.title_add_transfer)).assertExists()
 
         // Delete button should NOT exist in create mode
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DELETE).assertDoesNotExist()

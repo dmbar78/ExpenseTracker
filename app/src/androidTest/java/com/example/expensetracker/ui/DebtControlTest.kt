@@ -56,13 +56,15 @@ class DebtControlTest {
 
         // Verify "Add New" button exists and has correct text
         composeTestRule.onNodeWithTag(ADD_NEW_BUTTON).assertExists()
+        val addNewText = composeTestRule.activity.getString(com.example.expensetracker.R.string.btn_add_new)
         composeTestRule.onNodeWithTag(ADD_NEW_BUTTON, useUnmergedTree = true)
-            .onChildren().filter(hasText("Add New")).assertCountEquals(1)
+            .onChildren().filter(hasText(addNewText)).assertCountEquals(1)
 
         // Verify "Add Existing" button exists
         composeTestRule.onNodeWithTag(ADD_EXISTING_BUTTON).assertExists()
+        val addExistingText = composeTestRule.activity.getString(com.example.expensetracker.R.string.btn_add_existing)
         composeTestRule.onNodeWithTag(ADD_EXISTING_BUTTON, useUnmergedTree = true)
-             .onChildren().filter(hasText("Add Existing")).assertCountEquals(1)
+             .onChildren().filter(hasText(addExistingText)).assertCountEquals(1)
     }
 
     @Test

@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.expensetracker.data.*
+import com.example.expensetracker.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -998,15 +999,10 @@ class ExpenseViewModel @Inject constructor(
                 return@launch
             }
             
-            _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed("""Couldn't recognize input: '$spokenText'. Please repeat in one of the formats (example values used):
-            1. Expense from AccountName 50 Category Food (optional date if not today).
-            2. Income to AccountName 50 Category Salary (optional date if not today).
-            3. Transfer from SourceAccountName to DestinationAccountName 50 (optional date if not today).
-            
-            Optional date format can be:
-            - January 1
-            - January 1st
-            - 1st of January.""")
+            val app = getApplication<Application>()
+            _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed(
+                app.getString(R.string.err_voice_input_unrecognized, spokenText)
+            )
 
         }
     }
@@ -1015,7 +1011,7 @@ class ExpenseViewModel @Inject constructor(
         val accounts = allAccounts.first()
         if (accounts.isEmpty()) {
             _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed(
-                "No accounts found. Please create at least one account before adding transfers."
+                getApplication<Application>().getString(R.string.err_voice_no_accounts)
             )
             return
         }
@@ -1085,7 +1081,16 @@ class ExpenseViewModel @Inject constructor(
 
         try {
             ledgerRepository.addTransfer(transferRecord)
-            _voiceRecognitionState.value = VoiceRecognitionState.Success("Transfer from ${finalSourceAccount.name} to ${transferRecord.destinationAccount} for ${transferRecord.amount} ${transferRecord.currency} on ${formatDate(transferRecord.date)} successfully added.")
+            val app = getApplication<Application>()
+            _voiceRecognitionState.value = VoiceRecognitionState.Success(
+                app.getString(R.string.msg_voice_transfer_added, 
+                    finalSourceAccount.name, 
+                    transferRecord.destinationAccount, 
+                    transferRecord.amount, 
+                    transferRecord.currency, 
+                    formatDate(transferRecord.date)
+                )
+            )
         } catch (e: IllegalArgumentException) {
             val message = e.message ?: "Invalid transfer."
             if (message.contains("same", ignoreCase = true)) {
@@ -1094,7 +1099,7 @@ class ExpenseViewModel @Inject constructor(
                 _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed(message)
             }
         } catch (e: Exception) {
-            _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed(e.message ?: "Failed to add transfer.")
+            _voiceRecognitionState.value = VoiceRecognitionState.RecognitionFailed(e.message ?: getApplication<Application>().getString(R.string.err_voice_failed))
         }
     }
 
@@ -1152,7 +1157,17 @@ class ExpenseViewModel @Inject constructor(
             type = expenseType
         )
         insertExpense(finalExpense)
-        _voiceRecognitionState.value = VoiceRecognitionState.Success("${expenseType} of ${finalExpense.amount} ${finalExpense.currency} on ${formatDate(finalExpense.expenseDate)} for account ${finalExpense.account} and category ${finalExpense.category} successfully added.")
+        val app = getApplication<Application>()
+        _voiceRecognitionState.value = VoiceRecognitionState.Success(
+            app.getString(R.string.msg_voice_expense_added, 
+                expenseType, 
+                finalExpense.amount, 
+                finalExpense.currency, 
+                formatDate(finalExpense.expenseDate), 
+                finalExpense.account, 
+                finalExpense.category
+            )
+        )
     }
 
     /**

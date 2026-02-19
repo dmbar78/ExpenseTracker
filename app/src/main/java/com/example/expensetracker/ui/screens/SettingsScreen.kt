@@ -27,6 +27,8 @@ import com.example.expensetracker.viewmodel.BackupOperationState
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import androidx.compose.ui.res.stringResource
+import com.example.expensetracker.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,12 +106,12 @@ fun SettingsScreen(
     if (backupState is BackupOperationState.Loading) {
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("Processing") },
+            title = { Text(stringResource(R.string.title_processing)) },
             text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("Please wait...")
+                    Text(stringResource(R.string.msg_please_wait))
                 }
             },
             confirmButton = {}
@@ -122,15 +124,15 @@ fun SettingsScreen(
                 viewModel.cancelRestore()
                 restorePasswordInput = ""
             },
-            title = { Text("Encrypted Backup") },
+            title = { Text(stringResource(R.string.title_encrypted_backup)) },
             text = { 
                 Column {
-                    Text("This backup is encrypted. Please enter the password to restore it.")
+                    Text(stringResource(R.string.msg_encrypted_backup_password))
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = restorePasswordInput,
                         onValueChange = { restorePasswordInput = it },
-                        label = { Text("Password") },
+                        label = { Text(stringResource(R.string.lbl_password)) },
                         visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         singleLine = true,
@@ -146,7 +148,7 @@ fun SettingsScreen(
                     },
                     enabled = restorePasswordInput.isNotBlank()
                 ) {
-                    Text("Restore")
+                    Text(stringResource(R.string.btn_restore))
                 }
             },
             dismissButton = {
@@ -156,7 +158,7 @@ fun SettingsScreen(
                         restorePasswordInput = ""
                     }
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -166,8 +168,8 @@ fun SettingsScreen(
     if (showRestoreConfirmation) {
         AlertDialog(
             onDismissRequest = { showRestoreConfirmation = false },
-            title = { Text("Confirm Restore") },
-            text = { Text("Restoring from backup will replace ALL existing data. This action cannot be undone.\n\nAre you sure you want to proceed?") },
+            title = { Text(stringResource(R.string.title_confirm_restore)) },
+            text = { Text(stringResource(R.string.msg_confirm_restore)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -176,12 +178,12 @@ fun SettingsScreen(
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Restore")
+                    Text(stringResource(R.string.btn_restore))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRestoreConfirmation = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -191,14 +193,14 @@ fun SettingsScreen(
     if (showEncryptDialog) {
         AlertDialog(
             onDismissRequest = { showEncryptDialog = false },
-            title = { Text("Encrypt Backup?") },
-            text = { Text("Do you want to encypt the backup file with a password? This allows you to restore it on any device if you know the password.") },
+            title = { Text(stringResource(R.string.title_encrypt_backup)) },
+            text = { Text(stringResource(R.string.msg_encrypt_backup_ask)) },
             confirmButton = {
                 TextButton(onClick = {
                     showEncryptDialog = false
                     showSetPasswordDialog = true
                 }) {
-                    Text("Yes")
+                    Text(stringResource(R.string.btn_yes))
                 }
             },
             dismissButton = {
@@ -208,7 +210,7 @@ fun SettingsScreen(
                     val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
                     exportLauncher.launch("expense-tracker-backup-$timestamp.json")
                 }) {
-                    Text("No")
+                    Text(stringResource(R.string.btn_no))
                 }
             }
         )
@@ -218,15 +220,15 @@ fun SettingsScreen(
     if (showSetPasswordDialog) {
         AlertDialog(
             onDismissRequest = { showSetPasswordDialog = false },
-            title = { Text("Set Backup Password") },
+            title = { Text(stringResource(R.string.title_set_backup_password)) },
             text = {
                 Column {
-                    Text("Enter a password to encrypt the backup. Important: If you lose this password, the data cannot be recovered.")
+                    Text(stringResource(R.string.msg_set_backup_password))
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = exportPasswordInput,
                         onValueChange = { exportPasswordInput = it },
-                        label = { Text("Password") },
+                        label = { Text(stringResource(R.string.lbl_password)) },
                         visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         singleLine = true,
@@ -244,12 +246,12 @@ fun SettingsScreen(
                     },
                     enabled = exportPasswordInput.isNotBlank()
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.btn_ok))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSetPasswordDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -281,7 +283,8 @@ fun SettingsScreen(
                         SecurityManager.removePin(context)
                         isPinSet = false
                         isBiometricEnabled = false
-                        Toast.makeText(context, "PIN removed", Toast.LENGTH_SHORT).show()
+                        isBiometricEnabled = false
+                        Toast.makeText(context, context.getString(R.string.msg_pin_removed), Toast.LENGTH_SHORT).show()
                     }
                 },
                 onCancel = { showPinLock = false }
@@ -296,14 +299,14 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState())
     ) {
         Text(
-            text = "Settings",
+            text = stringResource(R.string.title_settings),
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 24.dp)
         )
         
         // Security Section
         Text(
-            text = "Security",
+            text = stringResource(R.string.header_security),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
             color = MaterialTheme.colorScheme.primary
@@ -311,7 +314,7 @@ fun SettingsScreen(
         
         if (isPinSet) {
             SettingsItem(
-                title = "Change PIN",
+                title = stringResource(R.string.title_change_pin),
                 value = "******",
                 onClick = {
                     pinLockMode = PinScreenMode.Change
@@ -321,8 +324,8 @@ fun SettingsScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             SettingsItem(
-                title = "Remove PIN",
-                value = "Disable Security",
+                title = stringResource(R.string.title_remove_pin),
+                value = stringResource(R.string.val_disable_security),
                 onClick = {
                     pinLockMode = PinScreenMode.Remove
                     showPinLock = true
@@ -338,7 +341,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Enable Biometric Unlock", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.title_enable_biometric), style = MaterialTheme.typography.bodyLarge)
                 Switch(
                     checked = isBiometricEnabled,
                     onCheckedChange = { params ->
@@ -440,8 +443,8 @@ fun SettingsScreen(
 
         } else {
             SettingsItem(
-                title = "Add PIN",
-                value = "Enable Security",
+                title = stringResource(R.string.title_add_pin),
+                value = stringResource(R.string.val_enable_security),
                 onClick = {
                     pinLockMode = PinScreenMode.Create
                     showPinLock = true
@@ -452,30 +455,30 @@ fun SettingsScreen(
         
     // Default Currency setting
         Text(
-            text = "General",
+            text = stringResource(R.string.header_general),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
             color = MaterialTheme.colorScheme.primary
         )
 
         SettingsItem(
-            title = "Default Expense Account",
-            value = allAccounts.find { it.id == defaultExpenseAccountId }?.name ?: "None",
+            title = stringResource(R.string.title_default_expense_account),
+            value = allAccounts.find { it.id == defaultExpenseAccountId }?.name ?: stringResource(R.string.val_none),
             onClick = { showExpenseAccountPicker = true }
         )
         
         Spacer(modifier = Modifier.height(8.dp))
         
         SettingsItem(
-            title = "Default Transfer Account",
-            value = allAccounts.find { it.id == defaultTransferAccountId }?.name ?: "None",
+            title = stringResource(R.string.title_default_transfer_account),
+            value = allAccounts.find { it.id == defaultTransferAccountId }?.name ?: stringResource(R.string.val_none),
             onClick = { showTransferAccountPicker = true }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         SettingsItem(
-            title = "Default currency",
+            title = stringResource(R.string.title_default_currency),
             value = defaultCurrencyCode,
             onClick = { 
                 selectedCurrency = defaultCurrencyCode
@@ -485,14 +488,14 @@ fun SettingsScreen(
 
         // Data Management Section
         Text(
-            text = "Data Management",
+            text = stringResource(R.string.header_data_management),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
             color = MaterialTheme.colorScheme.primary
         )
 
         SettingsItem(
-            title = "Export Backup",
+            title = stringResource(R.string.title_export_backup),
             value = "JSON",
             onClick = {
                 showEncryptDialog = true
@@ -502,8 +505,8 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         SettingsItem(
-            title = "Restore from Backup",
-            value = "Select File",
+            title = stringResource(R.string.title_restore_backup),
+            value = stringResource(R.string.val_select_file),
             onClick = {
                 importLauncher.launch(arrayOf("application/json"))
             }
@@ -644,11 +647,11 @@ private fun DefaultCurrencyPickerDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Default Currency") },
+        title = { Text(stringResource(R.string.title_select_default_currency)) },
         text = {
             Column {
                 Text(
-                    text = "Choose the currency to use for totals and conversions.",
+                    text = stringResource(R.string.msg_choose_currency),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -662,7 +665,7 @@ private fun DefaultCurrencyPickerDialog(
                         value = selectedCurrencyCode,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Currency") },
+                        label = { Text(stringResource(R.string.lbl_currency)) },
                         trailingIcon = {
                             if (isCheckingPivot) {
                                 CircularProgressIndicator(
@@ -701,12 +704,12 @@ private fun DefaultCurrencyPickerDialog(
                 onClick = onConfirm,
                 enabled = !isCheckingPivot
             ) {
-                Text("OK")
+                Text(stringResource(R.string.btn_ok))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.btn_cancel))
             }
         }
     )
@@ -727,24 +730,24 @@ private fun EurPivotRateDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Enter Exchange Rate") },
+        title = { Text(stringResource(R.string.title_enter_exchange_rate)) },
         text = {
             Column {
                 Text(
-                    text = "No exchange rate available for $currencyCode. Please enter the EUR to $currencyCode rate:",
+                    text = stringResource(R.string.msg_enter_exchange_rate, currencyCode, currencyCode),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 OutlinedTextField(
                     value = rateInput,
                     onValueChange = onRateInputChange,
-                    label = { Text("1 EUR = ? $currencyCode") },
+                    label = { Text(stringResource(R.string.lbl_exchange_rate_hint, currencyCode)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     isError = rateInput.isNotBlank() && !isValidRate,
                     supportingText = if (rateInput.isNotBlank() && !isValidRate) {
-                        { Text("Please enter a valid rate greater than 0") }
+                        { Text(stringResource(R.string.err_invalid_rate)) }
                     } else null
                 )
             }
@@ -754,12 +757,12 @@ private fun EurPivotRateDialog(
                 onClick = onConfirm,
                 enabled = isValidRate
             ) {
-                Text("OK")
+                Text(stringResource(R.string.btn_ok))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.btn_cancel))
             }
         }
     )
@@ -796,7 +799,7 @@ private fun DefaultAccountPickerDialog(
         text = {
             Column {
                 Text(
-                    text = "Choose an account to pre-fill.",
+                    text = stringResource(R.string.msg_choose_account_prefill),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )

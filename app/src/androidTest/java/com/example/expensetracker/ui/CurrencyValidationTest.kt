@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import com.example.expensetracker.MainActivity
+import com.example.expensetracker.R
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Before
@@ -34,11 +35,11 @@ class CurrencyValidationTest {
     @Test
     fun addCurrency_invalidValues_showsError() {
         // Navigate to Currencies
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.onNodeWithText("Currencies").performClick()
+        composeTestRule.onNodeWithContentDescription(composeTestRule.activity.getString(R.string.menu_desc)).performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.nav_currencies)).performClick()
 
         // Create New
-        composeTestRule.onNodeWithText("Create New").performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.option_create_new)).performClick()
 
         // Input Invalid Code
         composeTestRule.onNodeWithTag(TestTags.ADD_CURRENCY_CODE_FIELD)
@@ -52,10 +53,10 @@ class CurrencyValidationTest {
         composeTestRule.onNodeWithTag(TestTags.ADD_CURRENCY_SAVE).performClick()
 
         // Verify Error
-        composeTestRule.onNodeWithText("Error").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Invalid currency. Please select a valid currency (Code and Name) from the list.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.title_error)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.msg_invalid_currency)).assertIsDisplayed()
         
         // Dismiss
-        composeTestRule.onNodeWithText("OK").performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.btn_ok)).performClick()
     }
 }

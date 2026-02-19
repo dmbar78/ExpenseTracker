@@ -47,7 +47,7 @@ class MainActivity : FragmentActivity() {
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
             if (isGranted) Log.d("Permission", "RECORD_AUDIO permission granted")
-            else Toast.makeText(this, "Microphone permission is required.", Toast.LENGTH_LONG).show()
+            else Toast.makeText(this, getString(R.string.err_mic_permission), Toast.LENGTH_LONG).show()
         }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -138,10 +138,10 @@ class MainActivity : FragmentActivity() {
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text("Expense Tracker") },
+                        title = { Text(androidx.compose.ui.res.stringResource(R.string.app_name)) },
                         navigationIcon = {
                             IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                                Icon(Icons.Default.Menu, contentDescription = androidx.compose.ui.res.stringResource(R.string.menu_desc))
                             }
                         }
                     )
@@ -153,7 +153,7 @@ class MainActivity : FragmentActivity() {
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ) {
-                            Icon(Icons.Default.Mic, contentDescription = "Start Recognition")
+                            Icon(Icons.Default.Mic, contentDescription = androidx.compose.ui.res.stringResource(R.string.start_recognition))
                         }
                     }
                 }
@@ -176,14 +176,14 @@ class MainActivity : FragmentActivity() {
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = "Create")
+                                Icon(Icons.Default.Add, contentDescription = androidx.compose.ui.res.stringResource(R.string.create_desc))
                             }
                             DropdownMenu(
                                 expanded = isPlusMenuExpanded,
                                 onDismissRequest = { isPlusMenuExpanded = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Create Expense") },
+                                    text = { Text(androidx.compose.ui.res.stringResource(R.string.action_create_expense)) },
                                     onClick = {
                                         isPlusMenuExpanded = false
                                         navController.navigate(
@@ -193,7 +193,7 @@ class MainActivity : FragmentActivity() {
                                     modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_EXPENSE)
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Create Income") },
+                                    text = { Text(androidx.compose.ui.res.stringResource(R.string.action_create_income)) },
                                     onClick = {
                                         isPlusMenuExpanded = false
                                         navController.navigate(
@@ -203,7 +203,7 @@ class MainActivity : FragmentActivity() {
                                     modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_INCOME)
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Create Transfer") },
+                                    text = { Text(androidx.compose.ui.res.stringResource(R.string.action_create_transfer)) },
                                     onClick = {
                                         isPlusMenuExpanded = false
                                         navController.navigate("editTransfer/0")

@@ -10,6 +10,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.compose.ui.res.stringResource
+import com.example.expensetracker.R
 import com.example.expensetracker.data.Currency
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 
@@ -24,15 +26,15 @@ fun CurrenciesScreen(viewModel: ExpenseViewModel, navController: NavController) 
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Currencies", style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.nav_currencies), style = MaterialTheme.typography.headlineSmall)
             Button(onClick = { navController.navigate("addCurrency") }) {
-                Text("Create New")
+                Text(stringResource(R.string.option_create_new))
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
 
         if (currencies.isEmpty()) {
-            Text("No currencies yet. Tap 'Create New' to add one.")
+            Text(stringResource(R.string.msg_no_currencies))
         } else {
             LazyColumn {
                 items(currencies) { currency ->
@@ -75,7 +77,7 @@ private fun CurrencyRow(
                 )
                 if (isDefault) {
                     Text(
-                        text = "Default",
+                        text = stringResource(R.string.lbl_default),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )

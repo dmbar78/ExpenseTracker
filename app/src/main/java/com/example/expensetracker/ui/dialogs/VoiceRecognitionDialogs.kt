@@ -4,6 +4,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import com.example.expensetracker.R
 import com.example.expensetracker.ui.TestTags
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import com.example.expensetracker.viewmodel.VoiceRecognitionState
@@ -17,9 +19,9 @@ fun VoiceRecognitionDialogs(viewModel: ExpenseViewModel) {
         is VoiceRecognitionState.RecognitionFailed -> {
             AlertDialog(
                 onDismissRequest = { viewModel.dismissVoiceRecognitionDialog() },
-                title = { Text("Recognition Failed") },
+                title = { Text(stringResource(R.string.title_recognition_failed)) },
                 text = { Text(currentState.message) },
-                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text("OK") } },
+                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text(stringResource(R.string.btn_ok)) } },
                 modifier = Modifier.testTag(TestTags.VOICE_DIALOG_RECOGNITION_FAILED)
             )
         }
@@ -27,18 +29,18 @@ fun VoiceRecognitionDialogs(viewModel: ExpenseViewModel) {
         is VoiceRecognitionState.SameAccountTransfer -> {
             AlertDialog(
                 onDismissRequest = { viewModel.dismissVoiceRecognitionDialog() },
-                title = { Text("Invalid Transfer") },
+                title = { Text(stringResource(R.string.title_invalid_transfer)) },
                 text = { Text(currentState.message) },
-                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text("OK") } },
+                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text(stringResource(R.string.btn_ok)) } },
                 modifier = Modifier.testTag(TestTags.VOICE_DIALOG_SAME_ACCOUNT)
             )
         }
         is VoiceRecognitionState.Success -> {
             AlertDialog(
                 onDismissRequest = { viewModel.dismissVoiceRecognitionDialog() },
-                title = { Text("Success") },
+                title = { Text(stringResource(R.string.title_success)) },
                 text = { Text(currentState.message) },
-                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text("OK") } },
+                confirmButton = { Button(onClick = { viewModel.dismissVoiceRecognitionDialog() }) { Text(stringResource(R.string.btn_ok)) } },
                 modifier = Modifier.testTag(TestTags.VOICE_DIALOG_SUCCESS)
             )
         }

@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
@@ -30,6 +31,8 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.res.stringResource
+import com.example.expensetracker.R
 
 /**
  * State holder for EditExpenseScreen content.
@@ -103,6 +106,7 @@ fun EditExpenseScreenContent(
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isAccountDropdownExpanded by remember { mutableStateOf(false) }
     var isCategoryDropdownExpanded by remember { mutableStateOf(false) }
@@ -140,7 +144,11 @@ fun EditExpenseScreenContent(
             )
         ) {
             item {
-                val headerText = if (state.expenseId > 0) "Edit ${state.type}" else "Add ${state.type}"
+                val headerText = if (state.expenseId > 0) {
+                    if (state.type == "Income") stringResource(R.string.title_edit_income) else stringResource(R.string.title_edit_expense)
+                } else {
+                    if (state.type == "Income") stringResource(R.string.title_add_income) else stringResource(R.string.title_add_expense)
+                }
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -167,7 +175,7 @@ fun EditExpenseScreenContent(
                                 enabled = isEditable
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Debt")
+                            Text(stringResource(R.string.lbl_debt))
                         }
                     }
                 }
@@ -183,7 +191,7 @@ fun EditExpenseScreenContent(
                     OutlinedTextField(
                         value = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(state.expenseDate),
                         onValueChange = {},
-                        label = { Text("Date") },
+                        label = { Text(stringResource(R.string.lbl_date)) },
                         readOnly = true,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = false,
@@ -207,7 +215,7 @@ fun EditExpenseScreenContent(
                     OutlinedTextField(
                         value = localAccountName,
                         onValueChange = {},
-                        label = { Text("Account") },
+                        label = { Text(stringResource(R.string.lbl_account)) },
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isAccountDropdownExpanded) },
                         modifier = Modifier
@@ -223,7 +231,7 @@ fun EditExpenseScreenContent(
                     ) {
                         // "Create New..." option
                         DropdownMenuItem(
-                            text = { Text("Create New…") },
+                            text = { Text(stringResource(R.string.option_create_new)) },
                             onClick = {
                                 isAccountDropdownExpanded = false
                                 callbacks.onCreateNewAccount(localAccountName)
@@ -252,9 +260,9 @@ fun EditExpenseScreenContent(
                 }
                 if (localAccountError) {
                     val errorText = if (state.defaultAccountUsed && localAccountName == state.accountName)
-                        "Account not found. Default account is used. You can change it from the menu."
+                        stringResource(R.string.err_account_not_found_default)
                     else
-                        "Account not found. Please select a valid account."
+                        stringResource(R.string.err_account_not_found)
 
                     Text(
                         errorText,
@@ -274,7 +282,7 @@ fun EditExpenseScreenContent(
                         localAmountError = false
                         callbacks.onAmountChange(it)
                     },
-                    label = { Text("Amount") },
+                    label = { Text(stringResource(R.string.lbl_amount)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD),
@@ -295,7 +303,7 @@ fun EditExpenseScreenContent(
                 )
                 if (localAmountError) {
                     Text(
-                        "Amount cannot be empty.",
+                        stringResource(R.string.err_amount_empty),
                         color = Color.Red,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_AMOUNT)
@@ -318,7 +326,7 @@ fun EditExpenseScreenContent(
                             isCategoryDropdownExpanded = true
                             // Do not call onCategorySelect here to avoid cursor jumps due to state recombination
                         },
-                        label = { Text("Category") },
+                        label = { Text(stringResource(R.string.lbl_category)) },
                         // readOnly = true, // Removed to allow typing
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryDropdownExpanded) },
                         modifier = Modifier
@@ -341,7 +349,7 @@ fun EditExpenseScreenContent(
                         onDismissRequest = { isCategoryDropdownExpanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Create New...") },
+                            text = { Text(stringResource(R.string.option_create_new)) },
                             onClick = {
                                 isCategoryDropdownExpanded = false
                                 callbacks.onCreateNewCategory(localCategory)
@@ -366,7 +374,7 @@ fun EditExpenseScreenContent(
 
                         if (filteredCategories.isEmpty() && localCategory.isNotEmpty()) {
                              DropdownMenuItem(
-                                text = { Text("(No match found)") },
+                                text = { Text(stringResource(R.string.msg_no_match)) },
                                 onClick = { },
                                 enabled = false
                             )
@@ -375,7 +383,7 @@ fun EditExpenseScreenContent(
                 }
                 if (localCategoryError) {
                     Text(
-                        "Category not found. Please select a valid category.",
+                        stringResource(R.string.err_category_not_found),
                         color = Color.Red,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ERROR_CATEGORY_NOT_FOUND)
@@ -387,7 +395,7 @@ fun EditExpenseScreenContent(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Keywords section
-                Text("Keywords", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.lbl_keywords), style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 // Selected keywords chips
@@ -419,7 +427,7 @@ fun EditExpenseScreenContent(
                             keywordQuery = it
                             isKeywordDropdownExpanded = true 
                         },
-                        label = { Text("Search or add keywords") },
+                        label = { Text(stringResource(R.string.hint_search_keywords)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isKeywordDropdownExpanded) },
                         modifier = Modifier
                             .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
@@ -432,7 +440,7 @@ fun EditExpenseScreenContent(
                     ) {
                         // "Create New..." option
                         DropdownMenuItem(
-                            text = { Text("Create New…") },
+                            text = { Text(stringResource(R.string.option_create_new)) },
                             onClick = {
                                 newKeywordName = keywordQuery
                                 showCreateKeywordDialog = true
@@ -492,7 +500,7 @@ fun EditExpenseScreenContent(
                         localComment = it
                         callbacks.onCommentChange(it)
                     },
-                    label = { Text("Comment") },
+                    label = { Text(stringResource(R.string.lbl_comment)) },
                     modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD)
                 )
 
@@ -501,14 +509,14 @@ fun EditExpenseScreenContent(
                 // Payment History for Debt
                 if (state.isDebt) {
                     Text(
-                        "Payment History (Paid: ${state.debtPaidAmount.setScale(2, RoundingMode.HALF_UP)} ${state.currency})",
+                        stringResource(R.string.lbl_payment_history, state.debtPaidAmount.setScale(2, RoundingMode.HALF_UP), state.currency),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
                     if (state.debtPayments.isEmpty()) {
                         Text(
-                            "No payments yet",
+                            stringResource(R.string.msg_no_payments),
                             style = MaterialTheme.typography.bodyMedium,
                              color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -583,13 +591,15 @@ fun EditExpenseScreenContent(
                     // "Make the 'Debt' text clickable... The '+' button should open..."
                     // It implies a way to add payment. A dedicated button here is clear.
                     
+                    val typeStr = if (state.type == "Income") stringResource(R.string.tab_income) else stringResource(R.string.tab_expense)
+                    
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Button(
                             onClick = { 
                                 if (state.expenseId > 0 && state.debtId != null) {
                                     callbacks.onAddPaymentClick() 
                                 } else {
-                                    val msg = "Save ${state.type.lowercase(Locale.getDefault())} before creating the payment!"
+                                    val msg = context.getString(R.string.err_save_before_payment, typeStr)
                                     callbacks.onShowSnackbar(msg)
                                 }
                             },
@@ -597,7 +607,7 @@ fun EditExpenseScreenContent(
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Add New")
+                            Text(stringResource(R.string.btn_add_new))
                         }
 
                         Button(
@@ -605,7 +615,7 @@ fun EditExpenseScreenContent(
                                 if (state.expenseId > 0 && state.debtId != null) {
                                     callbacks.onAddExistingPaymentClick()
                                 } else {
-                                    val msg = "Save ${state.type.lowercase(Locale.getDefault())} before adding payments!"
+                                    val msg = context.getString(R.string.err_save_before_adding, typeStr)
                                     callbacks.onShowSnackbar(msg)
                                 }
                             },
@@ -613,7 +623,7 @@ fun EditExpenseScreenContent(
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Add Existing")
+                            Text(stringResource(R.string.btn_add_existing))
                         }
                     }
                 }
@@ -696,7 +706,7 @@ fun EditExpenseScreenContent(
                     enabled = !isSaving,
                     modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_EXPENSE_SAVE)
                 ) {
-                    Text("Save")
+                    Text(stringResource(R.string.btn_save))
                 }
                 if (state.expenseId > 0) {
                     Button(
@@ -704,7 +714,7 @@ fun EditExpenseScreenContent(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
                         modifier = Modifier.weight(1f).padding(horizontal = 4.dp).testTag(TestTags.COPY_BUTTON)
                     ) {
-                        Text("Copy")
+                        Text(stringResource(R.string.btn_copy))
                     }
                     
                     Button(
@@ -712,7 +722,7 @@ fun EditExpenseScreenContent(
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                         modifier = Modifier.weight(1f).padding(start = 8.dp).testTag(TestTags.EDIT_EXPENSE_DELETE)
                     ) {
-                        Text("Delete")
+                        Text(stringResource(R.string.btn_delete))
                     }
                 }
             }
@@ -722,11 +732,13 @@ fun EditExpenseScreenContent(
     // Delete confirmation dialog
     if (showDeleteDialog && state.existingExpense != null) {
         val hasRelatedPayments = state.debtPayments.isNotEmpty()
-        val title = if (hasRelatedPayments) "Delete Record?" else "Delete ${state.type}"
+        val typeLabel = if (state.type == "Income") stringResource(R.string.tab_income) else stringResource(R.string.tab_expense)
+        
+        val title = if (hasRelatedPayments) stringResource(R.string.title_delete_record) else stringResource(R.string.title_delete_item, typeLabel)
         val message = if (hasRelatedPayments) {
-            "There're related payments. If you delete this record, they will be also deleted. Are you sure?"
+            stringResource(R.string.msg_delete_record_linked)
         } else {
-            "Are you sure you want to delete this ${state.type}?"
+            stringResource(R.string.msg_delete_item_confirm, typeLabel)
         }
         
         AlertDialog(
@@ -741,7 +753,7 @@ fun EditExpenseScreenContent(
                     },
                     modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_DELETE_CONFIRM)
                 ) {
-                    Text("Yes")
+                    Text(stringResource(R.string.btn_yes))
                 }
             },
             dismissButton = {
@@ -749,7 +761,7 @@ fun EditExpenseScreenContent(
                     onClick = { showDeleteDialog = false },
                     modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_DELETE_DISMISS)
                 ) {
-                    Text("No")
+                    Text(stringResource(R.string.btn_no))
                 }
             }
         )
@@ -759,12 +771,12 @@ fun EditExpenseScreenContent(
     if (showCreateKeywordDialog) {
         AlertDialog(
             onDismissRequest = { showCreateKeywordDialog = false },
-            title = { Text("Create Keyword") },
+            title = { Text(stringResource(R.string.title_create_keyword)) },
             text = {
                 OutlinedTextField(
                     value = newKeywordName,
                     onValueChange = { newKeywordName = it },
-                    label = { Text("Keyword name") },
+                    label = { Text(stringResource(R.string.hint_keyword_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_KEYWORD_NEW_NAME)
                 )
@@ -786,7 +798,7 @@ fun EditExpenseScreenContent(
                     },
                     modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_KEYWORD_CREATE_CONFIRM)
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.btn_ok))
                 }
             },
             dismissButton = {
@@ -797,7 +809,7 @@ fun EditExpenseScreenContent(
                     },
                     modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_KEYWORD_CREATE_DISMISS)
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -834,7 +846,7 @@ private fun KeywordChip(
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Remove keyword",
+                    contentDescription = stringResource(R.string.desc_remove_keyword),
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSecondaryContainer
                 )

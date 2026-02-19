@@ -4,6 +4,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.expensetracker.MainActivity
+import com.example.expensetracker.R
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Expense
 import dagger.hilt.android.testing.HiltAndroidRule
@@ -84,10 +85,10 @@ class AccountNavigationTest {
         composeTestRule.waitUntil(5000) {
             composeTestRule.onAllNodesWithContentDescription("Menu").fetchSemanticsNodes().isNotEmpty()
         }
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
+        composeTestRule.onNodeWithContentDescription(composeTestRule.activity.getString(R.string.menu_desc)).performClick()
         
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Accounts").performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.nav_accounts)).performClick()
         composeTestRule.waitForIdle()
 
         // 2. Click on the account
@@ -105,10 +106,11 @@ class AccountNavigationTest {
 
         // 3. Verify Navigation to Home
         // "Expenses" tab is default on Home. Check if we are on Home.
+        val totalLabel = composeTestRule.activity.getString(R.string.lbl_total).substringBefore("%")
         composeTestRule.waitUntil(5000) {
-            composeTestRule.onAllNodesWithText("Total:", substring = true).fetchSemanticsNodes().isNotEmpty()
+            composeTestRule.onAllNodesWithText(totalLabel, substring = true).fetchSemanticsNodes().isNotEmpty()
         }
-        composeTestRule.onNodeWithText("Total:", substring = true).assertExists() // Total Header exists on Home
+        composeTestRule.onNodeWithText(totalLabel, substring = true).assertExists() // Total Header exists on Home
 
         // 4. Verify Filter is Set
         // The "Home" screen displays filter chips. 
@@ -116,7 +118,8 @@ class AccountNavigationTest {
         // The TextQueryFilterDialog uses "Account: $name" usually? 
         // Looking at FilterChipsRow.kt (not viewed but inferred from common UX), usually shows "Account: Name"
         // Let's check for the existence of the text "Account: TestNavAccount"
-        composeTestRule.onNodeWithText("Account: $accountName").assertExists()
+        val accountPrefix = composeTestRule.activity.getString(R.string.prefix_account, accountName)
+        composeTestRule.onNodeWithText(accountPrefix).assertExists()
 
         // 5. Verify List Filtered
         // Should see the 50.00 expense

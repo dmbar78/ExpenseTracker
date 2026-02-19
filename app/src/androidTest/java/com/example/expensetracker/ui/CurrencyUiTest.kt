@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import com.example.expensetracker.MainActivity
+import com.example.expensetracker.R
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Before
@@ -34,14 +35,14 @@ class CurrencyUiTest {
     @Test
     fun createCurrency_syncsCodeAndName_viaDropdown() {
         // Navigate to Currencies
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.onNodeWithText("Currencies").performClick()
+        composeTestRule.onNodeWithContentDescription(composeTestRule.activity.getString(R.string.menu_desc)).performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.nav_currencies)).performClick()
 
         // Create New
-        composeTestRule.onNodeWithText("Create New").performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.option_create_new)).performClick()
 
         // Verify we are on Add Currency screen
-        composeTestRule.onNodeWithText("Add Currency").assertIsDisplayed()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.title_add_currency)).assertIsDisplayed()
 
         // Input "AUD" into Code field
         // Note: The field is inside an ExposedDropdownMenuBox. 
@@ -75,8 +76,8 @@ class CurrencyUiTest {
     @Test
     fun editCurrency_fieldsAreReadOnly() {
         // Navigate to Currencies
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.onNodeWithText("Currencies").performClick()
+        composeTestRule.onNodeWithContentDescription(composeTestRule.activity.getString(R.string.menu_desc)).performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.nav_currencies)).performClick()
 
         // We assume seeded data exists (USD, EUR, etc). 
         // Let's click on "United States Dollar (USD)" or similar.
@@ -94,7 +95,7 @@ class CurrencyUiTest {
         composeTestRule.onNodeWithText("USD", substring = true).performClick()
 
         // Verify Edit Currency title
-        composeTestRule.onNodeWithText("Edit Currency").assertIsDisplayed()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.title_edit_currency)).assertIsDisplayed()
 
         // Verify Code field is read-only (disabled)
         composeTestRule.onNodeWithTag(TestTags.ADD_CURRENCY_CODE_FIELD)

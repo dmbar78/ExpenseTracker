@@ -62,7 +62,12 @@ sealed class TotalState {
 @Composable
 fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
     val selectedTabIndex by viewModel.selectedTab.collectAsState()
-    val tabs = listOf("Expense", "Income", "Transfers", "Debts")
+    val tabs = listOf(
+        androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.tab_expense),
+        androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.tab_income),
+        androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.tab_transfers),
+        androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.tab_debts)
+    )
     
     // Filter state and data
     val filterState by viewModel.filterState.collectAsState()
@@ -338,7 +343,7 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
     // Account filter dialog
     if (showAccountDialog) {
         AccountFilterDialog(
-            title = "Filter by Account",
+            title = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.title_filter_account),
             accounts = accounts,
             currentSelection = filterState.expenseIncomeAccount,
             onConfirm = { account ->
@@ -430,7 +435,7 @@ private fun TotalHeaderWithSort(
                 }
                 is TotalState.Success -> {
                     Text(
-                        text = "Total: ${formatMoney(totalState.total)} ${totalState.currencyCode}",
+                        text = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_total, formatMoney(totalState.total), totalState.currencyCode),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center
@@ -438,7 +443,7 @@ private fun TotalHeaderWithSort(
                 }
                 is TotalState.RateMissing -> {
                     Text(
-                        text = "Total unavailable",
+                        text = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_total_unavailable),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center
@@ -456,7 +461,7 @@ private fun TotalHeaderWithSort(
             IconButton(onClick = { expanded = true }) {
                 Icon(
                     imageVector = Icons.Default.Sort,
-                    contentDescription = "Sort",
+                    contentDescription = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.desc_sort),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -469,7 +474,7 @@ private fun TotalHeaderWithSort(
                     DropdownMenuItem(
                         text = {
                             Text(
-                                text = option.displayName,
+                                text = androidx.compose.ui.res.stringResource(option.displayNameRes),
                                 fontWeight = if (option == sortOption) androidx.compose.ui.text.font.FontWeight.Bold else null
                             )
                         },
@@ -509,7 +514,7 @@ private fun TotalHeader(totalState: TotalState) {
             }
             is TotalState.Success -> {
                 Text(
-                    text = "Total: ${formatMoney(totalState.total)} ${totalState.currencyCode}",
+                    text = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_total, formatMoney(totalState.total), totalState.currencyCode),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center
@@ -517,7 +522,7 @@ private fun TotalHeader(totalState: TotalState) {
             }
             is TotalState.RateMissing -> {
                 Text(
-                    text = "Total unavailable (missing rates)",
+                    text = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_total_missing_rates),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center
@@ -682,7 +687,7 @@ private fun DebtsTab(
         if (groupedDebts.isEmpty()) {
             item {
                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("No debts found matching filters", style = MaterialTheme.typography.bodyLarge)
+                    Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.msg_no_debts), style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }

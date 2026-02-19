@@ -1,0 +1,169 @@
+<resources>
+    <string name="app_name">Трекер Расходов</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Главная</string>
+    <string name="nav_accounts">Счета</string>
+    <string name="nav_categories">Категории</string>
+    <string name="nav_currencies">Валюты</string>
+    <string name="nav_settings">Настройки</string>
+
+    <!-- Actions -->
+    <string name="start_recognition">Начать распознавание</string>
+    <string name="menu_desc">Меню</string>
+    <string name="create_desc">Создать</string>
+    <string name="action_create_expense">Создать Расход</string>
+    <string name="action_create_income">Создать Доход</string>
+    <string name="action_create_transfer">Создать Перевод</string>
+
+    <!-- Home Screen -->
+    <string name="tab_expense">Расход</string>
+    <string name="tab_income">Доход</string>
+    <string name="tab_transfers">Переводы</string>
+    <string name="tab_debts">Долги</string>
+    <string name="sort_by_date">По дате</string>
+    <string name="sort_by_amount">По сумме</string>
+    <string name="lbl_total">Всего: %1$s %2$s</string>
+    <string name="lbl_total_unavailable">Итого недоступно</string>
+    <string name="lbl_total_missing_rates">Итого недоступно (нет курсов)</string>
+    <string name="msg_no_debts">Долги по фильтрам не найдены</string>
+    <string name="desc_sort">Сортировка</string>
+
+    <!-- Edit Expense/Income -->
+    <string name="title_edit_expense">Редактировать Расход</string>
+    <string name="title_add_expense">Добавить Расход</string>
+    <string name="title_edit_income">Редактировать Доход</string>
+    <string name="title_add_income">Добавить Доход</string>
+    <string name="lbl_date">Дата</string>
+    <string name="lbl_account">Счет</string>
+    <string name="lbl_category">Категория</string>
+    <string name="lbl_amount">Сумма</string>
+    <string name="lbl_comment">Комментарий</string>
+    <string name="lbl_debt">Долг</string>
+    <string name="lbl_keywords">Ключевые слова</string>
+    <string name="lbl_payment_history">История платежей (Оплачено: %1$s %2$s)</string>
+    <string name="msg_no_payments">Платежей пока нет</string>
+    <string name="btn_add_new">Добавить</string>
+    <string name="btn_add_existing">Существующий</string>
+    <string name="btn_save">Сохранить</string>
+    <string name="btn_copy">Копировать</string>
+    <string name="btn_delete">Удалить</string>
+    <string name="btn_yes">Да</string>
+    <string name="btn_no">Нет</string>
+    <string name="btn_ok">ОК</string>
+    <string name="btn_cancel">Отмена</string>
+    <string name="btn_close">Закрыть</string>
+    <string name="option_create_new">Создать новый…</string>
+    <string name="hint_search_keywords">Поиск или добавление тегов</string>
+    <string name="hint_keyword_name">Имя тега</string>
+    <string name="title_create_keyword">Создать тег</string>
+    <string name="title_select_existing_payment">Выберите существующий платеж</string>
+    <string name="msg_no_unlinked_records">Несвязанные записи %1$s не найдены.</string>
+    <string name="msg_no_match">(Совпадений не найдено)</string>
+
+    <!-- Delete Dialogs -->
+    <string name="title_delete_record">Удалить запись?</string>
+    <string name="msg_delete_record_linked">Есть связанные платежи. Если вы удалите эту запись, они также будут удалены. Вы уверены?</string>
+    <string name="title_delete_item">Удалить %1$s</string>
+    <string name="msg_delete_item_confirm">Вы уверены, что хотите удалить этот %1$s?</string>
+    <string name="title_delete_transfer">Удалить перевод</string>
+    <string name="msg_delete_transfer_confirm">Вы уверены, что хотите удалить этот перевод?</string>
+
+    <!-- Errors -->
+    <string name="err_account_not_found">Счет не найден. Пожалуйста, выберите существующий счет.</string>
+    <string name="err_account_not_found_default">Счет не найден. Используется счет по умолчанию. Вы можете изменить его в меню.</string>
+    <string name="err_category_not_found">Категория не найдена. Пожалуйста, выберите существующую категорию.</string>
+    <string name="err_amount_empty">Сумма не может быть пустой.</string>
+    <string name="err_mic_permission">Требуется разрешение на микрофон.</string>
+    <string name="err_save_before_payment">Сохраните %1$s перед созданием платежа!</string>
+    <string name="err_save_before_adding">Сохраните %1$s перед добавлением платежей!</string>
+    <string name="msg_saved">%1$s сохранен</string>
+    <string name="err_select_both_accounts">Пожалуйста, выберите оба счета.</string>
+    <string name="err_source_account_not_found">Счет списания не найден. Пожалуйста, выберите существующий счет.</string>
+    <string name="err_dest_account_not_found">Счет зачисления не найден. Пожалуйста, выберите существующий счет.</string>
+    <string name="err_invalid_source_amount">Пожалуйста, введите корректную сумму списания.</string>
+    <string name="err_invalid_dest_amount">Пожалуйста, введите корректную сумму зачисления.</string>
+    <string name="err_same_accounts">Счета списания и зачисления должны отличаться.</string>
+    <string name="err_save_failed">Не удалось сохранить %1$s</string>
+
+    <!-- Edit Transfer -->
+    <string name="title_edit_transfer">Редактировать Перевод</string>
+    <string name="title_add_transfer">Добавить Перевод</string>
+    <string name="lbl_from">Откуда</string>
+    <string name="lbl_to">Куда</string>
+    <string name="lbl_source_amount">Сумма списания</string>
+    <string name="lbl_dest_amount">Сумма зачисления</string>
+
+    <!-- Settings -->
+    <string name="title_settings">Настройки</string>
+    <string name="header_security">Безопасность</string>
+    <string name="title_change_pin">Изменить PIN</string>
+    <string name="title_remove_pin">Удалить PIN</string>
+    <string name="title_add_pin">Добавить PIN</string>
+    <string name="val_enable_security">Включить защиту</string>
+    <string name="val_disable_security">Отключить защиту</string>
+    <string name="val_masked_pin">******</string>
+    <string name="title_enable_biometric">Вход по биометрии</string>
+    
+    <string name="header_general">Общие</string>
+    <string name="title_default_expense_account">Счет расходов по умолчанию</string>
+    <string name="title_default_transfer_account">Счет переводов по умолчанию</string>
+    <string name="msg_choose_account_prefill">Выберите счет для подстановки.</string>
+    <string name="title_default_currency">Валюта по умолчанию</string>
+    
+    <string name="header_data_management">Управление данными</string>
+    <string name="title_export_backup">Экспорт резервной копии</string>
+    <string name="title_restore_backup">Восстановление из копии</string>
+    <string name="val_json">JSON</string>
+    <string name="val_select_file">Выбрать файл</string>
+    <string name="val_none">Не выбран</string>
+
+    <string name="title_processing">Обработка</string>
+    <string name="msg_please_wait">Пожалуйста, подождите...</string>
+    <string name="title_encrypted_backup">Зашифрованная копия</string>
+    <string name="msg_encrypted_backup_password">Эта копия зашифрована. Введите пароль для восстановления.</string>
+    <string name="lbl_password">Пароль</string>
+    <string name="btn_restore">Восстановить</string>
+    <string name="title_confirm_restore">Подтверждение</string>
+    <string name="msg_confirm_restore">Восстановление из копии заменит ВСЕ текущие данные. Это действие нельзя отменить.\n\nВы уверены?</string>
+    <string name="title_encrypt_backup">Зашифровать копию?</string>
+    <string name="msg_encrypt_backup_ask">Хотите защитить файл паролем? Это позволит восстановить данные на любом устройстве, если вы знаете пароль.</string>
+    <string name="title_set_backup_password">Установить пароль</string>
+    <string name="msg_set_backup_password">Введите пароль для шифрования. Важно: если вы потеряете этот пароль, данные восстановить не удастся.</string>
+    
+    <string name="title_select_default_currency">Выбор валюты по умолчанию</string>
+    <string name="msg_choose_currency">Выберите валюту для отображения общих сумм и конвертации.</string>
+    <string name="lbl_currency">Валюта</string>
+    <string name="title_enter_exchange_rate">Ввод курса обмена</string>
+    <string name="msg_enter_exchange_rate">Нет курса обмена для %1$s. Введите курс EUR к %2$s:</string>
+    <string name="lbl_exchange_rate_hint">1 EUR = ? %1$s</string>
+    <string name="err_invalid_rate">Введите корректный курс больше 0</string>
+
+    
+    <string name="err_biometric_no_hardware">Нет оборудования для биометрии</string>
+    <string name="err_biometric_hardware_unavailable">Оборудование недоступно</string>
+    <string name="err_no_biometrics_enrolled">Биометрия не настроена. Проверьте настройки телефона.</string>
+    <string name="err_biometric_unavailable">Биометрия недоступна (Код: %1$d)</string>
+
+    <string name="msg_biometric_enabled">Биометрия включена</string>
+    <string name="err_finalization_failed">Ошибка завершения: %1$s</string>
+    <string name="err_auth_error">Ошибка авторизации: %1$s</string>
+    <string name="err_setup_failed">Ошибка настройки: %1$s</string>
+    <string name="title_enable_biometric_dialog">Включить биометрию</string>
+    <string name="msg_confirm_identity">Подтвердите личность для включения биометрии</string>
+    <string name="msg_unlock_with_pin">Сначала разблокируйте PIN-кодом</string>
+    <string name="err_context_not_activity">Ошибка: Context не является FragmentActivity</string>
+
+    <string name="title_recognition_failed">Ошибка распознавания</string>
+    <string name="title_invalid_transfer">Некорректный перевод</string>
+    <string name="title_success">Успешно</string>
+
+    <string name="desc_remove_keyword">Удалить тег</string>
+    <string name="msg_pin_removed">PIN удален</string>
+
+    <string name="err_voice_input_unrecognized">Не удалось распознать ввод: \'%1$s\'. Пожалуйста, повторите в одном из форматов (примеры):\n            1. Расход со счета Наличные 50 Категория Еда (дата опционально).\n            2. Доход на счет Сбер 50 Категория Зарплата (дата опционально).\n            3. Перевод со счета Карта на счет Наличные 50 (дата опционально).\n            \n            Формат даты:\n            - 1 января\n            - 1-е января.</string>
+    <string name="err_voice_no_accounts">Счета не найдены. Создайте хотя бы один счет перед добавлением переводов.</string>
+    <string name="msg_voice_transfer_added">Перевод со счета %1$s на счет %2$s на сумму %3$s %4$s от %5$s успешно добавлен.</string>
+    <string name="msg_voice_expense_added">%1$s на сумму %2$s %3$s от %4$s со счета %5$s, категория %6$s успешно добавлен.</string>
+    <string name="err_voice_failed">Не удалось добавить перевод.</string>
+</resources>

@@ -23,6 +23,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import java.math.BigDecimal
 import java.util.*
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import com.example.expensetracker.R
 import com.example.expensetracker.data.Expense
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.heightIn
@@ -55,6 +57,7 @@ fun EditExpenseScreen(
     relatedDebtId: Int? = null,
     copyFromId: Int? = null
 ) {
+    val context = LocalContext.current
     // Retrieve the result from AddCategoryScreen if available
     val createdCategoryName = navController.currentBackStackEntry
         ?.savedStateHandle
@@ -195,7 +198,7 @@ fun EditExpenseScreen(
     // Track saving state to prevent double-saves
     var isSaving by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
+
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val calendar = remember { Calendar.getInstance() }
     
@@ -448,15 +451,20 @@ fun EditExpenseScreen(
                     // Update relatedDebtId in expense if passed
                     val finalExpense = if (relatedDebtId != null) expenseToSave.copy(relatedDebtId = relatedDebtId) else expenseToSave
 
-                    if (expenseId > 0) {
+                     // Prepare localized strings
+                     val typeLabel = if (type == "Income") context.getString(R.string.tab_income) else context.getString(R.string.tab_expense)
+                     val successMsg = context.getString(R.string.msg_saved, typeLabel)
+                     val errorMsgFallback = context.getString(R.string.err_save_failed, typeLabel)
+
+                     if (expenseId > 0) {
                         val result = viewModel.updateExpenseWithKeywordsAndReturn(finalExpense, keywordIds)
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             result.fold(
                                 onSuccess = {
-                                    handleSaveSuccess(expenseId, isDebtChecked, type, snackbarHostState, scope, navController, viewModel)
+                                    handleSaveSuccess(expenseId, isDebtChecked, successMsg, snackbarHostState, scope, navController, viewModel)
                                 },
                                 onFailure = { error ->
-                                    snackbarHostState.showSnackbar(error.message ?: "Failed to save $type.")
+                                    snackbarHostState.showSnackbar(error.message ?: errorMsgFallback)
                                     isSaving = false
                                 }
                             )
@@ -466,10 +474,10 @@ fun EditExpenseScreen(
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             result.fold(
                                 onSuccess = { createdExpenseId ->
-                                    handleSaveSuccess(createdExpenseId.toInt(), isDebtChecked, type, snackbarHostState, scope, navController, viewModel)
+                                    handleSaveSuccess(createdExpenseId.toInt(), isDebtChecked, successMsg, snackbarHostState, scope, navController, viewModel)
                                 },
                                 onFailure = { error ->
-                                    snackbarHostState.showSnackbar(error.message ?: "Failed to save $type.")
+                                    snackbarHostState.showSnackbar(error.message ?: errorMsgFallback)
                                     isSaving = false
                                 }
                             )
@@ -486,9 +494,9 @@ fun EditExpenseScreen(
                 categoryError = catError
                 scope.launch {
                     val message = when {
-                        accError -> "Account not found. Please select a valid account."
-                        catError -> "Category not found. Please select a valid category."
-                        amtError -> "Please enter a valid amount."
+                        accError -> context.getString(R.string.err_account_not_found)
+                        catError -> context.getString(R.string.err_category_not_found)
+                        amtError -> context.getString(R.string.err_amount_empty)
                         else -> null
                     }
                     if (message != null) {
@@ -520,13 +528,13 @@ fun EditExpenseScreen(
     }
     
     if (showAddExistingDialog) {
-        val paymentType = if (type == "Expense") "Income" else "Expense"
+        val paymentType = if (type == "Expense") stringResource(R.string.tab_income) else stringResource(R.string.tab_expense)
         AlertDialog(
             onDismissRequest = { showAddExistingDialog = false },
-            title = { Text("Select Existing Payment") },
+            title = { Text(stringResource(R.string.title_select_existing_payment)) },
             text = {
                 if (potentialPayments.isEmpty()) {
-                    Text("No unlinked $paymentType records found.")
+                    Text(stringResource(R.string.msg_no_unlinked_records, paymentType))
                 } else {
                     androidx.compose.foundation.lazy.LazyColumn(
                         modifier = Modifier.heightIn(max = 300.dp)
@@ -555,7 +563,7 @@ fun EditExpenseScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showAddExistingDialog = false }) {
-                    Text("Close")
+                    Text(stringResource(R.string.btn_close))
                 }
             }
         )
@@ -565,7 +573,7 @@ fun EditExpenseScreen(
 private suspend fun handleSaveSuccess(
     targetId: Int,
     isDebtChecked: Boolean,
-    type: String,
+    message: String,
     snackbarHostState: SnackbarHostState,
     scope: kotlinx.coroutines.CoroutineScope,
     navController: NavController,
@@ -583,7 +591,6 @@ private suspend fun handleSaveSuccess(
         viewModel.deleteDebt(currentDebt.id) 
     }
 
-    val message = "$type saved"
     scope.launch {
         snackbarHostState.showSnackbar(
             message = message,
