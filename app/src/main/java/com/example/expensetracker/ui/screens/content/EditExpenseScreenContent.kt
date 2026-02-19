@@ -15,6 +15,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
@@ -283,6 +285,15 @@ fun EditExpenseScreenContent(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val focusRequester = remember { FocusRequester() }
+
+                // Auto-focus amount field when creating a NEW expense/income via plus button (empty amount)
+                LaunchedEffect(Unit) {
+                    if (state.expenseId == 0 && state.amount.isEmpty()) {
+                        focusRequester.requestFocus()
+                    }
+                }
+
                 // Amount field
                 OutlinedTextField(
                     value = localAmount,
@@ -294,7 +305,8 @@ fun EditExpenseScreenContent(
                     label = { Text(stringResource(R.string.lbl_amount)) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .testTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD),
+                        .testTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
+                        .focusRequester(focusRequester),
                     isError = localAmountError,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     trailingIcon = {

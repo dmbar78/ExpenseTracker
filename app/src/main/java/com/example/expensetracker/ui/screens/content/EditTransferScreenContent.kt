@@ -10,6 +10,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
@@ -283,6 +285,15 @@ fun EditTransferScreenContent(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val focusRequester = remember { FocusRequester() }
+
+                // Auto-focus source amount field when creating a NEW transfer via plus button (empty amount)
+                LaunchedEffect(Unit) {
+                    if (state.transferId == 0 && state.amount.isEmpty()) {
+                        focusRequester.requestFocus()
+                    }
+                }
+
                 // Source Amount Row (Amount + Currency)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -297,7 +308,8 @@ fun EditTransferScreenContent(
                         label = { Text(stringResource(R.string.lbl_source_amount)) },
                         modifier = Modifier
                             .weight(1f)
-                            .testTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD),
+                            .testTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD)
+                            .focusRequester(focusRequester),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         trailingIcon = {
                             if (localCurrency.isNotEmpty()) {
