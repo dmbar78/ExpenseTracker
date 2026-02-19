@@ -1,6 +1,7 @@
 package com.example.expensetracker.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import com.example.expensetracker.R
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.math.BigDecimal
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -206,37 +208,57 @@ fun AddCurrencyScreen(
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                 )
                 
+
                 if (filteredByCode.isNotEmpty()) {
-                    ExposedDropdownMenu(
-                        expanded = codeExpanded,
-                        onDismissRequest = { codeExpanded = false }
-                    ) {
-                        // Previous Page
-                        if (codePage > 0) {
-                            DropdownMenuItem(
-                                text = { Text("Previous...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) },
-                                onClick = { codePage-- }
-                            )
-                        }
+                    // Force complete recreation and state reset
+                    key(codePage) {
+                        ExposedDropdownMenu(
+                            expanded = codeExpanded,
+                            onDismissRequest = { codeExpanded = false }
+                        ) {
+                            // Previous Page
+                            if (codePage > 0) {
+                                DropdownMenuItem(
+                                    text = { Text("Previous...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) },
+                                    onClick = { 
+                                        codePage--
+                                        // Toggle to reset scroll
+                                        codeExpanded = false
+                                        scope.launch { 
+                                            delay(50)
+                                            codeExpanded = true 
+                                        }
+                                    }
+                                )
+                            }
 
-                        // Items
-                        filteredByCode.drop(codePage * pageSize).take(pageSize).forEach { currency ->
-                            DropdownMenuItem(
-                                text = { Text("${currency.currencyCode} - ${currency.displayName}") },
-                                onClick = {
-                                    code = currency.currencyCode
-                                    name = currency.displayName
-                                    codeExpanded = false
-                                }
-                            )
-                        }
+                            // Items
+                            filteredByCode.drop(codePage * pageSize).take(pageSize).forEach { currency ->
+                                DropdownMenuItem(
+                                    text = { Text("${currency.currencyCode} - ${currency.displayName}") },
+                                    onClick = {
+                                        code = currency.currencyCode
+                                        name = currency.displayName
+                                        codeExpanded = false
+                                    }
+                                )
+                            }
 
-                        // Next Page
-                        if ((codePage + 1) * pageSize < filteredByCode.size) {
-                            DropdownMenuItem(
-                                text = { Text("Next...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) },
-                                onClick = { codePage++ }
-                            )
+                            // Next Page
+                            if ((codePage + 1) * pageSize < filteredByCode.size) {
+                                DropdownMenuItem(
+                                    text = { Text("Next...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) },
+                                    onClick = { 
+                                        codePage++ 
+                                        // Toggle to reset scroll
+                                        codeExpanded = false
+                                        scope.launch { 
+                                            delay(50)
+                                            codeExpanded = true 
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -268,37 +290,57 @@ fun AddCurrencyScreen(
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                 )
                 
+
                 if (filteredByName.isNotEmpty()) {
-                    ExposedDropdownMenu(
-                        expanded = nameExpanded,
-                        onDismissRequest = { nameExpanded = false }
-                    ) {
-                        // Previous Page
-                        if (namePage > 0) {
-                            DropdownMenuItem(
-                                text = { Text("Previous...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) },
-                                onClick = { namePage-- }
-                            )
-                        }
+                    // Force complete recreation and state reset
+                    key(namePage) {
+                        ExposedDropdownMenu(
+                            expanded = nameExpanded,
+                            onDismissRequest = { nameExpanded = false }
+                        ) {
+                            // Previous Page
+                            if (namePage > 0) {
+                                DropdownMenuItem(
+                                    text = { Text("Previous...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) },
+                                    onClick = { 
+                                        namePage--
+                                        // Toggle to reset scroll
+                                        nameExpanded = false
+                                        scope.launch { 
+                                            delay(50)
+                                            nameExpanded = true 
+                                        }
+                                    }
+                                )
+                            }
 
-                        // Items
-                        filteredByName.drop(namePage * pageSize).take(pageSize).forEach { currency ->
-                            DropdownMenuItem(
-                                text = { Text(currency.displayName) },
-                                onClick = {
-                                    code = currency.currencyCode
-                                    name = currency.displayName
-                                    nameExpanded = false
-                                }
-                            )
-                        }
+                            // Items
+                            filteredByName.drop(namePage * pageSize).take(pageSize).forEach { currency ->
+                                DropdownMenuItem(
+                                    text = { Text(currency.displayName) },
+                                    onClick = {
+                                        code = currency.currencyCode
+                                        name = currency.displayName
+                                        nameExpanded = false
+                                    }
+                                )
+                            }
 
-                        // Next Page
-                        if ((namePage + 1) * pageSize < filteredByName.size) {
-                            DropdownMenuItem(
-                                text = { Text("Next...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) },
-                                onClick = { namePage++ }
-                            )
+                            // Next Page
+                            if ((namePage + 1) * pageSize < filteredByName.size) {
+                                DropdownMenuItem(
+                                    text = { Text("Next...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) },
+                                    onClick = { 
+                                        namePage++
+                                        // Toggle to reset scroll
+                                        nameExpanded = false
+                                        scope.launch { 
+                                            delay(50)
+                                            nameExpanded = true 
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }
