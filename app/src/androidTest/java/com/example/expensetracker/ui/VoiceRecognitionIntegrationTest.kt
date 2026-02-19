@@ -3,9 +3,11 @@ package com.example.expensetracker.ui
 import android.Manifest
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import com.example.expensetracker.MainActivity
+import com.example.expensetracker.R
 import com.example.expensetracker.viewmodel.VoiceRecognitionState
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -82,6 +84,8 @@ class VoiceRecognitionIntegrationTest {
      */
     @Test
     fun voiceTransfer_withNoAccounts_showsErrorInsteadOfHanging() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val expectedMessage = context.getString(R.string.err_voice_no_accounts)
         // GIVEN: No accounts exist (verified in setup)
         assertEquals("Database should be empty", 0, viewModel.allAccounts.value.size)
         
@@ -109,14 +113,8 @@ class VoiceRecognitionIntegrationTest {
         
         val failedState = state as VoiceRecognitionState.RecognitionFailed
         assertTrue(
-            "Error message should mention 'No accounts found'",
-            failedState.message.contains("No accounts found") ||
-            failedState.message.contains("no accounts", ignoreCase = true)
-        )
-        assertTrue(
-            "Error message should suggest creating an account",
-            failedState.message.contains("create", ignoreCase = true) &&
-            failedState.message.contains("account", ignoreCase = true)
+            "Error message should match localized no-accounts text",
+            failedState.message == expectedMessage
         )
     }
 

@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import com.example.expensetracker.MainActivity
+import com.example.expensetracker.R
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Category
 import com.example.expensetracker.data.Currency
@@ -181,9 +182,9 @@ class AccountDeletionSafeguardTest {
 
         // Navigate back to accounts screen explicitly
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
+        composeTestRule.onNodeWithContentDescription(composeTestRule.activity.getString(R.string.menu_desc)).performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Accounts").performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.nav_accounts)).performClick()
         composeTestRule.waitForIdle()
         
         // Wait for accounts to be visible again

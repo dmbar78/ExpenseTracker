@@ -3,7 +3,9 @@ package com.example.expensetracker.ui
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.expensetracker.R
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Category
 import com.example.expensetracker.data.Keyword
@@ -106,8 +108,9 @@ class KeyboardInteractionTest {
         assertTrue("Keyboard should be hidden after keyword selection", keyboardHidden)
         
         // Verify search text is cleared
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_KEYWORD_SEARCH)
-            .assertTextEquals("Search or add keywords", "") // Label or Empty value? OutlinedTextField value.
+            .assertTextEquals(context.getString(R.string.hint_search_keywords), "") // Label or Empty value? OutlinedTextField value.
             // assertTextEquals checks the semantics "Text" which usually includes value. 
             // If empty, it might match placeholder/label depending on implementation, but typically it checks the input value.
             // Let's use assertTextContains("") which is trivial, or check typical empty field behavior.

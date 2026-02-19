@@ -1087,6 +1087,7 @@ class VoiceFlowContentTest {
     // --- Voice Expense: Default Account Used Warning ---
     @Test
     fun voiceExpense_defaultAccountUsed_showsWarning() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
         val state = EditExpenseState(
             expenseId = 0,
             amount = "25",
@@ -1112,12 +1113,13 @@ class VoiceFlowContentTest {
 
         // Verify Warning
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ERROR_ACCOUNT_NOT_FOUND).assertExists()
-        composeTestRule.onNodeWithText("Account not found. Default account is used. You can change it from the menu.").assertExists()
+        composeTestRule.onNodeWithText(context.getString(R.string.err_account_not_found_default)).assertExists()
     }
 
     // --- Voice Transfer: Default Source Account Used Warning ---
     @Test
     fun voiceTransfer_defaultAccountUsed_showsWarning() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
         val state = EditTransferState(
             transferId = 0,
             sourceAccountName = "Test1",
@@ -1140,7 +1142,7 @@ class VoiceFlowContentTest {
 
         // Verify Warning
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_ERROR_SOURCE_NOT_FOUND).assertExists()
-        composeTestRule.onNodeWithText("Account not found. Default account is used. You can change it from the menu.").assertExists()
+        composeTestRule.onNodeWithText(context.getString(R.string.err_account_not_found_default)).assertExists()
     }
 }
 
@@ -1195,6 +1197,7 @@ class PlusMenuWiringTest {
 
     @Test
     fun plusMenu_createExpense_navigatesToEditExpense_andVerifyInitialState() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
         // 1. Open Menu and Click Expense
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_EXPENSE).performClick()
@@ -1211,23 +1214,24 @@ class PlusMenuWiringTest {
 
         // Amount: Empty (Displays Label "Amount")
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
-            .assertTextContains("Amount")
+            .assertTextContains(context.getString(R.string.lbl_amount))
 
         // Account: Empty (Displays Label "Account")
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE)
-            .assertTextContains("Account")
+            .assertTextContains(context.getString(R.string.lbl_account))
 
         // Category: Empty (Displays Label "Category")
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE)
-            .assertTextContains("Category")
+            .assertTextContains(context.getString(R.string.lbl_category))
 
         // Comment: Empty (Displays Label "Comment")
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD)
-            .assertTextContains("Comment")
+            .assertTextContains(context.getString(R.string.lbl_comment))
     }
 
     @Test
     fun plusMenu_createIncome_navigatesToEditExpense_andVerifyInitialState() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
         // 1. Open Menu and Click Income
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_INCOME).performClick()
@@ -1240,14 +1244,15 @@ class PlusMenuWiringTest {
             .format(java.util.Date())
         composeTestRule.onNodeWithText(today).assertExists()
 
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains("Amount")
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE).assertTextContains("Account")
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE).assertTextContains("Category")
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD).assertTextContains("Comment")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains(context.getString(R.string.lbl_amount))
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE).assertTextContains(context.getString(R.string.lbl_account))
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE).assertTextContains(context.getString(R.string.lbl_category))
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD).assertTextContains(context.getString(R.string.lbl_comment))
     }
 
     @Test
     fun plusMenu_createTransfer_navigatesToEditTransfer_andVerifyInitialState() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
         // 1. Open Menu and Click Transfer
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_BUTTON).performClick()
         composeTestRule.onNodeWithTag(TestTags.GLOBAL_CREATE_TRANSFER).performClick()
@@ -1263,18 +1268,18 @@ class PlusMenuWiringTest {
 
         // Amount: Empty (Label "Source Amount")
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD)
-            .assertTextContains("Source Amount")
+            .assertTextContains(context.getString(R.string.lbl_source_amount))
 
         // Source Account: Empty (Label "From")
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SOURCE_VALUE)
-            .assertTextContains("From")
+            .assertTextContains(context.getString(R.string.lbl_from))
 
         // Destination Account: Empty (Label "To")
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DESTINATION_VALUE)
-            .assertTextContains("To")
+            .assertTextContains(context.getString(R.string.lbl_to))
 
         // Comment: Empty (Label "Comment")
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_COMMENT_FIELD)
-            .assertTextContains("Comment")
+            .assertTextContains(context.getString(R.string.lbl_comment))
     }
 }

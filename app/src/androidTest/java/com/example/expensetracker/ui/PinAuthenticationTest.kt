@@ -6,6 +6,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.expensetracker.MainActivity
+import com.example.expensetracker.R
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Before
@@ -36,13 +37,14 @@ class PinAuthenticationTest {
     
     @Test
     fun testPinLifecycle() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
         // Navigate to Settings
         // Open Navigation Drawer
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.menu_desc)).performClick()
         composeTestRule.waitForIdle()
         
         // Click Settings
-        composeTestRule.onNodeWithText("Settings").performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.nav_settings)).performClick()
         
         // 1. Create PIN
         composeTestRule.onNodeWithTag(TestTags.SETTINGS_ADD_PIN).performClick()

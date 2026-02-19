@@ -75,27 +75,31 @@ class AccountNavigationTest {
         }
 
         composeTestRule.waitForIdle()
-
-        // 1. Go to Accounts Screen
-        // Ensure activity is ready
         androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
         composeTestRule.waitForIdle()
-        
+        val stringsContext = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val menuDesc = stringsContext.getString(R.string.menu_desc)
+
+        // 1. Go to Accounts Screen
         // Wait for Menu to appear
         composeTestRule.waitUntil(5000) {
-            composeTestRule.onAllNodesWithContentDescription("Menu").fetchSemanticsNodes().isNotEmpty()
+            runCatching {
+                composeTestRule.onAllNodesWithContentDescription(menuDesc).fetchSemanticsNodes().isNotEmpty()
+            }.getOrDefault(false)
         }
-        composeTestRule.onNodeWithContentDescription(composeTestRule.activity.getString(R.string.menu_desc)).performClick()
+        composeTestRule.onNodeWithContentDescription(menuDesc).performClick()
         
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.nav_accounts)).performClick()
+        composeTestRule.onNodeWithText(stringsContext.getString(R.string.nav_accounts)).performClick()
         composeTestRule.waitForIdle()
 
         // 2. Click on the account
         // We look for the text "TestNavAccount (USD)" or just the name. 
         // The AccountRow displays: "${account.name} (${account.currency})"
         composeTestRule.waitUntil(5000) {
-            composeTestRule.onAllNodesWithText(accountName, substring = true).fetchSemanticsNodes().isNotEmpty()
+            runCatching {
+                composeTestRule.onAllNodesWithText(accountName, substring = true).fetchSemanticsNodes().isNotEmpty()
+            }.getOrDefault(false)
         }
         
         // Find the node that is CLIICKABLE within the row hierarchy? 
@@ -106,9 +110,11 @@ class AccountNavigationTest {
 
         // 3. Verify Navigation to Home
         // "Expenses" tab is default on Home. Check if we are on Home.
-        val totalLabel = composeTestRule.activity.getString(R.string.lbl_total).substringBefore("%")
+        val totalLabel = stringsContext.getString(R.string.lbl_total).substringBefore("%")
         composeTestRule.waitUntil(5000) {
-            composeTestRule.onAllNodesWithText(totalLabel, substring = true).fetchSemanticsNodes().isNotEmpty()
+            runCatching {
+                composeTestRule.onAllNodesWithText(totalLabel, substring = true).fetchSemanticsNodes().isNotEmpty()
+            }.getOrDefault(false)
         }
         composeTestRule.onNodeWithText(totalLabel, substring = true).assertExists() // Total Header exists on Home
 
@@ -118,7 +124,7 @@ class AccountNavigationTest {
         // The TextQueryFilterDialog uses "Account: $name" usually? 
         // Looking at FilterChipsRow.kt (not viewed but inferred from common UX), usually shows "Account: Name"
         // Let's check for the existence of the text "Account: TestNavAccount"
-        val accountPrefix = composeTestRule.activity.getString(R.string.prefix_account, accountName)
+        val accountPrefix = stringsContext.getString(R.string.prefix_account, accountName)
         composeTestRule.onNodeWithText(accountPrefix).assertExists()
 
         // 5. Verify List Filtered

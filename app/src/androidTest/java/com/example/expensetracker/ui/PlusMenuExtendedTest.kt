@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import com.example.expensetracker.MainActivity
+import com.example.expensetracker.R
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.runBlocking
@@ -70,10 +71,10 @@ class PlusMenuExtendedTest {
         val today = java.text.SimpleDateFormat("dd MMMM yyyy", java.util.Locale.getDefault())
             .format(java.util.Date())
         composeTestRule.onNodeWithText(today).assertExists()
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains("Amount")
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE).assertTextContains("Account")
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE).assertTextContains("Category")
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD).assertTextContains("Comment")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains(context.getString(R.string.lbl_amount))
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE).assertTextContains(context.getString(R.string.lbl_account))
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE).assertTextContains(context.getString(R.string.lbl_category))
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD).assertTextContains(context.getString(R.string.lbl_comment))
 
         // Step 3: Fill the values
         // First, create account and category in DB
@@ -147,8 +148,8 @@ class PlusMenuExtendedTest {
 
         // Step 7: Verify fields are empty again (no keywords chips should be visible)
         composeTestRule.onNodeWithText(today).assertExists()
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains("Amount")
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD).assertTextContains("Comment")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains(context.getString(R.string.lbl_amount))
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD).assertTextContains(context.getString(R.string.lbl_comment))
         
         // Note: Keyword reset verification skipped since keyword selection was skipped
     }
@@ -167,7 +168,7 @@ class PlusMenuExtendedTest {
         val today = java.text.SimpleDateFormat("dd MMMM yyyy", java.util.Locale.getDefault())
             .format(java.util.Date())
         composeTestRule.onNodeWithText(today).assertExists()
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains("Amount")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains(context.getString(R.string.lbl_amount))
 
         // Step 3: Fill the values
         runBlocking {
@@ -229,7 +230,7 @@ class PlusMenuExtendedTest {
 
         // Step 7: Verify fields are empty again
         composeTestRule.onNodeWithText(today).assertExists()
-        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains("Amount")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD).assertTextContains(context.getString(R.string.lbl_amount))
     }
 
     @Test
@@ -246,9 +247,9 @@ class PlusMenuExtendedTest {
         val today = java.text.SimpleDateFormat("dd MMMM yyyy", java.util.Locale.getDefault())
             .format(java.util.Date())
         composeTestRule.onNodeWithText(today).assertExists()
-        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).assertTextContains("Source Amount")
-        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SOURCE_VALUE).assertTextContains("From")
-        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DESTINATION_VALUE).assertTextContains("To")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).assertTextContains(context.getString(R.string.lbl_source_amount))
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_SOURCE_VALUE).assertTextContains(context.getString(R.string.lbl_from))
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_DESTINATION_VALUE).assertTextContains(context.getString(R.string.lbl_to))
 
         // Step 3: Fill the values
         runBlocking {
@@ -314,8 +315,8 @@ class PlusMenuExtendedTest {
 
         // Step 7: Verify fields are empty again
         composeTestRule.onNodeWithText(today).assertExists()
-        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).assertTextContains("Source Amount")
-        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_COMMENT_FIELD).assertTextContains("Comment")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD).assertTextContains(context.getString(R.string.lbl_source_amount))
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_COMMENT_FIELD).assertTextContains(context.getString(R.string.lbl_comment))
     }
 
     // Note: The copy-then-create-new scenario has been fixed in EditExpenseScreen.kt

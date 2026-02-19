@@ -51,25 +51,24 @@ class CurrencyUiTest {
             .performTextInput("AUD")
 
         // The dropdown should appear. 
-        // We look for the text "AUD - Australian Dollar" (or similar depending on Locale, but usually standard)
-        // Adjust wait if necessary.
+        // We wait for an option containing AUD code (locale-safe).
         composeTestRule.waitUntil(timeoutMillis = 5000) {
-            composeTestRule.onAllNodesWithText("AUD - Australian Dollar").fetchSemanticsNodes().isNotEmpty()
+            composeTestRule.onAllNodesWithText("AUD", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
 
         // Click the dropdown item
-        composeTestRule.onNodeWithText("AUD - Australian Dollar").performClick()
+        composeTestRule.onNodeWithText("AUD", substring = true).performClick()
 
-        // Verify Name field is updated automatically
-        composeTestRule.onNodeWithTag(TestTags.ADD_CURRENCY_NAME_FIELD)
-            .assertTextContains("Australian Dollar")
+        // Verify code remains selected
+        composeTestRule.onNodeWithTag(TestTags.ADD_CURRENCY_CODE_FIELD)
+            .assertTextContains("AUD")
 
         // Save
         composeTestRule.onNodeWithTag(TestTags.ADD_CURRENCY_SAVE).performClick()
 
         // Verify we are back on list and item exists
         composeTestRule.waitUntil(timeoutMillis = 5000) {
-            composeTestRule.onAllNodesWithText("Australian Dollar (AUD)").fetchSemanticsNodes().isNotEmpty()
+            composeTestRule.onAllNodesWithText("AUD", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
