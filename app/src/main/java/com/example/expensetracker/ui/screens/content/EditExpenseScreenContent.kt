@@ -790,6 +790,7 @@ fun EditExpenseScreenContent(
                                 if (newId > 0) {
                                     localSelectedKeywordIds = localSelectedKeywordIds + newId.toInt()
                                 }
+                                callbacks.onHideKeyboard()
                                 newKeywordName = ""
                                 keywordQuery = ""
                                 showCreateKeywordDialog = false
