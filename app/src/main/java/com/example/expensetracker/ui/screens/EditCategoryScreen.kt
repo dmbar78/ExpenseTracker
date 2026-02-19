@@ -5,8 +5,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.navigation.NavController
+import com.example.expensetracker.data.Category
+import com.example.expensetracker.ui.TestTags
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.flow.collectLatest
 
@@ -24,13 +29,8 @@ fun EditCategoryScreen(categoryId: Int, viewModel: ExpenseViewModel, navControll
     val category by viewModel.selectedCategory.collectAsState()
     val isDefaultCategory = category?.name.equals("Default", ignoreCase = true)
 
-    var name by remember { mutableStateOf("") }
-
-    LaunchedEffect(category) {
-        category?.let { 
-            name = it.name
-        }
-    }
+    // Helper state for the content to initialize with loaded data
+    val currentCategory = category
 
     LaunchedEffect(Unit) {
         viewModel.errorFlow.collectLatest { message ->
@@ -71,46 +71,6 @@ fun EditCategoryScreen(categoryId: Int, viewModel: ExpenseViewModel, navControll
         )
     }
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Edit Category", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Category Name") },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isDefaultCategory
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = {
-                    category?.let {
-                        val updatedCategory = it.copy(name = name)
-                        viewModel.updateCategory(updatedCategory)
-                    }
-                },
-                modifier = Modifier.weight(1f).padding(end = 8.dp),
-                enabled = !isDefaultCategory
-            ) {
-                Text("Save")
-            }
-            Button(
-                onClick = { 
-                    if (isDefaultCategory) {
-                        showCannotDeleteDefaultDialog = true
-                    } else {
-                        showDeleteDialog = true
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                modifier = Modifier.weight(1f).padding(start = 8.dp)
-            ) {
-                Text("Delete")
-            }
-        }
-    }
-
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -134,4 +94,71 @@ fun EditCategoryScreen(categoryId: Int, viewModel: ExpenseViewModel, navControll
             }
         )
     }
+
+    EditCategoryScreenContent(
+        category = currentCategory,
+        isDefaultCategory = isDefaultCategory ?: false,
+        onSave = { newName ->
+            currentCategory?.let {
+                val updatedCategory = it.copy(name = newName)
+                viewModel.updateCategory(updatedCategory)
+            }
+        },
+        onDeleteRequest = {
+            if (isDefaultCategory == true) {
+                showCannotDeleteDefaultDialog = true
+            } else {
+                showDeleteDialog = true
+            }
+        }
+    )
 }
+
+@Composable
+fun EditCategoryScreenContent(
+    category: Category?,
+    isDefaultCategory: Boolean,
+    onSave: (String) -> Unit,
+    onDeleteRequest: () -> Unit
+) {
+    var name by remember(category) { mutableStateOf(category?.name ?: "") }
+    
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    Column(modifier = Modifier.padding(16.dp).testTag(TestTags.EDIT_CATEGORY_ROOT)) {
+        Text("Edit Category", style = MaterialTheme.typography.headlineSmall)
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Category Name") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(TestTags.EDIT_CATEGORY_NAME_FIELD)
+                .focusRequester(focusRequester),
+            enabled = !isDefaultCategory
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = { onSave(name) },
+                modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_CATEGORY_SAVE),
+                enabled = !isDefaultCategory
+            ) {
+                Text("Save")
+            }
+            Button(
+                onClick = onDeleteRequest,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                modifier = Modifier.weight(1f).padding(start = 8.dp).testTag(TestTags.EDIT_CATEGORY_DELETE)
+            ) {
+                Text("Delete")
+            }
+        }
+    }
+}
+

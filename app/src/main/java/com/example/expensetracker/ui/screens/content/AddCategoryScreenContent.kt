@@ -6,6 +6,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import com.example.expensetracker.data.Category
 import com.example.expensetracker.ui.TestTags
 
@@ -35,6 +37,11 @@ fun AddCategoryScreenContent(
     modifier: Modifier = Modifier
 ) {
     var localName by remember(state.categoryName) { mutableStateOf(state.categoryName) }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
     Column(modifier = modifier.padding(16.dp).testTag(TestTags.ADD_CATEGORY_ROOT)) {
         Text("Add Category", style = MaterialTheme.typography.headlineSmall)
@@ -46,7 +53,10 @@ fun AddCategoryScreenContent(
                 callbacks.onNameChange(it)
             },
             label = { Text("Category Name") },
-            modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_CATEGORY_NAME_FIELD)
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(TestTags.ADD_CATEGORY_NAME_FIELD)
+                .focusRequester(focusRequester)
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(

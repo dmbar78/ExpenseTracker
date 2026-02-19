@@ -151,4 +151,109 @@ class AutoFocusTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD)
             .assertIsNotFocused()
     }
+    @Test
+    fun addCategory_shouldAutoFocusName() {
+        val state = com.example.expensetracker.ui.screens.content.AddCategoryState(
+            categoryName = ""
+        )
+        
+        composeTestRule.setContent {
+            com.example.expensetracker.ui.screens.content.AddCategoryScreenContent(
+                state = state,
+                callbacks = com.example.expensetracker.ui.screens.content.AddCategoryCallbacks()
+            )
+        }
+
+        composeTestRule.waitForIdle()
+        
+        composeTestRule.onNodeWithTag(TestTags.ADD_CATEGORY_NAME_FIELD)
+            .assertIsFocused()
+    }
+
+    @Test
+    fun editCategory_shouldAutoFocusName() {
+        // Need to test EditCategoryScreenContent directly
+        composeTestRule.setContent {
+            com.example.expensetracker.ui.screens.EditCategoryScreenContent(
+                category = com.example.expensetracker.data.Category(id=1, name="Food"),
+                isDefaultCategory = false,
+                onSave = {},
+                onDeleteRequest = {}
+            )
+        }
+
+        composeTestRule.waitForIdle()
+        
+        composeTestRule.onNodeWithTag(TestTags.EDIT_CATEGORY_NAME_FIELD)
+            .assertIsFocused()
+    }
+
+    @Test
+    fun createKeywordDialog_shouldAutoFocusName() {
+        val state = EditExpenseState(expenseId = 0)
+        
+        composeTestRule.setContent {
+            EditExpenseScreenContent(
+                state = state,
+                accounts = emptyList(),
+                categories = emptyList(),
+                keywords = emptyList(),
+                callbacks = EditExpenseCallbacks()
+            )
+        }
+
+        // 1. Open Keyword Dropdown
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_KEYWORD_SEARCH)
+            .performClick()
+            
+        composeTestRule.waitForIdle()
+
+        // 2. Click "Create New"
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_KEYWORD_CREATE_NEW)
+            .performClick()
+            
+        composeTestRule.waitForIdle()
+        
+        // 3. Verify Dialog Name Field is Focused
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_KEYWORD_NEW_NAME)
+            .assertIsDisplayed()
+            .assertIsFocused()
+    }
+
+    @Test
+    fun editKeywordDialog_shouldAutoFocusName() {
+        val keyword = com.example.expensetracker.data.Keyword(id=1, name="TestKeyword")
+        val state = EditExpenseState(
+            expenseId = 1, 
+            selectedKeywordIds = setOf(1)
+        )
+        
+        composeTestRule.setContent {
+            EditExpenseScreenContent(
+                state = state,
+                accounts = emptyList(),
+                categories = emptyList(),
+                keywords = listOf(keyword),
+                callbacks = EditExpenseCallbacks()
+            )
+        }
+
+        // 1. Long press keyword chip to show menu
+        composeTestRule.onNodeWithText("TestKeyword")
+            .performTouchInput { longClick() }
+            
+        composeTestRule.waitForIdle()
+
+        // 2. Click "Edit" option
+        composeTestRule.onNodeWithText("Edit") // Using text as there is no specific tag for menu item yet or I missed it
+            .performClick()
+            
+        composeTestRule.waitForIdle()
+        
+        // 3. Verify Dialog Name Field is Focused
+        // I need to check the tag used in the dialog, I used "EditKeywordName"
+        composeTestRule.onNodeWithTag("EditKeywordName")
+            .assertIsDisplayed()
+            .assertIsFocused()
+    }
 }

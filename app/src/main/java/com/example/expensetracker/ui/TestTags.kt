@@ -31,6 +31,12 @@ object TestTags {
     const val ADD_CATEGORY_NAME_FIELD = "addCategory_nameField"
     const val ADD_CATEGORY_SAVE = "addCategory_save"
 
+    // EditCategoryScreen
+    const val EDIT_CATEGORY_ROOT = "editCategory_root"
+    const val EDIT_CATEGORY_NAME_FIELD = "editCategory_nameField"
+    const val EDIT_CATEGORY_SAVE = "editCategory_save"
+    const val EDIT_CATEGORY_DELETE = "editCategory_delete"
+
     // AddAccountScreen
     const val ADD_ACCOUNT_ROOT = "addAccount_root"
     const val ADD_ACCOUNT_NAME_FIELD = "addAccount_nameField"

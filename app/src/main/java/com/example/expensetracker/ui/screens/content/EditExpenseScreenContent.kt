@@ -4,6 +4,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -816,6 +817,9 @@ fun EditExpenseScreenContent(
     // Edit Keyword Dialog
     showEditKeywordDialog?.let { keywordToEdit ->
         var editedName by remember { mutableStateOf(keywordToEdit.name) }
+        val editKeywordFocusRequester = remember { FocusRequester() }
+        val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+        var hasRequestedFocus by remember { mutableStateOf(false) }
         
         AlertDialog(
             onDismissRequest = { showEditKeywordDialog = null },
@@ -826,7 +830,17 @@ fun EditExpenseScreenContent(
                     onValueChange = { editedName = it },
                     label = { Text(stringResource(R.string.hint_keyword_name)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("EditKeywordName")
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("EditKeywordName")
+                        .focusRequester(editKeywordFocusRequester)
+                        .onGloballyPositioned {
+                             if (!hasRequestedFocus) {
+                                 hasRequestedFocus = true
+                                 editKeywordFocusRequester.requestFocus()
+                                 keyboardController?.show()
+                             }
+                        }
                 )
             },
             confirmButton = {
@@ -880,6 +894,10 @@ fun EditExpenseScreenContent(
 
     // Create keyword dialog
     if (showCreateKeywordDialog) {
+        val createKeywordFocusRequester = remember { FocusRequester() }
+        val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+        var hasRequestedFocus by remember { mutableStateOf(false) }
+
         AlertDialog(
             onDismissRequest = { showCreateKeywordDialog = false },
             title = { Text(stringResource(R.string.title_create_keyword)) },
@@ -889,7 +907,17 @@ fun EditExpenseScreenContent(
                     onValueChange = { newKeywordName = it },
                     label = { Text(stringResource(R.string.hint_keyword_name)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_KEYWORD_NEW_NAME)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(TestTags.EDIT_EXPENSE_KEYWORD_NEW_NAME)
+                        .focusRequester(createKeywordFocusRequester)
+                        .onGloballyPositioned {
+                             if (!hasRequestedFocus) {
+                                 hasRequestedFocus = true
+                                 createKeywordFocusRequester.requestFocus()
+                                 keyboardController?.show()
+                             }
+                        }
                 )
             },
             confirmButton = {
