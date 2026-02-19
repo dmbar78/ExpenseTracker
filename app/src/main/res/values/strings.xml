@@ -203,4 +203,9 @@
     <string name="msg_voice_transfer_added">Transfer from %1$s to %2$s for %3$s %4$s on %5$s successfully added.</string>
     <string name="msg_voice_expense_added">%1$s of %2$s %3$s on %4$s for account %5$s and category %6$s successfully added.</string>
     <string name="err_voice_failed">Failed to add transfer.</string>
+    <string name="title_edit_keyword">Edit Keyword</string>
+    <string name="img_desc_keyword_menu">Keyword Menu</string>
+    <string name="btn_edit">Edit</string>
+    <string name="title_delete_keyword">Delete Keyword</string>
+    <string name="msg_delete_keyword_confirm">Are you sure you want to delete "%1$s"? This will remove it from ALL expenses.</string>
 </resources>

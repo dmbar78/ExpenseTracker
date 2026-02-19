@@ -12,6 +12,12 @@ interface KeywordDao {
     @Insert
     suspend fun insert(keyword: Keyword): Long
 
+    @androidx.room.Update
+    suspend fun update(keyword: Keyword)
+
+    @androidx.room.Delete
+    suspend fun delete(keyword: Keyword)
+
     @Query("SELECT * FROM keywords ORDER BY name ASC")
     fun getAllKeywords(): Flow<List<Keyword>>
 

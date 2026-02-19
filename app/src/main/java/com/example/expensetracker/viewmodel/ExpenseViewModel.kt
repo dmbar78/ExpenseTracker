@@ -420,6 +420,14 @@ class ExpenseViewModel @Inject constructor(
         return keywordDao.insert(Keyword(name = name.trim()))
     }
 
+    suspend fun updateKeyword(keyword: Keyword) {
+        keywordDao.update(keyword)
+    }
+
+    suspend fun deleteKeyword(keyword: Keyword) {
+        keywordDao.delete(keyword)
+    }
+
     // ==================== Filter Methods ====================
     
     /**

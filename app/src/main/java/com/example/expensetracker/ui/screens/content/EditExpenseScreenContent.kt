@@ -2,6 +2,7 @@ package com.example.expensetracker.ui.screens.content
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -87,7 +88,9 @@ data class EditExpenseCallbacks(
     val onRemovePayment: (Expense) -> Unit = {},
     val onShowSnackbar: (String) -> Unit = {},
     val onHideKeyboard: () -> Unit = {},
-    val onCopy: (Int) -> Unit = {}
+    val onCopy: (Int) -> Unit = {},
+    val onEditKeyword: (Keyword) -> Unit = {},
+    val onDeleteKeyword: (Keyword) -> Unit = {}
 )
 
 /**
@@ -112,6 +115,12 @@ fun EditExpenseScreenContent(
     var isCategoryDropdownExpanded by remember { mutableStateOf(false) }
     var isKeywordDropdownExpanded by remember { mutableStateOf(false) }
     var showCreateKeywordDialog by remember { mutableStateOf(false) }
+    
+    // New Dialog States
+    var showEditKeywordDialog by remember { mutableStateOf<Keyword?>(null) }
+    var showDeleteKeywordDialog by remember { mutableStateOf<Keyword?>(null) }
+    var expandedKeywordId by remember { mutableStateOf<Int?>(null) } // For long-press menu
+    
     var isSaving by remember { mutableStateOf(false) }
     
     // Local mutable state for form fields (copy from state initially)
@@ -406,10 +415,35 @@ fun EditExpenseScreenContent(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         keywords.filter { it.id in localSelectedKeywordIds }.forEach { keyword ->
-                            KeywordChip(
-                                label = keyword.name,
-                                onRemove = { localSelectedKeywordIds = localSelectedKeywordIds - keyword.id }
-                            )
+                            Box {
+                                KeywordChip(
+                                    label = keyword.name,
+                                    onRemove = { localSelectedKeywordIds = localSelectedKeywordIds - keyword.id },
+                                    onLongClick = { expandedKeywordId = keyword.id }
+                                )
+                                
+                                DropdownMenu(
+                                    expanded = expandedKeywordId == keyword.id,
+                                    onDismissRequest = { expandedKeywordId = null }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.btn_edit)) },
+                                        onClick = {
+                                            expandedKeywordId = null
+                                            showEditKeywordDialog = keyword
+                                        },
+                                        modifier = Modifier.testTag("EditMenuItem")
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.btn_delete), color = MaterialTheme.colorScheme.error) },
+                                        onClick = {
+                                            expandedKeywordId = null
+                                            showDeleteKeywordDialog = keyword
+                                        },
+                                        modifier = Modifier.testTag("DeleteMenuItem")
+                                    )
+                                }
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -767,6 +801,71 @@ fun EditExpenseScreenContent(
         )
     }
     
+    // Edit Keyword Dialog
+    showEditKeywordDialog?.let { keywordToEdit ->
+        var editedName by remember { mutableStateOf(keywordToEdit.name) }
+        
+        AlertDialog(
+            onDismissRequest = { showEditKeywordDialog = null },
+            title = { Text(stringResource(R.string.title_edit_keyword)) },
+            text = {
+                OutlinedTextField(
+                    value = editedName,
+                    onValueChange = { editedName = it },
+                    label = { Text(stringResource(R.string.hint_keyword_name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("EditKeywordName")
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (editedName.isNotBlank() && editedName != keywordToEdit.name) {
+                            callbacks.onEditKeyword(keywordToEdit.copy(name = editedName.trim()))
+                            showEditKeywordDialog = null
+                        }
+                    },
+                    modifier = Modifier.testTag("EditKeywordSaveButton")
+                ) {
+                    Text(stringResource(R.string.btn_save))
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showEditKeywordDialog = null }) {
+                    Text(stringResource(R.string.btn_cancel))
+                }
+            }
+        )
+    }
+
+    // Delete Keyword Confirmation Dialog
+    showDeleteKeywordDialog?.let { keywordToDelete ->
+        AlertDialog(
+            onDismissRequest = { showDeleteKeywordDialog = null },
+            title = { Text(stringResource(R.string.title_delete_keyword)) },
+            text = { Text(stringResource(R.string.msg_delete_keyword_confirm, keywordToDelete.name)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        callbacks.onDeleteKeyword(keywordToDelete)
+                        // Also remove from local selection if it was selected (it is, since we long pressed it)
+                        localSelectedKeywordIds = localSelectedKeywordIds - keywordToDelete.id
+                        showDeleteKeywordDialog = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.testTag("DeleteKeywordConfirmButton")
+                ) {
+                    Text(stringResource(R.string.btn_delete))
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showDeleteKeywordDialog = null }) {
+                    Text(stringResource(R.string.btn_cancel))
+                }
+            }
+        )
+    }
+
     // Create keyword dialog
     if (showCreateKeywordDialog) {
         AlertDialog(
@@ -820,14 +919,20 @@ fun EditExpenseScreenContent(
 /**
  * Chip displaying a selected keyword with a remove button.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun KeywordChip(
     label: String,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.combinedClickable(
+            onClick = {}, // No-op click, handled by parent/remove
+            onLongClick = onLongClick
+        ).testTag("KeywordChip")
     ) {
         Row(
             modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),

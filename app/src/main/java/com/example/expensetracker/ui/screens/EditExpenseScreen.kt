@@ -517,6 +517,16 @@ fun EditExpenseScreen(
             },
             onHideKeyboard = {
                 keyboardController?.hide()
+            },
+            onEditKeyword = { keyword ->
+                scope.launch {
+                    viewModel.updateKeyword(keyword)
+                }
+            },
+            onDeleteKeyword = { keyword ->
+                scope.launch {
+                    viewModel.deleteKeyword(keyword)
+                }
             }
         )
         )
