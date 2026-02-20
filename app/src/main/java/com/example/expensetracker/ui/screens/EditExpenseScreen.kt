@@ -30,6 +30,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.items
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+import android.net.Uri
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.File
+import android.app.Activity
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import com.example.expensetracker.BuildConfig
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 
 /**
  * Thin wrapper for EditExpenseScreen.
@@ -123,6 +138,7 @@ fun EditExpenseScreen(
     // Snackbar state for error and success messages
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     // State variables using rememberSaveable to persist across navigation
     var amount by rememberSaveable { mutableStateOf(initialAmount?.toPlainString() ?: "") }
@@ -197,9 +213,68 @@ fun EditExpenseScreen(
 
     // Track saving state to prevent double-saves
     var isSaving by remember { mutableStateOf(false) }
+    
+    // Photo State
+    var photoUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var photoUriToDelete by rememberSaveable { mutableStateOf<String?>(null) }
+    
+    // Update photo state when expense loads
+    LaunchedEffect(expense) {
+        if (expense != null && expense!!.id == expenseId) {
+            photoUri = expense!!.photoUri
+        } else if (expenseId == 0 && copyFromId == null) {
+            photoUri = null
+        }
+    }
+
+    // Camera/Gallery Logic
+    var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var showPhotoSourceDialog by remember { mutableStateOf(false) }
+    var showDeletePhotoDialog by remember { mutableStateOf(false) }
+    var showCameraPermissionDialog by remember { mutableStateOf(false) }
+
+    // Create a temporary file for the camera image
+    fun createTempImageUri(): Uri {
+        val tempFile = File.createTempFile("expense_photo_", ".jpg", context.cacheDir).apply {
+            createNewFile()
+            deleteOnExit()
+        }
+        return FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.fileprovider", tempFile)
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success && tempPhotoUri != null) {
+            photoUri = tempPhotoUri.toString()
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            // Persist permission to read this URI (crucial for gallery picks)
+            val flag = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(uri, flag)
+            photoUri = uri.toString()
+        }
+    }
+    
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+           tempPhotoUri = createTempImageUri()
+           cameraLauncher.launch(tempPhotoUri!!)
+        } else {
+            // Permission denied. If shouldShowRequestPermissionRationale is false,
+            // the user has permanently denied it, so we show the settings dialog.
+            val activity = context as? Activity
+            if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)) {
+                showCameraPermissionDialog = true
+            } else {
+                scope.launch { snackbarHostState.showSnackbar("Camera permission is required to take photos.") }
+            }
+        }
+    }
 
 
-    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+
     val calendar = remember { Calendar.getInstance() }
     
     // Keep calendar in sync with expenseDate state
@@ -393,7 +468,8 @@ fun EditExpenseScreen(
             debtId = debt?.id,
             debtPayments = debtPayments,
             debtPaidAmount = debtPaidAmount,
-            debtPaymentConvertedAmounts = debtPaymentConvertedAmounts
+            debtPaymentConvertedAmounts = debtPaymentConvertedAmounts,
+            photoUri = photoUri
         ),
         accounts = accounts,
         categories = categories,
@@ -448,8 +524,22 @@ fun EditExpenseScreen(
                  isSaving = true
                 
                  scope.launch {
-                    // Update relatedDebtId in expense if passed
-                    val finalExpense = if (relatedDebtId != null) expenseToSave.copy(relatedDebtId = relatedDebtId) else expenseToSave
+                     // Update relatedDebtId in expense if passed
+                    val finalExpense = if (relatedDebtId != null) 
+                        expenseToSave.copy(relatedDebtId = relatedDebtId, photoUri = photoUri) 
+                    else 
+                        expenseToSave.copy(photoUri = photoUri)
+                        
+                     // Handle photo deletion if needed (when user clicked 'x' on previously saved photo)
+                     if (photoUriToDelete != null) {
+                         // We don't delete the file immediately, ViewModel/Repository might handle cleanup or we treat it as orphaned.
+                         // For now, we just ensure the Expense entity no longer references it.
+                         // But if we want to actually delete the file, we can do it here or in ViewModel.
+                         // Let's delegate to ViewModel via a specific call or let Repo handle it?
+                         // Actually, the new photoUri (null) will overwrite the old one. Codebase cleanup is a separate task (or we accept orphans for now).
+                         // Ideally ViewModel.saveExpense handles this if we pass the old vs new.
+                         // But here we are just passing 'expenseToSave' which has the NEW photoUri.
+                     }
 
                      // Prepare localized strings
                      val typeLabel = if (type == "Income") context.getString(R.string.tab_income) else context.getString(R.string.tab_expense)
@@ -527,6 +617,29 @@ fun EditExpenseScreen(
                 scope.launch {
                     viewModel.deleteKeyword(keyword)
                 }
+            },
+            onPhotoSelected = { showPhotoSourceDialog = true },
+            onPhotoDeleted = { showDeletePhotoDialog = true },
+            onPhotoClicked = {
+                // Open gallery to view
+                photoUri?.let { uriString ->
+                    try {
+                        val uri = Uri.parse(uriString)
+                        val finalUri = if (uri.scheme == "file") {
+                            val file = File(uri.path!!)
+                            FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.fileprovider", file)
+                        } else {
+                            uri
+                        }
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                            setDataAndType(finalUri, "image/*")
+                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        scope.launch { snackbarHostState.showSnackbar("Cannot open image") }
+                    }
+                }
             }
         )
         )
@@ -534,6 +647,32 @@ fun EditExpenseScreen(
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+
+    if (showCameraPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showCameraPermissionDialog = false },
+            title = { Text(stringResource(id = R.string.title_camera_permission)) },
+            text = { Text(stringResource(id = R.string.msg_camera_permission)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCameraPermissionDialog = false
+                        val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text(stringResource(id = R.string.btn_go_to_settings))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCameraPermissionDialog = false }) {
+                    Text(stringResource(id = R.string.btn_cancel))
+                }
+            }
         )
     }
     
@@ -575,6 +714,53 @@ fun EditExpenseScreen(
                 TextButton(onClick = { showAddExistingDialog = false }) {
                     Text(stringResource(R.string.btn_close))
                 }
+            }
+        )
+    }
+    // Photo Source Dialog
+    if (showPhotoSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhotoSourceDialog = false },
+            title = { Text("Add Photo") },
+            text = { Text("Choose a source") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPhotoSourceDialog = false
+                    // Camera
+                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                         tempPhotoUri = createTempImageUri()
+                         cameraLauncher.launch(tempPhotoUri!!)
+                    } else {
+                         // Request permission
+                         permissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }) { Text("Camera") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showPhotoSourceDialog = false
+                    // Gallery
+                    galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }) { Text("Gallery") }
+            }
+        )
+    }
+
+    // Delete Photo Dialog
+    if (showDeletePhotoDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeletePhotoDialog = false },
+            title = { Text("Delete Image?") },
+            text = { Text("Are you sure you want to remove the image?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeletePhotoDialog = false
+                    photoUriToDelete = photoUri // Mark for potential cleanup
+                    photoUri = null
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeletePhotoDialog = false }) { Text("Cancel") }
             }
         )
     }

@@ -1,30 +1,40 @@
 package com.example.expensetracker.ui.screens.content
 
+import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.example.expensetracker.R
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Category
 import com.example.expensetracker.data.Expense
@@ -35,8 +45,6 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.ui.res.stringResource
-import com.example.expensetracker.R
 
 /**
  * State holder for EditExpenseScreen content.
@@ -51,6 +59,9 @@ data class EditExpenseState(
     val expenseDate: Long = System.currentTimeMillis(),
     val comment: String = "",
     val type: String = "Expense",
+    val availableCurrencies: List<String> = emptyList(),
+    val isNewExpense: Boolean = false,
+    val photoUri: String? = null,
     val accountError: Boolean = false,
     val categoryError: Boolean = false,
     val amountError: Boolean = false,
@@ -93,7 +104,12 @@ data class EditExpenseCallbacks(
     val onHideKeyboard: () -> Unit = {},
     val onCopy: (Int) -> Unit = {},
     val onEditKeyword: (Keyword) -> Unit = {},
-    val onDeleteKeyword: (Keyword) -> Unit = {}
+    val onDeleteKeyword: (Keyword) -> Unit = {},
+    val onKeywordAdded: (String) -> Unit = {},
+    val onKeywordRemoved: (com.example.expensetracker.data.Keyword) -> Unit = {},
+    val onPhotoSelected: (Uri) -> Unit = {},
+    val onPhotoDeleted: () -> Unit = {},
+    val onPhotoClicked: () -> Unit = {}
 )
 
 /**
@@ -550,6 +566,67 @@ fun EditExpenseScreenContent(
                     label = { Text(stringResource(R.string.lbl_comment)) },
                     modifier = Modifier.fillMaxWidth().testTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD)
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Photo Section
+                Text(
+                    text = "Photo",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                if (state.photoUri != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp) // Increased size for better visibility
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                    ) {
+                        AsyncImage(
+                            model = state.photoUri,
+                            contentDescription = "Expense Photo",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { callbacks.onPhotoClicked() },
+                            contentScale = ContentScale.Crop
+                        )
+                        
+                        // Delete button
+                        IconButton(
+                            onClick = { callbacks.onPhotoDeleted() },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp)
+                                .size(24.dp)
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove Photo",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                } else {
+                    // Empty placeholder
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                            .clickable { callbacks.onPhotoSelected(Uri.EMPTY) } // Signal to open dialog
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add Photo",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 

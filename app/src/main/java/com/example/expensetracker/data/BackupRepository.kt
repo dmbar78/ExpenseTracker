@@ -15,9 +15,18 @@ import kotlinx.coroutines.flow.first
  * - Schema version validation
  * - Data validation before restore
  */
+import android.util.Base64
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 class BackupRepository(
     private val database: AppDatabase,
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences,
+    private val filesDir: File // Inject filesDir to access internal storage
 ) {
     companion object {
         /** Current schema version for backups */
@@ -51,6 +60,25 @@ class BackupRepository(
         // Get current default currency from UserPreferences
         val defaultCurrency = userPreferences.defaultCurrencyCode.first()
 
+        // Process images for expenses
+        val expenseImages = mutableMapOf<Int, String>()
+        expenses.forEach { expense ->
+            expense.photoUri?.let { uriString ->
+                if (uriString.startsWith("file://")) {
+                    try {
+                        val file = File(Uri.parse(uriString).path!!)
+                        if (file.exists()) {
+                            val bytes = FileInputStream(file).use { it.readBytes() }
+                            val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                            expenseImages[expense.id] = base64
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }
+
         val payload = BackupPayload(
             accounts = accounts,
             categories = categories,
@@ -61,13 +89,15 @@ class BackupRepository(
             exchangeRates = exchangeRates,
             expenseKeywordCrossRefs = expenseKeywordCrossRefs,
             debts = debts,
-            userPreferences = BackupUserPreferences(defaultCurrencyCode = defaultCurrency)
+            userPreferences = BackupUserPreferences(defaultCurrencyCode = defaultCurrency),
+            expenseImages = expenseImages
         )
 
         val totalRecords = accounts.size + categories.size + keywords.size + 
                           expenses.size + transferHistories.size + 
                           currencies.size + exchangeRates.size + 
-                          expenseKeywordCrossRefs.size + debts.size
+                          expenseKeywordCrossRefs.size + debts.size +
+                          expenseImages.size
 
 
         return BackupData(
@@ -121,7 +151,32 @@ class BackupRepository(
                 database.currencyDao().insertAll(backupData.data.currencies)
                 database.keywordDao().insertAllKeywords(backupData.data.keywords)
                 database.exchangeRateDao().insertAll(backupData.data.exchangeRates)
-                database.expenseDao().insertAll(backupData.data.expenses)
+                
+                // Restore images and update expense URIs
+                val restoredExpenses = backupData.data.expenses.map { expense ->
+                    val base64Image = backupData.data.expenseImages?.get(expense.id)
+                    if (base64Image != null) {
+                        try {
+                            val imagesDir = File(filesDir, "expense_images")
+                            if (!imagesDir.exists()) imagesDir.mkdirs()
+                            
+                            val fileName = "img_${System.currentTimeMillis()}_${expense.id}.jpg"
+                            val file = File(imagesDir, fileName)
+                            
+                            val bytes = Base64.decode(base64Image, Base64.NO_WRAP)
+                            FileOutputStream(file).use { it.write(bytes) }
+                            
+                            expense.copy(photoUri = Uri.fromFile(file).toString())
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            expense.copy(photoUri = null) // Failed to restore image
+                        }
+                    } else {
+                        expense.copy(photoUri = null) // No image in backup or wasn't backed up
+                    }
+                }
+                
+                database.expenseDao().insertAll(restoredExpenses)
                 database.debtDao().insertAll(backupData.data.debts) // Expenses must exist first
                 database.transferHistoryDao().insertAll(backupData.data.transferHistories)
                 database.keywordDao().insertAllCrossRefs(backupData.data.expenseKeywordCrossRefs)

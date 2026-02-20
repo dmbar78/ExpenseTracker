@@ -38,7 +38,7 @@ class BackupRestoreTest {
             .build()
         
         userPreferences = UserPreferences(context)
-        backupRepository = BackupRepository(database, userPreferences)
+        backupRepository = BackupRepository(database, userPreferences, context.filesDir)
     }
 
     @After
@@ -563,5 +563,87 @@ class BackupRestoreTest {
         
         // Verify currency was restored to original value
         assertEquals("CHF", userPreferences.defaultCurrencyCode.first())
+    }
+
+    @Test
+    fun export_withPhotoUri_encodesToBase64() = runBlocking<Unit> {
+        // Given: database with an expense containing a photo
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        
+        // Create a dummy image file in internal storage
+        val testFile = java.io.File(context.filesDir, "test_photo.jpg")
+        testFile.writeText("Dummy image content")
+        
+        val expense = Expense(
+            amount = BigDecimal("50.00"),
+            currency = "USD",
+            account = "Bank",
+            category = "Food",
+            type = "Expense",
+            expenseDate = System.currentTimeMillis(),
+            photoUri = "file://${testFile.absolutePath}"
+        )
+        val id = database.expenseDao().insert(expense)
+        
+        // When: we export backup data
+        val backupData = backupRepository.exportBackupData()
+        
+        // Then: expenseImages should contain the Base64 string of the file
+        assertNotNull(backupData.data.expenseImages)
+        val base64Data = backupData.data.expenseImages?.get(id.toInt())
+        assertNotNull(base64Data)
+        
+        // Decode and verify content
+        val decodedBytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT)
+        val decodedString = String(decodedBytes)
+        assertEquals("Dummy image content", decodedString)
+        
+        // Cleanup
+        testFile.delete()
+    }
+
+    @Test
+    fun restore_withBase64Photo_savesToInternalStorage() = runBlocking<Unit> {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val dummyContent = "Restored image content"
+        val base64String = android.util.Base64.encodeToString(dummyContent.toByteArray(), android.util.Base64.DEFAULT)
+
+        val expense = Expense(
+            id = 101,
+            amount = BigDecimal("50.00"),
+            currency = "EUR",
+            account = "BackupAccount",
+            category = "BackupCategory",
+            type = "Expense",
+            expenseDate = System.currentTimeMillis()
+        )
+
+        val backupData = createSampleBackupData().copy(
+            data = createSampleBackupData().data.copy(
+                expenses = listOf(expense),
+                expenseImages = mapOf(101 to base64String)
+            )
+        )
+
+        // When: we restore the backup
+        val result = backupRepository.restoreBackupData(backupData)
+
+        // Then: restore should succeed and we should have a local file saved
+        result.getOrThrow()
+        
+        val expenses = database.expenseDao().getAllExpensesOnce()
+        assertEquals(1, expenses.size)
+        val restoredExpense = expenses[0]
+        
+        val restoredUri = restoredExpense.photoUri
+        assertNotNull("Photo URI should not be null", restoredUri)
+        assertTrue("URI should start with file://", restoredUri!!.startsWith("file://"))
+
+        val file = java.io.File(android.net.Uri.parse(restoredUri).path!!)
+        assertTrue("Restored file should exist", file.exists())
+        assertEquals("Restored file content should match", dummyContent, file.readText())
+        
+        // Cleanup
+        file.delete()
     }
 }

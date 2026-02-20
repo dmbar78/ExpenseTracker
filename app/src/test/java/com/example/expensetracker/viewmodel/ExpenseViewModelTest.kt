@@ -205,7 +205,8 @@ class ExpenseViewModelTest {
             expenseDate = originalDate,
             type = "Expense",
             comment = "Lunch",
-            relatedDebtId = 55 // Should be null in copy
+            relatedDebtId = 55, // Should be null in copy
+            photoUri = "file:///some/old/photo.jpg" // Should be null in copy
         )
         val sourceKeywords = listOf(1, 2, 3)
 
@@ -253,6 +254,9 @@ class ExpenseViewModelTest {
 
         // Debt check: Should be reset
         assertNull("Related Debt ID should be null (unchecked)", clonedExpense.relatedDebtId)
+        
+        // Photo check: Should be reset
+        assertNull("Photo URI should be null", clonedExpense.photoUri)
         
         // Keyword check
         assertEquals("Cloned expense ID should be 0", 0, clonedKeywordPair?.first)
@@ -312,5 +316,95 @@ class ExpenseViewModelTest {
         assertTrue("Date should be recent", clonedTransfer.date > originalDate)
         
         job.cancel()
+    }
+
+    @Test
+    fun insertExpense_withLocalPhoto_savesSuccessfully() = runTest {
+        // GIVEN
+        val expense = Expense(
+            id = 0,
+            amount = BigDecimal("50.00"),
+            account = "Bank",
+            category = "Food",
+            currency = "USD",
+            expenseDate = 1000L,
+            type = "Expense",
+            photoUri = "file:///internal/app/images/img.jpg"
+        )
+        val keywords = setOf(1, 2)
+        whenever(ledgerRepository.addExpense(org.mockito.kotlin.any())).thenReturn(101L)
+
+        // WHEN
+        val result = viewModel.insertExpenseWithKeywordsAndReturn(expense, keywords)
+        advanceUntilIdle()
+
+        // THEN
+        assertTrue(result.isSuccess)
+        assertEquals(101L, result.getOrNull())
+        
+        val captor = org.mockito.kotlin.argumentCaptor<Expense>()
+        verify(ledgerRepository).addExpense(captor.capture())
+        assertEquals("file:///internal/app/images/img.jpg", captor.firstValue.photoUri)
+        verify(keywordDao).setKeywordsForExpense(101, keywords)
+    }
+
+    @Test
+    fun updateExpense_withNewLocalPhoto_savesSuccessfully() = runTest {
+        // GIVEN
+        val existingExpense = Expense(
+            id = 1,
+            amount = BigDecimal("50.00"),
+            account = "Bank",
+            category = "Food",
+            currency = "USD",
+            expenseDate = 1000L,
+            type = "Expense",
+            photoUri = "file:///internal/app/images/old.jpg"
+        )
+        whenever(expenseRepository.getExpenseByIdOnce(1)).thenReturn(existingExpense)
+        
+        val updatedExpense = existingExpense.copy(photoUri = "file:///internal/app/images/new.jpg")
+        val keywords = setOf(1)
+        
+        // WHEN
+        val result = viewModel.updateExpenseWithKeywordsAndReturn(updatedExpense, keywords)
+        advanceUntilIdle()
+
+        // THEN
+        assertTrue(result.isSuccess)
+        val captor = org.mockito.kotlin.argumentCaptor<Expense>()
+        verify(ledgerRepository).updateExpense(captor.capture())
+        assertEquals("file:///internal/app/images/new.jpg", captor.firstValue.photoUri)
+        verify(keywordDao).setKeywordsForExpense(1, keywords)
+    }
+
+    @Test
+    fun updateExpense_deleteLocalPhoto_savesSuccessfully() = runTest {
+        // GIVEN
+        val existingExpense = Expense(
+            id = 2,
+            amount = BigDecimal("50.00"),
+            account = "Bank",
+            category = "Food",
+            currency = "USD",
+            expenseDate = 1000L,
+            type = "Expense",
+            photoUri = "file:///internal/app/images/old.jpg"
+        )
+        whenever(expenseRepository.getExpenseByIdOnce(2)).thenReturn(existingExpense)
+        
+        val updatedExpense = existingExpense.copy(photoUri = null)
+        val keywords = setOf(1, 2)
+        
+        // WHEN
+        val result = viewModel.updateExpenseWithKeywordsAndReturn(updatedExpense, keywords)
+        advanceUntilIdle()
+
+        // THEN
+        assertTrue(result.isSuccess)
+        val captor = org.mockito.kotlin.argumentCaptor<Expense>()
+        verify(ledgerRepository).updateExpense(captor.capture())
+        assertNull(captor.firstValue.photoUri)
+        verify(keywordDao).setKeywordsForExpense(2, keywords)
     }
 }

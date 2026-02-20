@@ -193,6 +193,10 @@
     <string name="title_invalid_transfer">Invalid Transfer</string>
     <string name="title_success">Success</string>
 
+    <!-- Camera Permission -->
+    <string name="title_camera_permission">Camera Permission Required</string>
+    <string name="msg_camera_permission">To take photos, please grant camera permission for Expense Tracker in App Settings.</string>
+    <string name="btn_go_to_settings">Go to Settings</string>
 
     <string name="desc_remove_keyword">Remove keyword</string>
     <string name="msg_pin_removed">PIN removed</string>

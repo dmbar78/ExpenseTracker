@@ -40,7 +40,9 @@ data class BackupPayload(
     val exchangeRates: List<ExchangeRate>,
     val expenseKeywordCrossRefs: List<ExpenseKeywordCrossRef>,
     val debts: List<Debt>,
-    val userPreferences: BackupUserPreferences?
+    val userPreferences: BackupUserPreferences?,
+    /** Map of Expense ID to Base64 encoded image string */
+    val expenseImages: Map<Int, String>? = null
 )
 
 /**

@@ -94,9 +94,10 @@ object RepositoryModule {
     @Singleton
     fun provideBackupRepository(
         database: AppDatabase,
-        userPreferences: UserPreferences
+        userPreferences: UserPreferences,
+        @ApplicationContext context: Context
     ): BackupRepository {
-        return BackupRepository(database, userPreferences)
+        return BackupRepository(database, userPreferences, context.filesDir)
     }
 
     @Provides

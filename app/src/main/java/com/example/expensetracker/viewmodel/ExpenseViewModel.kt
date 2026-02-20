@@ -22,6 +22,10 @@ import java.util.Date
 import java.util.Locale
 
 import javax.inject.Inject
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import androidx.core.net.toUri
 
 
 
@@ -59,6 +63,8 @@ class ExpenseViewModel @Inject constructor(
                 val database = AppDatabase.getDatabase(application)
                 val userPrefs = UserPreferences(application)
                 
+                val filesDir = application.filesDir
+
                 return ExpenseViewModel(
                     application,
                     ExpenseRepository(database.expenseDao()),
@@ -79,7 +85,7 @@ class ExpenseViewModel @Inject constructor(
                             )
                         )
                     ),
-                    BackupRepository(database, userPrefs),
+                    BackupRepository(database, userPrefs, filesDir),
                     database.keywordDao(),
                     DebtRepository(database.debtDao())
                 ) as T
@@ -349,7 +355,8 @@ class ExpenseViewModel @Inject constructor(
                     val newExpense = sourceExpense.copy(
                         id = 0,
                         expenseDate = System.currentTimeMillis(),
-                        relatedDebtId = null
+                        relatedDebtId = null,
+                        photoUri = null
                     )
                     
                     // Emit this "new" expense to the relevant flows/state
@@ -1443,39 +1450,118 @@ class ExpenseViewModel @Inject constructor(
     }
 
     /**
-     * Insert expense with keywords and return result directly (for local navigation handling).
+     * Copy an image from an external URI to the app's internal storage.
+     * Returns the URI of the saved internal file.
      */
-    suspend fun insertExpenseWithKeywordsAndReturn(expense: Expense, keywordIds: Set<Int>): Result<Long> {
-        return try {
-            val populatedExpense = ensureOriginalDefaultValues(expense)
-            val expenseId = ledgerRepository.addExpense(populatedExpense)
-            if (keywordIds.isNotEmpty()) {
-                keywordDao.setKeywordsForExpense(expenseId.toInt(), keywordIds)
+    private suspend fun saveImageToInternalStorage(uri: Uri): String? {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val context = getApplication<Application>().applicationContext
+                val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
+                
+                if (inputStream != null) {
+                    val imagesDir = File(context.filesDir, "expense_images")
+                    if (!imagesDir.exists()) {
+                        imagesDir.mkdirs()
+                    }
+                    
+                    val fileName = "img_${System.currentTimeMillis()}.jpg"
+                    val file = File(imagesDir, fileName)
+                    val outputStream = FileOutputStream(file)
+                    
+                    inputStream.use { input ->
+                        outputStream.use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    
+                    Uri.fromFile(file).toString()
+                } else {
+                    null
+                }
+            } catch (e: Exception) {
+                safeLogW(TAG, "Failed to save image to internal storage: ${e.message}")
+                null
             }
-            
-            // If this new expense is related to a debt, update that debt's status
-            if (expense.relatedDebtId != null) {
-                checkAndUpdateDebtStatus(expense.relatedDebtId)
-            }
-            
-            Result.success(expenseId)
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 
     /**
-     * Update expense with keywords and return result directly (for local navigation handling).
+     * Insert expense with keywords and optional photo processing.
+     * If photoUri is a content URI (external), it copies it to internal storage.
+     */
+    suspend fun insertExpenseWithKeywordsAndReturn(expense: Expense, keywordIds: Set<Int>): Result<Long> {
+        return try {
+            // Process photo URI if needed
+            val processedExpense = if (expense.photoUri != null && !expense.photoUri.startsWith("file://")) {
+                val internalUri = saveImageToInternalStorage(Uri.parse(expense.photoUri))
+                expense.copy(photoUri = internalUri ?: expense.photoUri) 
+            } else {
+                expense
+            }
+
+            val populatedExpense = ensureOriginalDefaultValues(processedExpense)
+            val id = ledgerRepository.addExpense(populatedExpense)
+            keywordDao.setKeywordsForExpense(id.toInt(), keywordIds)
+            populatedExpense.relatedDebtId?.let { checkAndUpdateDebtStatus(it) }
+            Result.success(id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Update expense with keywords and optional photo processing.
+     * Handles photo updates: deletes old photo if changed, copies new one.
      */
     suspend fun updateExpenseWithKeywordsAndReturn(expense: Expense, keywordIds: Set<Int>): Result<Unit> {
         return try {
-            val populatedExpense = ensureOriginalDefaultValues(expense)
+            // Get existing expense to check for photo changes
+            val existingExpense = expenseRepository.getExpenseByIdOnce(expense.id)
+            
+            var finalExpense = expense
+            
+            // Check if photo changed
+            if (existingExpense != null) {
+                val oldUri = existingExpense.photoUri
+                val newUri = expense.photoUri
+                
+                if (oldUri != newUri) {
+                    // 1. Delete old photo if it exists and is a file
+                    if (oldUri != null && oldUri.startsWith("file://")) {
+                        try {
+                            val file = File(Uri.parse(oldUri).path!!)
+                            if (file.exists()) file.delete()
+                        } catch (e: Exception) {
+                            safeLogW(TAG, "Failed to delete old photo: ${e.message}")
+                        }
+                    }
+                    
+                    // 2. Save new photo if it's external
+                    if (newUri != null && !newUri.startsWith("file://")) {
+                        val internalUri = saveImageToInternalStorage(Uri.parse(newUri))
+                        finalExpense = expense.copy(photoUri = internalUri ?: newUri)
+                    }
+                }
+            } else if (expense.photoUri != null && !expense.photoUri.startsWith("file://")) {
+                 // Should be rare for update, but if existing is null?
+                 val internalUri = saveImageToInternalStorage(Uri.parse(expense.photoUri))
+                 finalExpense = expense.copy(photoUri = internalUri ?: expense.photoUri)
+            }
+
+            val populatedExpense = ensureOriginalDefaultValues(finalExpense)
             ledgerRepository.updateExpense(populatedExpense)
+            
+            // Update keywords via transactional helper
             keywordDao.setKeywordsForExpense(expense.id, keywordIds)
             
-            // If this expense is related to a debt, update that debt's status
-            if (expense.relatedDebtId != null) {
-                checkAndUpdateDebtStatus(expense.relatedDebtId)
+            val oldDebtId = existingExpense?.relatedDebtId
+            val newDebtId = populatedExpense.relatedDebtId
+            if (oldDebtId != null && oldDebtId != newDebtId) {
+                checkAndUpdateDebtStatus(oldDebtId)
+            }
+            if (newDebtId != null) {
+                checkAndUpdateDebtStatus(newDebtId)
             }
             
             Result.success(Unit)

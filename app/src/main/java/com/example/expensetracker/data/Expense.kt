@@ -25,5 +25,8 @@ data class Expense(
     val amountInOriginalDefault: BigDecimal? = null,
     
     /** ID of the Debt this expense is paying off (if any) */
-    val relatedDebtId: Int? = null
+    val relatedDebtId: Int? = null,
+
+    /** URI of the attached photo (if any) */
+    val photoUri: String? = null
 )
