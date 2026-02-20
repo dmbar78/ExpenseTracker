@@ -17,15 +17,15 @@
     <string name="action_create_transfer">Создать Перевод</string>
 
     <!-- Home Screen -->
-    <string name="tab_expense">Расход</string>
-    <string name="tab_income">Доход</string>
+    <string name="tab_expense">Расходы</string>
+    <string name="tab_income">Доходы</string>
     <string name="tab_transfers">Переводы</string>
     <string name="tab_debts">Долги</string>
     <string name="sort_by_date">По дате</string>
     <string name="sort_by_amount">По сумме</string>
     <string name="lbl_total">Всего: %1$s %2$s</string>
-    <string name="lbl_total_unavailable">Итого недоступно</string>
-    <string name="lbl_total_missing_rates">Итого недоступно (нет курсов)</string>
+    <string name="lbl_total_unavailable">Сумма недоступна</string>
+    <string name="lbl_total_missing_rates">Сумма недоступна (нет курсов)</string>
     <string name="msg_no_debts">Долги по фильтрам не найдены</string>
     <string name="desc_sort">Сортировка</string>
 
@@ -60,6 +60,39 @@
     <string name="title_select_existing_payment">Выберите существующий платеж</string>
     <string name="msg_no_unlinked_records">Несвязанные записи %1$s не найдены.</string>
     <string name="msg_no_match">(Совпадений не найдено)</string>
+    <string name="prefix_account">Счет: %1$s</string>
+    <string name="prefix_category">Категория: %1$s</string>
+    <string name="prefix_search">Поиск: %1$s</string>
+    <string name="title_filter_account">Фильтр по счету</string>
+    <string name="title_filter_transfers">Фильтр переводов</string>
+    <string name="title_filter_category">Фильтр по категории</string>
+    <string name="title_search_query">Поиск по комментарию/тегу</string>
+    <string name="title_add_account">Добавить счет</string>
+    <string name="lbl_account_name">Имя счета</string>
+    <string name="lbl_initial_balance">Баланс</string>
+    <string name="msg_no_currencies">Валюты еще не добавлены. Нажмите \'Создать новый\', чтобы добавить одну.</string>
+    <string name="lbl_default">По умолчанию</string>
+    <string name="title_add_currency">Добавить валюту</string>
+    <string name="err_unknown">Произошла неизвестная ошибка.</string>
+    <string name="msg_transfer_created">Перевод создан</string>
+    <string name="msg_transfer_updated">Перевод обновлен</string>
+    <string name="err_transfer_save_failed">Не удалось сохранить перевод.</string>
+    <string name="title_edit_currency">Редактировать валюту</string>
+    <string name="lbl_currency_code">Код валюты</string>
+    <string name="lbl_currency_name">Название валюты</string>
+    <string name="lbl_currency_code_search">Код валюты (Поиск)</string>
+    <string name="lbl_currency_name_search">Название валюты (Поиск)</string>
+    <string name="title_error">Ошибка</string>
+    <string name="title_override_rate">Переопределить курс обмена</string>
+    <string name="action_override_rate">Переопределить курс</string>
+    <string name="btn_delete_currency">Удалить валюту</string>
+    <string name="msg_delete_currency_confirm">Вы уверены, что хотите удалить эту валюту?</string>
+    <string name="msg_invalid_currency">Неверная валюта. Пожалуйста, выберите действительную валюту (код и название) из списка.</string>
+    <string name="msg_rate_prompt">Введите курс обмена из %1$s в %2$s:</string>
+    <string name="lbl_rate_input">1 %1$s = ? %2$s</string>
+    <string name="lbl_exchange_rate">Курс обмена</string>
+    <string name="msg_no_rate">Курс не найден</string>
+    <string name="msg_enter_valid_rate">Пожалуйста, введите действительный курс больше 0</string>
 
     <!-- Delete Dialogs -->
     <string name="title_delete_record">Удалить запись?</string>
@@ -140,30 +173,45 @@
     <string name="err_invalid_rate">Введите корректный курс больше 0</string>
 
     
+    <!-- Biometric messages -->
+    <string name="msg_unlock_with_pin">Сначала разблокируйте PIN-кодом</string>
+    <string name="title_enable_biometric_dialog">Включить биометрию</string>
+    <string name="msg_confirm_identity">Подтвердите личность для включения биометрии</string>
+    <string name="btn_cancel_biometric">Отмена</string>
+    <string name="msg_biometric_enabled">Биометрия включена</string>
+    <string name="err_setup_failed">Ошибка настройки: %1$s</string>
+    <string name="err_finalization_failed">Ошибка завершения: %1$s</string>
+    <string name="err_auth_error">Ошибка авторизации: %1$s</string>
+       
     <string name="err_biometric_no_hardware">Нет оборудования для биометрии</string>
     <string name="err_biometric_hardware_unavailable">Оборудование недоступно</string>
     <string name="err_no_biometrics_enrolled">Биометрия не настроена. Проверьте настройки телефона.</string>
     <string name="err_biometric_unavailable">Биометрия недоступна (Код: %1$d)</string>
 
-    <string name="msg_biometric_enabled">Биометрия включена</string>
-    <string name="err_finalization_failed">Ошибка завершения: %1$s</string>
-    <string name="err_auth_error">Ошибка авторизации: %1$s</string>
-    <string name="err_setup_failed">Ошибка настройки: %1$s</string>
-    <string name="title_enable_biometric_dialog">Включить биометрию</string>
-    <string name="msg_confirm_identity">Подтвердите личность для включения биометрии</string>
-    <string name="msg_unlock_with_pin">Сначала разблокируйте PIN-кодом</string>
     <string name="err_context_not_activity">Ошибка: Context не является FragmentActivity</string>
-
+    
     <string name="title_recognition_failed">Ошибка распознавания</string>
     <string name="title_invalid_transfer">Некорректный перевод</string>
     <string name="title_success">Успешно</string>
 
+    <!-- Camera Permission -->
+    <string name="title_camera_permission">Требуется разрешение камеры</string>
+    <string name="msg_camera_permission">Для сканирования чеков необходимо разрешение камеры. Разрешите использование камеры в настройках приложения.</string>
+    <string name="btn_go_to_settings">Перейти в настройки</string>
+    
     <string name="desc_remove_keyword">Удалить тег</string>
     <string name="msg_pin_removed">PIN удален</string>
 
+    <!-- Voice Recognition -->
+    <string name="processing_voice_input">Обработка голосового ввода...</string>
     <string name="err_voice_input_unrecognized">Не удалось распознать ввод: \'%1$s\'. Пожалуйста, повторите в одном из форматов (примеры):\n            1. Расход со счета Наличные 50 Категория Еда (дата опционально).\n            2. Доход на счет Сбер 50 Категория Зарплата (дата опционально).\n            3. Перевод со счета Карта на счет Наличные 50 (дата опционально).\n            \n            Формат даты:\n            - 1 января\n            - 1-е января.</string>
     <string name="err_voice_no_accounts">Счета не найдены. Создайте хотя бы один счет перед добавлением переводов.</string>
     <string name="msg_voice_transfer_added">Перевод со счета %1$s на счет %2$s на сумму %3$s %4$s от %5$s успешно добавлен.</string>
     <string name="msg_voice_expense_added">%1$s на сумму %2$s %3$s от %4$s со счета %5$s, категория %6$s успешно добавлен.</string>
     <string name="err_voice_failed">Не удалось добавить перевод.</string>
+    <string name="title_edit_keyword">Редактировать тег</string>
+    <string name="img_desc_keyword_menu">Меню тегов</string>
+    <string name="btn_edit">Редактировать</string>
+    <string name="title_delete_keyword">Удалить тег</string>
+    <string name="msg_delete_keyword_confirm">Вы уверены, что хотите удалить тег?</string>
 </resources>

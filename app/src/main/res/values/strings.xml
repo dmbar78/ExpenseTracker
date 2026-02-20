@@ -17,8 +17,8 @@
     <string name="action_create_transfer">Create Transfer</string>
 
     <!-- Home Screen -->
-    <string name="tab_expense">Expense</string>
-    <string name="tab_income">Income</string>
+    <string name="tab_expense">Expenses</string>
+    <string name="tab_income">Incomes</string>
     <string name="tab_transfers">Transfers</string>
     <string name="tab_debts">Debts</string>
     <string name="sort_by_date">By Date</string>
@@ -57,6 +57,9 @@
     <string name="hint_search_keywords">Search or add keywords</string>
     <string name="hint_keyword_name">Keyword name</string>
     <string name="title_create_keyword">Create Keyword</string>
+    <string name="title_select_existing_payment">Select Existing Payment</string>
+    <string name="msg_no_unlinked_records">No unlinked %1$s records found.</string>
+    <string name="msg_no_match">(No match found)</string>
     <string name="prefix_account">Account: %1$s</string>
     <string name="prefix_category">Category: %1$s</string>
     <string name="prefix_search">Search: %1$s</string>
@@ -64,11 +67,9 @@
     <string name="title_filter_transfers">Filter Transfers</string>
     <string name="title_filter_category">Filter by Category</string>
     <string name="title_search_query">Search Comment/Keyword</string>
-
     <string name="title_add_account">Add Account</string>
     <string name="lbl_account_name">Account Name</string>
     <string name="lbl_initial_balance">Balance</string>
-    <string name="title_select_existing_payment">Select Existing Payment</string>
     <string name="msg_no_currencies">No currencies yet. Tap \'Create New\' to add one.</string>
     <string name="lbl_default">Default</string>
     <string name="title_add_currency">Add Currency</string>
@@ -92,9 +93,7 @@
     <string name="lbl_exchange_rate">Exchange Rate</string>
     <string name="msg_no_rate">No rate available</string>
     <string name="msg_enter_valid_rate">Please enter a valid rate greater than 0</string>
-    <string name="msg_no_unlinked_records">No unlinked %1$s records found.</string>
-    <string name="msg_no_match">(No match found)</string>
-
+   
     <!-- Delete Dialogs -->
     <string name="title_delete_record">Delete Record?</string>
     <string name="msg_delete_record_linked">There\'re related payments. If you delete this record, they will be also deleted. Are you sure?</string>
@@ -183,10 +182,12 @@
     <string name="err_setup_failed">Setup failed: %1$s</string>
     <string name="err_finalization_failed">Finalization failed: %1$s</string>
     <string name="err_auth_error">Auth Error: %1$s</string>
+    
     <string name="err_biometric_no_hardware">No biometric hardware</string>
     <string name="err_biometric_hardware_unavailable">Biometric hardware unavailable</string>
     <string name="err_no_biometrics_enrolled">No biometrics enrolled. Check phone settings.</string>
     <string name="err_biometric_unavailable">Biometric auth not available (Code: %1$d)</string>
+    
     <string name="err_context_not_activity">Error: Context is not a FragmentActivity</string>
 
     <string name="title_recognition_failed">Recognition Failed</string>

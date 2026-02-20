@@ -89,7 +89,7 @@ class KeywordEditDeleteTest {
         composeTestRule.onNodeWithTag("DeleteMenuItem").performClick()
         
         // 3. Verify Confirmation Dialog appears
-        composeTestRule.onNodeWithText("Delete Keyword").assertExists()
+        composeTestRule.onNodeWithTag("DeleteKeywordConfirmButton").assertExists()
         
         // 4. Click Delete (using test tag)
         composeTestRule.onNodeWithTag("DeleteKeywordConfirmButton").performClick()

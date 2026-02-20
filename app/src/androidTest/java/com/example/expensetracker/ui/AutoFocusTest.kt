@@ -245,7 +245,7 @@ class AutoFocusTest {
         composeTestRule.waitForIdle()
 
         // 2. Click "Edit" option
-        composeTestRule.onNodeWithText("Edit") // Using text as there is no specific tag for menu item yet or I missed it
+        composeTestRule.onNodeWithTag("EditMenuItem")
             .performClick()
             
         composeTestRule.waitForIdle()
