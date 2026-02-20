@@ -3,6 +3,7 @@ package com.example.expensetracker.data
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -23,8 +24,13 @@ class UserPreferences(private val context: Context) {
         private val DEFAULT_EXPENSE_ACCOUNT_ID = intPreferencesKey("default_expense_account_id")
         private val DEFAULT_TRANSFER_ACCOUNT_ID = intPreferencesKey("default_transfer_account_id")
         
+        private val GEMINI_ENABLED = booleanPreferencesKey("gemini_enabled")
+        private val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
+        private val GEMINI_MODEL = stringPreferencesKey("gemini_model")
+        
         // Initial default currency on first app install
         const val INITIAL_DEFAULT_CURRENCY = "EUR"
+        const val DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
     }
     
     /**
@@ -41,6 +47,18 @@ class UserPreferences(private val context: Context) {
 
     val defaultTransferAccountId: Flow<Int?> = context.userPreferencesDataStore.data.map { prefs ->
         prefs[DEFAULT_TRANSFER_ACCOUNT_ID]
+    }
+    
+    val isGeminiEnabled: Flow<Boolean> = context.userPreferencesDataStore.data.map { prefs ->
+        prefs[GEMINI_ENABLED] ?: false
+    }
+
+    val geminiApiKey: Flow<String> = context.userPreferencesDataStore.data.map { prefs ->
+        prefs[GEMINI_API_KEY] ?: ""
+    }
+
+    val geminiModel: Flow<String> = context.userPreferencesDataStore.data.map { prefs ->
+        prefs[GEMINI_MODEL] ?: DEFAULT_GEMINI_MODEL
     }
     
     /**
@@ -69,6 +87,24 @@ class UserPreferences(private val context: Context) {
             } else {
                 prefs[DEFAULT_TRANSFER_ACCOUNT_ID] = accountId
             }
+        }
+    }
+
+    suspend fun setGeminiEnabled(enabled: Boolean) {
+        context.userPreferencesDataStore.edit { prefs ->
+            prefs[GEMINI_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setGeminiApiKey(apiKey: String) {
+        context.userPreferencesDataStore.edit { prefs ->
+            prefs[GEMINI_API_KEY] = apiKey
+        }
+    }
+
+    suspend fun setGeminiModel(model: String) {
+        context.userPreferencesDataStore.edit { prefs ->
+            prefs[GEMINI_MODEL] = model
         }
     }
 }

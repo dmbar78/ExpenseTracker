@@ -43,6 +43,12 @@ fun SettingsScreen(
     val defaultTransferAccountId by viewModel.defaultTransferAccountId.collectAsState()
     val allAccounts by viewModel.allAccounts.collectAsState()
     val backupState by viewModel.backupState.collectAsState()
+    
+    val isGeminiEnabled by viewModel.isGeminiEnabled.collectAsState()
+    val geminiApiKey by viewModel.geminiApiKey.collectAsState()
+    val geminiModel by viewModel.geminiModel.collectAsState()
+    val testConnectionState by viewModel.testConnectionState.collectAsState()
+
     val scope = rememberCoroutineScope()
     
     var showCurrencyPicker by remember { mutableStateOf(false) }
@@ -485,6 +491,112 @@ fun SettingsScreen(
                 showCurrencyPicker = true 
             }
         )
+
+        // Voice Recognition Section
+        Text(
+            text = "Voice Recognition",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            color = MaterialTheme.colorScheme.primary
+        )
+        
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { viewModel.setGeminiEnabled(!isGeminiEnabled) },
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Enable Gemini AI Parsing", style = MaterialTheme.typography.bodyLarge)
+                Switch(
+                    checked = isGeminiEnabled,
+                    onCheckedChange = { viewModel.setGeminiEnabled(it) }
+                )
+            }
+        }
+        
+        androidx.compose.animation.AnimatedVisibility(visible = isGeminiEnabled) {
+            Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                OutlinedTextField(
+                    value = geminiApiKey,
+                    onValueChange = { viewModel.setGeminiApiKey(it) },
+                    label = { Text("Gemini API Key") },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                )
+                
+                var modelExpanded by remember { mutableStateOf(false) }
+                val models = listOf("gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash")
+                
+                ExposedDropdownMenuBox(
+                    expanded = modelExpanded,
+                    onExpandedChange = { modelExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = geminiModel,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Gemini Model") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = modelExpanded,
+                        onDismissRequest = { modelExpanded = false }
+                    ) {
+                        models.forEach { model ->
+                            DropdownMenuItem(
+                                text = { Text(model) },
+                                onClick = {
+                                    viewModel.setGeminiModel(model)
+                                    modelExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                Button(
+                    onClick = { viewModel.testGeminiConnection(geminiApiKey, geminiModel) },
+                    enabled = geminiApiKey.isNotBlank() && testConnectionState != com.example.expensetracker.viewmodel.TestConnectionState.Loading,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) {
+                    if (testConnectionState == com.example.expensetracker.viewmodel.TestConnectionState.Loading) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Text("Test Connection")
+                    }
+                }
+                
+                when (testConnectionState) {
+                    is com.example.expensetracker.viewmodel.TestConnectionState.Success -> {
+                        Text(
+                            text = "Connection Successful!",
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                    is com.example.expensetracker.viewmodel.TestConnectionState.Error -> {
+                        val errMessage = (testConnectionState as com.example.expensetracker.viewmodel.TestConnectionState.Error).message
+                        Text(
+                            text = "Error: $errMessage",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                    else -> {}
+                }
+            }
+        }
 
         // Data Management Section
         Text(

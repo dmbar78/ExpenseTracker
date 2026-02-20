@@ -28,9 +28,9 @@ class VoiceCommandParserTest {
         val result = VoiceCommandParser.parseExpense("Expense from test1 20 category default")
         
         assertNotNull(result)
-        assertEquals("test1", result!!.accountName)
+        assertEquals("Test1", result!!.accountName)
         assertEquals(BigDecimal("20.00"), result.amount)
-        assertEquals("default", result.categoryName)
+        assertEquals("Default", result.categoryName)
         assertEquals("Expense", result.type)
     }
 
@@ -41,7 +41,7 @@ class VoiceCommandParserTest {
         assertNotNull(result)
         assertEquals("Test1", result!!.accountName)
         assertEquals(BigDecimal("20.00"), result.amount)
-        assertEquals("default", result.categoryName)
+        assertEquals("Default", result.categoryName)
         assertEquals("Income", result.type)
     }
 
@@ -97,8 +97,8 @@ class VoiceCommandParserTest {
         val result = VoiceCommandParser.parseTransfer("transfer from test1 to test2 20")
         
         assertNotNull(result)
-        assertEquals("test1", result!!.sourceAccountName)
-        assertEquals("test2", result.destAccountName)
+        assertEquals("Test1", result!!.sourceAccountName)
+        assertEquals("Test2", result.destAccountName)
         assertEquals(BigDecimal("20.00"), result.amount)
     }
 
@@ -326,9 +326,9 @@ class VoiceCommandParserTest {
         )
         
         assertNotNull(result)
-        assertEquals("test2", result!!.accountName)
+        assertEquals("Test2", result!!.accountName)
         assertEquals(BigDecimal("20.00"), result.amount)
-        assertEquals("test", result.categoryName)
+        assertEquals("Test", result.categoryName)
         assertEquals("Expense", result.type)
         assertDateEquals(1, 0, TEST_YEAR, result.expenseDate)
     }
@@ -345,7 +345,7 @@ class VoiceCommandParserTest {
         assertNotNull(result)
         assertEquals("Test2", result!!.accountName)
         assertEquals(BigDecimal("20.00"), result.amount)
-        assertEquals("income", result.categoryName)
+        assertEquals("Income", result.categoryName)
         assertEquals("Income", result.type)
         assertDateEquals(1, 0, TEST_YEAR, result.expenseDate)
     }
@@ -360,8 +360,8 @@ class VoiceCommandParserTest {
         )
         
         assertNotNull(result)
-        assertEquals("test2", result!!.sourceAccountName)
-        assertEquals("test1", result.destAccountName)
+        assertEquals("Test2", result!!.sourceAccountName)
+        assertEquals("Test1", result.destAccountName)
         assertEquals(BigDecimal("20.00"), result.amount)
         assertDateEquals(1, 0, TEST_YEAR, result.transferDate)
     }

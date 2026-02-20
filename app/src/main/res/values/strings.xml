@@ -202,6 +202,7 @@
     <string name="msg_pin_removed">PIN removed</string>
 
     <!-- Voice Recognition -->
+    <string name="processing_voice_input">Processing voice input...</string>
     <string name="err_voice_input_unrecognized">Couldn\'t recognize input: \'%1$s\'. Please repeat in one of the formats (example values used):\n            1. Expense from AccountName 50 Category Food (optional date if not today).\n            2. Income to AccountName 50 Category Salary (optional date if not today).\n            3. Transfer from SourceAccountName to DestinationAccountName 50 (optional date if not today).\n            \n            Optional date format can be:\n            - January 1\n            - January 1st\n            - 1st of January.</string>
     <string name="err_voice_no_accounts">No accounts found. Please create at least one account before adding transfers.</string>
     <string name="msg_voice_transfer_added">Transfer from %1$s to %2$s for %3$s %4$s on %5$s successfully added.</string>

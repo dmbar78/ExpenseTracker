@@ -137,6 +137,9 @@ dependencies {
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // Fuzzy matching for voice categorization
+    implementation("me.xdrop:fuzzywuzzy:1.4.0")
 }
 
 tasks.withType<Test> {

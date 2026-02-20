@@ -60,6 +60,9 @@ class DebtLogicTest {
         whenever(userPreferences.defaultCurrencyCode).thenReturn(MutableStateFlow("USD"))
         whenever(userPreferences.defaultExpenseAccountId).thenReturn(MutableStateFlow(null))
         whenever(userPreferences.defaultTransferAccountId).thenReturn(MutableStateFlow(null))
+        whenever(userPreferences.isGeminiEnabled).thenReturn(MutableStateFlow(false))
+        whenever(userPreferences.geminiApiKey).thenReturn(MutableStateFlow(""))
+        whenever(userPreferences.geminiModel).thenReturn(MutableStateFlow(UserPreferences.DEFAULT_GEMINI_MODEL))
         whenever(filterPreferences.filterState).thenReturn(MutableStateFlow(FilterState()))
         whenever(expenseRepository.getExpensesByType(any())).thenReturn(MutableStateFlow(emptyList())) // Use any() from mockito-kotlin
 

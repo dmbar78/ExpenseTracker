@@ -146,6 +146,19 @@ class ExpenseViewModel @Inject constructor(
     private val _navigateTo = Channel<String>(Channel.BUFFERED)
     val navigateToFlow = _navigateTo.receiveAsFlow()
 
+    // Gemini Settings
+    private val _isGeminiEnabled = MutableStateFlow(false)
+    val isGeminiEnabled: StateFlow<Boolean> = _isGeminiEnabled.asStateFlow()
+
+    private val _geminiApiKey = MutableStateFlow("")
+    val geminiApiKey: StateFlow<String> = _geminiApiKey.asStateFlow()
+
+    private val _geminiModel = MutableStateFlow(UserPreferences.DEFAULT_GEMINI_MODEL)
+    val geminiModel: StateFlow<String> = _geminiModel.asStateFlow()
+
+    private val _testConnectionState = MutableStateFlow<TestConnectionState>(TestConnectionState.Idle)
+    val testConnectionState: StateFlow<TestConnectionState> = _testConnectionState.asStateFlow()
+
     // For entity selection
     private val _selectedAccountId = MutableStateFlow<Int?>(null)
     val selectedAccount: StateFlow<Account?> = _selectedAccountId.flatMapLatest { accountId ->
@@ -287,6 +300,17 @@ class ExpenseViewModel @Inject constructor(
             userPreferences.defaultTransferAccountId.collect { id ->
                 _defaultTransferAccountId.value = id
             }
+        }
+        
+        // Load Gemini Preferences
+        viewModelScope.launch {
+            userPreferences.isGeminiEnabled.collect { _isGeminiEnabled.value = it }
+        }
+        viewModelScope.launch {
+            userPreferences.geminiApiKey.collect { _geminiApiKey.value = it }
+        }
+        viewModelScope.launch {
+            userPreferences.geminiModel.collect { _geminiModel.value = it }
         }
 
         // Pre-populate currencies
@@ -663,6 +687,46 @@ class ExpenseViewModel @Inject constructor(
         viewModelScope.launch { userPreferences.setDefaultTransferAccountId(id) }
     }
     
+    // ==================== Gemini Settings Methods ====================
+
+    fun setGeminiEnabled(enabled: Boolean) = viewModelScope.launch {
+        userPreferences.setGeminiEnabled(enabled)
+    }
+
+    fun setGeminiApiKey(key: String) = viewModelScope.launch {
+        userPreferences.setGeminiApiKey(key)
+    }
+
+    fun setGeminiModel(model: String) = viewModelScope.launch {
+        userPreferences.setGeminiModel(model)
+    }
+
+    fun testGeminiConnection(apiKey: String, model: String) = viewModelScope.launch {
+        _testConnectionState.value = TestConnectionState.Loading
+        try {
+            val apiService = com.example.expensetracker.data.gemini.GeminiApiService.create()
+            val request = com.example.expensetracker.data.gemini.GeminiRequest(
+                contents = listOf(
+                    com.example.expensetracker.data.gemini.Content(
+                        parts = listOf(com.example.expensetracker.data.gemini.Part(text = "Respond with 'OK' if the connection is successful."))
+                    )
+                )
+            )
+            val response = apiService.generateContent(model, apiKey, request)
+            if (response.candidates?.isNotEmpty() == true) {
+                _testConnectionState.value = TestConnectionState.Success
+            } else {
+                _testConnectionState.value = TestConnectionState.Error("Empty response.")
+            }
+        } catch (e: Exception) {
+            _testConnectionState.value = TestConnectionState.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    fun resetTestConnectionState() {
+        _testConnectionState.value = TestConnectionState.Idle
+    }
+    
     /**
      * Get the exchange rate for a currency pair on a specific date.
      * Returns null if the rate is not available.
@@ -1010,14 +1074,83 @@ class ExpenseViewModel @Inject constructor(
 
     fun onVoiceRecognitionResult(spokenText: String) {
         viewModelScope.launch {
-            val parsedTransfer = parseTransfer(spokenText)
+            if (_isGeminiEnabled.value && _geminiApiKey.value.isNotBlank()) {
+                val app = getApplication<Application>()
+                _voiceRecognitionState.value = VoiceRecognitionState.Success(
+                    app.getString(R.string.processing_voice_input)
+                )
+                try {
+                    val apiService = com.example.expensetracker.data.gemini.GeminiApiService.create()
+                    val request = com.example.expensetracker.data.gemini.GeminiRequest(
+                        contents = listOf(
+                            com.example.expensetracker.data.gemini.Content(
+                                parts = listOf(com.example.expensetracker.data.gemini.Part(text = com.example.expensetracker.data.gemini.GeminiApiService.buildPrompt(spokenText)))
+                            )
+                        )
+                    )
+                    val response = apiService.generateContent(_geminiModel.value, _geminiApiKey.value, request)
+                    val rawText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: ""
+                    val jsonString = com.example.expensetracker.data.gemini.GeminiApiService.extractJsonObject(rawText)
+                    val extract = com.google.gson.Gson().fromJson(jsonString, com.example.expensetracker.data.gemini.TransactionExtract::class.java)
+                    
+                    val accountsList = allAccounts.value
+                    
+                    if (extract.expenseType == "transfer") {
+                        val sourceAccountStr = extract.sourceAccount ?: ""
+                        val destAccountStr = extract.destinationAccount ?: ""
+                        val sourceAccount = com.example.expensetracker.util.FuzzyMatcher.matchAccount(sourceAccountStr, accountsList)
+                        val destAccount = com.example.expensetracker.util.FuzzyMatcher.matchAccount(destAccountStr, accountsList)
+                        
+                        val resolvedSource = sourceAccount?.name ?: sourceAccountStr.ifBlank { "Unknown" }
+                        val resolvedDest = destAccount?.name ?: destAccountStr.ifBlank { "Unknown" }
+
+                        val parsedTransfer = com.example.expensetracker.viewmodel.ParsedTransfer(
+                            sourceAccountName = resolvedSource,
+                            destAccountName = resolvedDest,
+                            amount = extract.sourceAmount?.value?.let { kotlin.math.abs(it).toBigDecimal() } ?: java.math.BigDecimal.ZERO,
+                            transferDate = extract.date?.let { parseDateFromIso(it) } ?: System.currentTimeMillis(),
+                            comment = spokenText
+                        )
+                        pendingParsedData = parsedTransfer
+                        processParsedTransfer(parsedTransfer)
+                        return@launch
+                    } else {
+                        val accountStr = extract.account ?: ""
+                        val account = com.example.expensetracker.util.FuzzyMatcher.matchAccount(accountStr, accountsList)
+                        val categoryStr = extract.category ?: ""
+                        val categoriesList = allCategories.value
+                        val category = com.example.expensetracker.util.FuzzyMatcher.matchCategory(categoryStr, categoriesList)
+                        
+                        val resolvedAccount = account?.name ?: accountStr.ifBlank { "Unknown" }
+                        val resolvedCategory = category?.name ?: categoryStr.ifBlank { "Unknown" }
+
+                        val isIncome = (extract.expenseType == "income") || (extract.amount?.value ?: 0.0) > 0
+                        val parsedExpense = com.example.expensetracker.viewmodel.ParsedExpense(
+                            accountName = resolvedAccount,
+                            amount = extract.amount?.value?.let { kotlin.math.abs(it).toBigDecimal() } ?: java.math.BigDecimal.ZERO,
+                            categoryName = resolvedCategory,
+                            expenseDate = extract.date?.let { parseDateFromIso(it) } ?: System.currentTimeMillis(),
+                            type = if (isIncome) "Income" else "Expense"
+                        )
+                        pendingParsedData = parsedExpense
+                        processParsedExpense(parsedExpense)
+                        return@launch
+                    }
+                } catch (e: Exception) {
+                    safeLogW(TAG, "Gemini AI parsing failed: ${e.message}")
+                    // Fall back to local parser below
+                }
+            }
+
+            // Local fallback
+            val parsedTransfer = com.example.expensetracker.util.VoiceCommandParser.parseTransfer(spokenText)
             if (parsedTransfer != null) {
                 pendingParsedData = parsedTransfer
                 processParsedTransfer(parsedTransfer)
                 return@launch
             }
 
-            val parsedExpense = parseExpense(spokenText)
+            val parsedExpense = com.example.expensetracker.util.VoiceCommandParser.parseExpense(spokenText)
             if (parsedExpense != null) {
                 pendingParsedData = parsedExpense
                 processParsedExpense(parsedExpense)
@@ -1029,6 +1162,21 @@ class ExpenseViewModel @Inject constructor(
                 app.getString(R.string.err_voice_input_unrecognized, spokenText)
             )
 
+        }
+    }
+
+    private fun parseDateFromIso(isoDate: String): Long {
+        return try {
+            val parts = isoDate.split("-")
+            if (parts.size == 3) {
+                val cal = java.util.Calendar.getInstance()
+                cal.set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt(), 12, 0, 0)
+                cal.timeInMillis
+            } else {
+                System.currentTimeMillis()
+            }
+        } catch (e: Exception) {
+            System.currentTimeMillis()
         }
     }
 
@@ -1307,7 +1455,6 @@ class ExpenseViewModel @Inject constructor(
     fun dismissVoiceRecognitionDialog() {
         _voiceRecognitionState.value = VoiceRecognitionState.Idle
     }
-
     fun deleteAccount(account: Account) = viewModelScope.launch {
         val expenseCount = expenseRepository.getCountByAccount(account.name)
         val transferCount = transferHistoryRepository.getCountByAccount(account.name)
@@ -2105,4 +2252,9 @@ sealed class BackupOperationState {
     object RequestPassword : BackupOperationState() // For encrypted backups
 }
 
-
+sealed class TestConnectionState {
+    object Idle : TestConnectionState()
+    object Loading : TestConnectionState()
+    object Success : TestConnectionState()
+    data class Error(val message: String) : TestConnectionState()
+}

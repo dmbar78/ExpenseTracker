@@ -19,6 +19,12 @@ import java.util.Locale
  */
 object VoiceCommandParser {
 
+    private fun String.capitalizeWords(): String {
+        return this.split(" ").joinToString(" ") { word ->
+            word.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+        }
+    }
+
     /**
      * Parses a transfer command from spoken text.
      * Format: "Transfer from <Source> to <Destination> <Amount> [<Date>]"
@@ -36,7 +42,7 @@ object VoiceCommandParser {
             return null
         }
 
-        val sourceAccountStr = input.substring(transferIndex + 14, toIndex).trim()
+        val sourceAccountStr = input.substring(transferIndex + 14, toIndex).trim().capitalizeWords()
         val restAfterTo = input.substring(toIndex + 4).trim()
 
         // Parse (and remove) trailing date first so day numbers don't get treated as amount
@@ -46,7 +52,7 @@ object VoiceCommandParser {
         val amountMatch = amountRegex.findAll(restWithoutDate).lastOrNull() ?: return null
         val amount = parseMoneyAmount(amountMatch.value) ?: return null
 
-        val destAccountStr = restWithoutDate.substring(0, amountMatch.range.first).trim()
+        val destAccountStr = restWithoutDate.substring(0, amountMatch.range.first).trim().capitalizeWords()
 
         return ParsedTransfer(
             sourceAccountName = sourceAccountStr,
@@ -99,7 +105,7 @@ object VoiceCommandParser {
         val amountRegex = Regex("([\\d,]+\\.?\\d*|[\\d.]+,?\\d*)")
         val amountMatch = amountRegex.findAll(accountAndAmountBlock).lastOrNull() ?: return null
 
-        val accountStr = accountAndAmountBlock.substring(0, amountMatch.range.first).trim()
+        val accountStr = accountAndAmountBlock.substring(0, amountMatch.range.first).trim().capitalizeWords()
         val amountStr = amountMatch.value
 
         val amount = parseMoneyAmount(amountStr) ?: return null
@@ -110,7 +116,7 @@ object VoiceCommandParser {
         return ParsedExpense(
             accountName = accountStr,
             amount = amount,
-            categoryName = finalCategoryStr,
+            categoryName = finalCategoryStr.capitalizeWords(),
             type = type,
             expenseDate = parsedDate
         )
