@@ -14,6 +14,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.data.Account
@@ -32,6 +34,7 @@ import java.util.*
  */
 data class EditTransferState(
     val transferId: Int = 0,
+    val isCopyMode: Boolean = false,
     val sourceAccountName: String = "",
     val destAccountName: String = "",
     val amount: String = "",
@@ -85,7 +88,18 @@ fun EditTransferScreenContent(
 
     var localSourceAccountName by remember(state.sourceAccountName) { mutableStateOf(state.sourceAccountName) }
     var localDestAccountName by remember(state.destAccountName) { mutableStateOf(state.destAccountName) }
-    var localAmount by remember(state.amount) { mutableStateOf(state.amount) }
+    var localAmount by remember(state.amount, state.isCopyMode) {
+        mutableStateOf(
+            TextFieldValue(
+                text = state.amount,
+                selection = if (state.isCopyMode && state.amount.isNotEmpty()) {
+                    TextRange(state.amount.length)
+                } else {
+                    TextRange.Zero
+                }
+            )
+        )
+    }
     var localCurrency by remember(state.currency) { mutableStateOf(state.currency) }
     var localDestAmount by remember(state.destAmount) { mutableStateOf(state.destAmount) }
     var localDestCurrency by remember(state.destCurrency) { mutableStateOf(state.destCurrency) }
@@ -288,8 +302,9 @@ fun EditTransferScreenContent(
                 val focusRequester = remember { FocusRequester() }
 
                 // Auto-focus source amount field when creating a NEW transfer via plus button (empty amount)
+                // and for copied records to preserve existing copy-flow behavior.
                 LaunchedEffect(Unit) {
-                    if (state.transferId == 0 && state.amount.isEmpty()) {
+                    if (state.transferId == 0 && (state.amount.isEmpty() || state.isCopyMode)) {
                         focusRequester.requestFocus()
                     }
                 }
@@ -303,7 +318,7 @@ fun EditTransferScreenContent(
                         value = localAmount,
                         onValueChange = {
                             localAmount = it
-                            callbacks.onAmountChange(it)
+                            callbacks.onAmountChange(it.text)
                         },
                         label = { Text(stringResource(R.string.lbl_source_amount)) },
                         modifier = Modifier
@@ -416,7 +431,7 @@ fun EditTransferScreenContent(
                             return@Button
                         }
                         
-                        val parsedAmount = parseTransferMoneyInputContent(localAmount)
+                        val parsedAmount = parseTransferMoneyInputContent(localAmount.text)
                         if (parsedAmount == null || parsedAmount <= BigDecimal.ZERO) {
                             callbacks.onShowSnackbar(context.getString(R.string.err_invalid_source_amount))
                             return@Button

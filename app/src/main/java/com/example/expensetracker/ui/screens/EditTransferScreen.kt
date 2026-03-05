@@ -249,6 +249,7 @@ fun EditTransferScreen(
             modifier = Modifier.fillMaxSize(),
             state = EditTransferState(
                 transferId = transferId,
+                isCopyMode = copyFromId != null,
                 sourceAccountName = sourceAccountName,
                 destAccountName = destAccountName,
                 amount = amount,

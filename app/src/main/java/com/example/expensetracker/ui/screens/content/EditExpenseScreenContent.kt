@@ -54,6 +54,7 @@ import java.util.*
  */
 data class EditExpenseState(
     val expenseId: Int = 0,
+    val isCopyMode: Boolean = false,
     val amount: String = "",
     val accountName: String = "",
     val category: String = "",
@@ -145,7 +146,18 @@ fun EditExpenseScreenContent(
     var isSaving by remember { mutableStateOf(false) }
     
     // Local mutable state for form fields (copy from state initially)
-    var localAmount by remember(state.amount) { mutableStateOf(state.amount) }
+    var localAmount by remember(state.amount, state.isCopyMode) {
+        mutableStateOf(
+            TextFieldValue(
+                text = state.amount,
+                selection = if (state.isCopyMode && state.amount.isNotEmpty()) {
+                    TextRange(state.amount.length)
+                } else {
+                    TextRange.Zero
+                }
+            )
+        )
+    }
     var localAccountName by remember(state.accountName) { mutableStateOf(state.accountName) }
     var localCategory by remember(state.category) { mutableStateOf(state.category) }
     var localCurrency by remember(state.currency) { mutableStateOf(state.currency) }
@@ -307,8 +319,9 @@ fun EditExpenseScreenContent(
                 val focusRequester = remember { FocusRequester() }
 
                 // Auto-focus amount field when creating a NEW expense/income via plus button (empty amount)
+                // and for copied records to preserve existing copy-flow behavior.
                 LaunchedEffect(Unit) {
-                    if (state.expenseId == 0 && state.amount.isEmpty()) {
+                    if (state.expenseId == 0 && (state.amount.isEmpty() || state.isCopyMode)) {
                         focusRequester.requestFocus()
                     }
                 }
@@ -319,7 +332,7 @@ fun EditExpenseScreenContent(
                     onValueChange = {
                         localAmount = it
                         localAmountError = false
-                        callbacks.onAmountChange(it)
+                        callbacks.onAmountChange(it.text)
                     },
                     label = { Text(stringResource(R.string.lbl_amount)) },
                     modifier = Modifier
@@ -778,7 +791,7 @@ fun EditExpenseScreenContent(
                         val resolvedCategory = categories.find { it.name.equals(localCategory, ignoreCase = true) }
                         val newAccountError = localAccountName.isBlank() || resolvedAccount == null
                         val newCategoryError = localCategory.isBlank() || resolvedCategory == null
-                        val parsedAmount = parseMoneyInput(localAmount)
+                        val parsedAmount = parseMoneyInput(localAmount.text)
                         val newAmountError = parsedAmount == null || parsedAmount <= BigDecimal.ZERO
 
                         if (newAccountError) {

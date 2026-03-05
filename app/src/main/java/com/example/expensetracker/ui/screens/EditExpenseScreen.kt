@@ -450,6 +450,7 @@ fun EditExpenseScreen(
             modifier = Modifier.fillMaxSize(),
             state = EditExpenseState(
             expenseId = expenseId,
+            isCopyMode = copyFromId != null,
             amount = amount,
             accountName = accountName,
             category = category,

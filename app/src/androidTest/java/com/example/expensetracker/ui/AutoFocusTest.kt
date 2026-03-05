@@ -76,11 +76,10 @@ class AutoFocusTest {
     }
     
     @Test
-    fun copiedExpense_shouldNotAutoFocus_ifAmountPresent() {
-        // Technically copied expense has ID 0, but Amount is pre-filled.
-        // My implementation checks amount.isEmpty().
+    fun copiedExpense_shouldAutoFocus_andPlaceCursorAtEnd() {
         val state = EditExpenseState(
             expenseId = 0, // NEW
+            isCopyMode = true,
             amount = "10.00" // PRE-FILLED (Copy)
         )
         
@@ -96,9 +95,13 @@ class AutoFocusTest {
 
         composeTestRule.waitForIdle()
         
-        // Assert Amount field is NOT focused
+        // Assert Amount field is focused and typing appends at the end
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
-            .assertIsNotFocused()
+            .assertIsFocused()
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
+            .performTextInput("5")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
+            .assertTextContains("10.005", substring = true)
     }
 
     @Test
@@ -150,6 +153,32 @@ class AutoFocusTest {
         // Assert Source Amount field is NOT focused
         composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD)
             .assertIsNotFocused()
+    }
+
+    @Test
+    fun copiedTransfer_shouldAutoFocus_andPlaceCursorAtEnd() {
+        val state = EditTransferState(
+            transferId = 0,
+            isCopyMode = true,
+            amount = "50.00"
+        )
+
+        composeTestRule.setContent {
+            EditTransferScreenContent(
+                state = state,
+                accounts = emptyList(),
+                callbacks = EditTransferCallbacks()
+            )
+        }
+
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD)
+            .assertIsFocused()
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD)
+            .performTextInput("5")
+        composeTestRule.onNodeWithTag(TestTags.EDIT_TRANSFER_AMOUNT_FIELD)
+            .assertTextContains("50.005", substring = true)
     }
     @Test
     fun addCategory_shouldAutoFocusName() {
