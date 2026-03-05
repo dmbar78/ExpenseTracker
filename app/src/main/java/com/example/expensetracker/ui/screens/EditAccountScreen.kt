@@ -57,30 +57,30 @@ fun EditAccountScreen(accountId: Int, viewModel: ExpenseViewModel, navController
     if (showErrorDialog) {
         AlertDialog(
             onDismissRequest = { showErrorDialog = false },
-            title = { Text("Error") },
+            title = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.title_error)) },
             text = { Text(errorMessage) },
             confirmButton = {
                 Button(onClick = { showErrorDialog = false }) {
-                    Text("OK")
+                    Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_ok))
                 }
             }
         )
     }
 
     Column(modifier = Modifier.padding(16.dp)) {
-        Text("Edit Account", style = MaterialTheme.typography.headlineSmall)
+        Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.title_edit_account), style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Account Name") },
+            label = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_account_name)) },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = balance,
             onValueChange = { balance = it },
-            label = { Text("Balance") },
+            label = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_initial_balance)) },
             modifier = Modifier
                 .fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -94,7 +94,7 @@ fun EditAccountScreen(accountId: Int, viewModel: ExpenseViewModel, navController
             OutlinedTextField(
                 value = currencies.find { it.code == currencyCode }?.name ?: "",
                 onValueChange = {},
-                label = { Text("Currency") },
+                label = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_currency)) },
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCurrencyDropdownExpanded) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
@@ -131,14 +131,14 @@ fun EditAccountScreen(accountId: Int, viewModel: ExpenseViewModel, navController
                 },
                 modifier = Modifier.weight(1f).padding(end = 8.dp)
             ) {
-                Text("Save")
+                Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_save))
             }
             Button(
                 onClick = { showDeleteDialog = true },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                 modifier = Modifier.weight(1f).padding(start = 8.dp)
             ) {
-                Text("Delete")
+                Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_delete))
             }
         }
     }
@@ -146,8 +146,8 @@ fun EditAccountScreen(accountId: Int, viewModel: ExpenseViewModel, navController
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Account") },
-            text = { Text("Are you sure you want to delete this account?") },
+            title = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.title_delete_account)) },
+            text = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.msg_delete_account_confirm)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -155,12 +155,12 @@ fun EditAccountScreen(accountId: Int, viewModel: ExpenseViewModel, navController
                         showDeleteDialog = false
                     }
                 ) {
-                    Text("Yes")
+                    Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_yes))
                 }
             },
             dismissButton = {
                 Button(onClick = { showDeleteDialog = false }) {
-                    Text("No")
+                    Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_no))
                 }
             }
         )

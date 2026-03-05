@@ -2125,7 +2125,7 @@ class ExpenseViewModel @Inject constructor(
                         writer.write(outputString)
                     }
                 }
-                _backupState.value = BackupOperationState.Success("Backup exported successfully")
+                _backupState.value = BackupOperationState.Success(getApplication<Application>().getString(com.example.expensetracker.R.string.msg_backup_exported_successfully))
             } catch (e: Exception) {
                 _backupState.value = BackupOperationState.Error("Export failed: ${e.localizedMessage}")
             }
@@ -2200,7 +2200,7 @@ class ExpenseViewModel @Inject constructor(
     private suspend fun performRestore(backupData: BackupData) {
         val result = backupRepository.restoreBackupData(backupData)
         if (result.isSuccess) {
-            _backupState.value = BackupOperationState.Success("Backup restored successfully")
+            _backupState.value = BackupOperationState.Success(getApplication<Application>().getString(com.example.expensetracker.R.string.msg_backup_restored_successfully))
         } else {
             _backupState.value = BackupOperationState.Error("Restore failed: ${result.exceptionOrNull()?.message}")
         }

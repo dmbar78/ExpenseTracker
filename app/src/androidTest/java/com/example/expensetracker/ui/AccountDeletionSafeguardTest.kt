@@ -81,7 +81,7 @@ class AccountDeletionSafeguardTest {
         
         if (accountNodes.isNotEmpty()) {
             // Find all Edit buttons
-            val editButtons = composeTestRule.onAllNodesWithText("Edit")
+            val editButtons = composeTestRule.onAllNodesWithText(composeTestRule.activity.getString(com.example.expensetracker.R.string.btn_edit))
             
             // For simplicity, if there's only one account with this name, click the first Edit button
             // In a real scenario with multiple accounts, we'd need more sophisticated matching
@@ -92,23 +92,23 @@ class AccountDeletionSafeguardTest {
     }
 
     private fun attemptDeleteAndExpectError() {
-        composeTestRule.onNodeWithText("Delete").performClick()
-        composeTestRule.onNodeWithText("Yes").performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(com.example.expensetracker.R.string.btn_delete)).performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(com.example.expensetracker.R.string.btn_yes)).performClick()
 
         composeTestRule.waitUntil(timeoutMillis = 5000) {
             composeTestRule.onAllNodesWithText("Cannot delete account. It has associated expenses or transfers.")
                 .fetchSemanticsNodes().isNotEmpty()
         }
 
-        composeTestRule.onNodeWithText("OK").performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(com.example.expensetracker.R.string.btn_ok)).performClick()
     }
 
     private fun attemptDeleteAndExpectSuccess() {
-        composeTestRule.onNodeWithText("Delete").performClick()
-        composeTestRule.onNodeWithText("Yes").performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(com.example.expensetracker.R.string.btn_delete)).performClick()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(com.example.expensetracker.R.string.btn_yes)).performClick()
 
         composeTestRule.waitUntil(timeoutMillis = 5000) {
-            composeTestRule.onAllNodesWithText("Delete").fetchSemanticsNodes().isEmpty()
+            composeTestRule.onAllNodesWithText(composeTestRule.activity.getString(com.example.expensetracker.R.string.btn_delete)).fetchSemanticsNodes().isEmpty()
         }
     }
 
@@ -194,7 +194,7 @@ class AccountDeletionSafeguardTest {
         }
 
         // Now navigate to destination account - but we're already on Accounts screen, so just find the Edit button
-        val editButtons = composeTestRule.onAllNodesWithText("Edit")
+        val editButtons = composeTestRule.onAllNodesWithText(composeTestRule.activity.getString(com.example.expensetracker.R.string.btn_edit))
         // The second Edit button should be for TransferDestAccount (accounts are likely ordered by insertion)
         editButtons[1].performClick()
         composeTestRule.waitForIdle()

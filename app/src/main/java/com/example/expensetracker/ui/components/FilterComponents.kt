@@ -78,35 +78,35 @@ fun FilterMainMenu(
         onDismissRequest = onDismiss
     ) {
         DropdownMenuItem(
-            text = { Text("Time") },
+            text = { Text(stringResource(R.string.lbl_filter_time)) },
             onClick = {
                 onDismiss()
                 onTimeClick()
             }
         )
         DropdownMenuItem(
-            text = { Text("Expense/Income Account") },
+            text = { Text(stringResource(R.string.lbl_filter_expense_income_account)) },
             onClick = {
                 onDismiss()
                 onAccountClick()
             }
         )
         DropdownMenuItem(
-            text = { Text("Transfer From/To") },
+            text = { Text(stringResource(R.string.lbl_filter_transfer_from_to)) },
             onClick = {
                 onDismiss()
                 onTransferClick()
             }
         )
         DropdownMenuItem(
-            text = { Text("Category") },
+            text = { Text(stringResource(R.string.lbl_filter_category)) },
             onClick = {
                 onDismiss()
                 onCategoryClick()
             }
         )
         DropdownMenuItem(
-            text = { Text("Comment/Keyword") },
+            text = { Text(stringResource(R.string.lbl_filter_comment_keyword)) },
             onClick = {
                 onDismiss()
                 onTextQueryClick()
@@ -114,7 +114,7 @@ fun FilterMainMenu(
         )
         HorizontalDivider()
         DropdownMenuItem(
-            text = { Text("Reset All", color = MaterialTheme.colorScheme.error) },
+            text = { Text(stringResource(R.string.btn_reset_all), color = MaterialTheme.colorScheme.error) },
             onClick = {
                 onDismiss()
                 onResetAll()
@@ -143,35 +143,35 @@ fun TimeFilterMenu(
         onDismissRequest = onDismiss
     ) {
         DropdownMenuItem(
-            text = { Text("Day") },
+            text = { Text(stringResource(R.string.lbl_time_day)) },
             onClick = {
                 onDismiss()
                 onDayClick()
             }
         )
         DropdownMenuItem(
-            text = { Text("Week") },
+            text = { Text(stringResource(R.string.lbl_time_week)) },
             onClick = {
                 onDismiss()
                 onWeekClick()
             }
         )
         DropdownMenuItem(
-            text = { Text("Month") },
+            text = { Text(stringResource(R.string.lbl_time_month)) },
             onClick = {
                 onDismiss()
                 onMonthClick()
             }
         )
         DropdownMenuItem(
-            text = { Text("Year") },
+            text = { Text(stringResource(R.string.lbl_time_year)) },
             onClick = {
                 onDismiss()
                 onYearClick()
             }
         )
         DropdownMenuItem(
-            text = { Text("Period") },
+            text = { Text(stringResource(R.string.lbl_time_period)) },
             onClick = {
                 onDismiss()
                 onPeriodClick()
@@ -207,7 +207,7 @@ fun DayPickerDialog(
             calendar.get(Calendar.DAY_OF_MONTH)
         )
         
-        dialog.setButton(DatePickerDialog.BUTTON_POSITIVE, "OK") { _, _ ->
+        dialog.setButton(DatePickerDialog.BUTTON_POSITIVE, context.getString(R.string.btn_ok)) { _, _ ->
             // Read the selected date directly from the DatePicker widget
             val picker = dialog.datePicker
             val cal = Calendar.getInstance()
@@ -215,10 +215,10 @@ fun DayPickerDialog(
             cal.set(Calendar.MILLISECOND, 0)
             onConfirm(cal.timeInMillis)
         }
-        dialog.setButton(DatePickerDialog.BUTTON_NEGATIVE, "Cancel") { _, _ ->
+        dialog.setButton(DatePickerDialog.BUTTON_NEGATIVE, context.getString(R.string.btn_cancel)) { _, _ ->
             onCancel()
         }
-        dialog.setButton(DatePickerDialog.BUTTON_NEUTRAL, "Reset") { _, _ ->
+        dialog.setButton(DatePickerDialog.BUTTON_NEUTRAL, context.getString(R.string.btn_reset)) { _, _ ->
             onReset()
         }
         
@@ -258,7 +258,7 @@ fun WeekPickerDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Select Week",
+                    text = stringResource(R.string.title_select_week),
                     style = MaterialTheme.typography.headlineSmall
                 )
                 
@@ -286,13 +286,13 @@ fun WeekPickerDialog(
                         cal.add(Calendar.WEEK_OF_YEAR, -1)
                         selectedWeekStart = cal.timeInMillis
                     }) {
-                        Text("← Prev")
+                        Text(stringResource(R.string.btn_prev))
                     }
                     
                     OutlinedButton(onClick = {
                         selectedWeekStart = getWeekStartMillis(System.currentTimeMillis())
                     }) {
-                        Text("Today")
+                        Text(stringResource(R.string.btn_today))
                     }
                     
                     OutlinedButton(onClick = {
@@ -300,7 +300,7 @@ fun WeekPickerDialog(
                         cal.add(Calendar.WEEK_OF_YEAR, 1)
                         selectedWeekStart = cal.timeInMillis
                     }) {
-                        Text("Next →")
+                        Text(stringResource(R.string.btn_next))
                     }
                 }
                 
@@ -312,15 +312,15 @@ fun WeekPickerDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     TextButton(onClick = onReset) {
-                        Text("Reset", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.btn_reset), color = MaterialTheme.colorScheme.error)
                     }
                     Row {
                         TextButton(onClick = onCancel) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.btn_cancel))
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(onClick = { onConfirm(selectedWeekStart) }) {
-                            Text("OK")
+                            Text(stringResource(R.string.btn_ok))
                         }
                     }
                 }
@@ -361,7 +361,7 @@ fun MonthPickerDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Select Month",
+                    text = stringResource(R.string.title_select_month),
                     style = MaterialTheme.typography.headlineSmall
                 )
                 
@@ -430,15 +430,15 @@ fun MonthPickerDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     TextButton(onClick = onReset) {
-                        Text("Reset", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.btn_reset), color = MaterialTheme.colorScheme.error)
                     }
                     Row {
                         TextButton(onClick = onCancel) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.btn_cancel))
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(onClick = { onConfirm(selectedYear, selectedMonth) }) {
-                            Text("OK")
+                            Text(stringResource(R.string.btn_ok))
                         }
                     }
                 }
@@ -479,7 +479,7 @@ fun YearPickerDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Select Year",
+                    text = stringResource(R.string.title_select_year),
                     style = MaterialTheme.typography.headlineSmall
                 )
                 
@@ -526,15 +526,15 @@ fun YearPickerDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     TextButton(onClick = onReset) {
-                        Text("Reset", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.btn_reset), color = MaterialTheme.colorScheme.error)
                     }
                     Row {
                         TextButton(onClick = onCancel) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.btn_cancel))
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(onClick = { onConfirm(selectedYear) }) {
-                            Text("OK")
+                            Text(stringResource(R.string.btn_ok))
                         }
                     }
                 }
@@ -575,7 +575,7 @@ fun PeriodPickerDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Select Period",
+                    text = stringResource(R.string.title_select_period),
                     style = MaterialTheme.typography.headlineSmall
                 )
                 
@@ -593,7 +593,7 @@ fun PeriodPickerDialog(
                         onCheckedChange = { allTimeChecked = it }
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("All Time (from earliest transaction to today)")
+                    Text(stringResource(R.string.opt_all_time))
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -606,8 +606,8 @@ fun PeriodPickerDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = startDate?.let { "From: ${dateFormat.format(Date(it))}" } 
-                                ?: "Select Start Date"
+                            text = startDate?.let { "${stringResource(R.string.lbl_date_from)} ${dateFormat.format(Date(it))}" } 
+                                ?: stringResource(R.string.lbl_select_start_date)
                         )
                     }
                     
@@ -619,8 +619,8 @@ fun PeriodPickerDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = endDate?.let { "To: ${dateFormat.format(Date(it))}" } 
-                                ?: "Select End Date"
+                            text = endDate?.let { "${stringResource(R.string.lbl_date_to)} ${dateFormat.format(Date(it))}" } 
+                                ?: stringResource(R.string.lbl_select_end_date)
                         )
                     }
                 }
@@ -633,11 +633,11 @@ fun PeriodPickerDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     TextButton(onClick = onReset) {
-                        Text("Reset", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.btn_reset), color = MaterialTheme.colorScheme.error)
                     }
                     Row {
                         TextButton(onClick = onCancel) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.btn_cancel))
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(onClick = {
@@ -657,7 +657,7 @@ fun PeriodPickerDialog(
                                 onCancel()
                             }
                         }) {
-                            Text("OK")
+                            Text(stringResource(R.string.btn_ok))
                         }
                     }
                 }
@@ -762,7 +762,7 @@ fun AccountFilterDialog(
                     onExpandedChange = { expanded = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedAccount ?: "Select Account",
+                        value = selectedAccount ?: stringResource(R.string.lbl_select_account),
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
@@ -811,7 +811,7 @@ fun AccountFilterDialog(
                                 onCancel()
                             }
                         }) {
-                            Text("OK")
+                            Text(stringResource(R.string.btn_ok))
                         }
                     }
                 }
@@ -858,7 +858,7 @@ fun TransferFilterDialog(
                 
                 // Source account dropdown
                 Text(
-                    text = "From Account",
+                    text = stringResource(R.string.lbl_from_account),
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.align(Alignment.Start)
                 )
@@ -867,7 +867,7 @@ fun TransferFilterDialog(
                     onExpandedChange = { sourceExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedSource ?: "Any",
+                        value = selectedSource ?: stringResource(R.string.lbl_any),
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
@@ -883,7 +883,7 @@ fun TransferFilterDialog(
                         onDismissRequest = { sourceExpanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Any") },
+                            text = { Text(stringResource(R.string.lbl_any)) },
                             onClick = {
                                 selectedSource = null
                                 sourceExpanded = false
@@ -905,7 +905,7 @@ fun TransferFilterDialog(
                 
                 // Destination account dropdown
                 Text(
-                    text = "To Account",
+                    text = stringResource(R.string.lbl_to_account),
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.align(Alignment.Start)
                 )
@@ -914,7 +914,7 @@ fun TransferFilterDialog(
                     onExpandedChange = { destExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedDest ?: "Any",
+                        value = selectedDest ?: stringResource(R.string.lbl_any),
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
@@ -930,7 +930,7 @@ fun TransferFilterDialog(
                         onDismissRequest = { destExpanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Any") },
+                            text = { Text(stringResource(R.string.lbl_any)) },
                             onClick = {
                                 selectedDest = null
                                 destExpanded = false
@@ -1018,7 +1018,7 @@ fun CategoryFilterDialog(
                     onExpandedChange = { expanded = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedCategory ?: "Select Category",
+                        value = selectedCategory ?: stringResource(R.string.lbl_select_category),
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
@@ -1053,11 +1053,11 @@ fun CategoryFilterDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     TextButton(onClick = onReset) {
-                        Text("Reset", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.btn_reset), color = MaterialTheme.colorScheme.error)
                     }
                     Row {
                         TextButton(onClick = onCancel) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.btn_cancel))
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(onClick = {
@@ -1067,7 +1067,7 @@ fun CategoryFilterDialog(
                                 onCancel()
                             }
                         }) {
-                            Text("OK")
+                            Text(stringResource(R.string.btn_ok))
                         }
                     }
                 }
@@ -1110,8 +1110,8 @@ fun TextQueryFilterDialog(
                 OutlinedTextField(
                     value = queryText,
                     onValueChange = { queryText = it },
-                    label = { Text("Search text") },
-                    placeholder = { Text("Enter text to search...") },
+                    label = { Text(stringResource(R.string.lbl_search_text)) },
+                    placeholder = { Text(stringResource(R.string.lbl_enter_search_text)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1124,11 +1124,11 @@ fun TextQueryFilterDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     TextButton(onClick = onReset) {
-                        Text("Reset", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.btn_reset), color = MaterialTheme.colorScheme.error)
                     }
                     Row {
                         TextButton(onClick = onCancel) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.btn_cancel))
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(onClick = {
@@ -1140,7 +1140,7 @@ fun TextQueryFilterDialog(
                                 onCancel()
                             }
                         }) {
-                            Text("OK")
+                            Text(stringResource(R.string.btn_ok))
                         }
                     }
                 }

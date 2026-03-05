@@ -30,7 +30,9 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -571,7 +573,7 @@ fun EditExpenseScreenContent(
 
                 // Photo Section
                 Text(
-                    text = "Photo",
+                    text = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.title_photo),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -584,7 +586,7 @@ fun EditExpenseScreenContent(
                     ) {
                         AsyncImage(
                             model = state.photoUri,
-                            contentDescription = "Expense Photo",
+                            contentDescription = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.desc_expense_photo),
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(RoundedCornerShape(8.dp))
@@ -603,7 +605,7 @@ fun EditExpenseScreenContent(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Remove Photo",
+                                contentDescription = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.desc_remove_photo),
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -621,7 +623,7 @@ fun EditExpenseScreenContent(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "Add Photo",
+                            contentDescription = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.title_add_photo),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
                         )
@@ -893,7 +895,14 @@ fun EditExpenseScreenContent(
     
     // Edit Keyword Dialog
     showEditKeywordDialog?.let { keywordToEdit ->
-        var editedName by remember { mutableStateOf(keywordToEdit.name) }
+        var editedName by remember(keywordToEdit.id) {
+            mutableStateOf(
+                TextFieldValue(
+                    text = keywordToEdit.name,
+                    selection = TextRange(keywordToEdit.name.length)
+                )
+            )
+        }
         val editKeywordFocusRequester = remember { FocusRequester() }
         val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
         var hasRequestedFocus by remember { mutableStateOf(false) }
@@ -923,8 +932,8 @@ fun EditExpenseScreenContent(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (editedName.isNotBlank() && editedName != keywordToEdit.name) {
-                            callbacks.onEditKeyword(keywordToEdit.copy(name = editedName.trim()))
+                        if (editedName.text.isNotBlank() && editedName.text != keywordToEdit.name) {
+                            callbacks.onEditKeyword(keywordToEdit.copy(name = editedName.text.trim()))
                             showEditKeywordDialog = null
                         }
                     },
@@ -974,14 +983,25 @@ fun EditExpenseScreenContent(
         val createKeywordFocusRequester = remember { FocusRequester() }
         val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
         var hasRequestedFocus by remember { mutableStateOf(false) }
+        var createKeywordNameField by remember(newKeywordName) {
+            mutableStateOf(
+                TextFieldValue(
+                    text = newKeywordName,
+                    selection = TextRange(newKeywordName.length)
+                )
+            )
+        }
 
         AlertDialog(
             onDismissRequest = { showCreateKeywordDialog = false },
             title = { Text(stringResource(R.string.title_create_keyword)) },
             text = {
                 OutlinedTextField(
-                    value = newKeywordName,
-                    onValueChange = { newKeywordName = it },
+                    value = createKeywordNameField,
+                    onValueChange = {
+                        createKeywordNameField = it
+                        newKeywordName = it.text
+                    },
                     label = { Text(stringResource(R.string.hint_keyword_name)) },
                     singleLine = true,
                     modifier = Modifier
@@ -1000,9 +1020,10 @@ fun EditExpenseScreenContent(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (newKeywordName.isNotBlank()) {
+                        val keywordName = createKeywordNameField.text
+                        if (keywordName.isNotBlank()) {
                             coroutineScope.launch {
-                                val newId = callbacks.onCreateKeyword(newKeywordName.trim())
+                                val newId = callbacks.onCreateKeyword(keywordName.trim())
                                 if (newId > 0) {
                                     localSelectedKeywordIds = localSelectedKeywordIds + newId.toInt()
                                 }

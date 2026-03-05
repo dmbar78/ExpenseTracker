@@ -94,9 +94,9 @@ fun AccountsScreen(viewModel: ExpenseViewModel, navController: NavController) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Accounts", style = MaterialTheme.typography.headlineSmall)
+            Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.nav_accounts), style = MaterialTheme.typography.headlineSmall)
             Button(onClick = { navController.navigate("addAccount") }) {
-                Text("Create New")
+                Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_create_new))
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -107,7 +107,7 @@ fun AccountsScreen(viewModel: ExpenseViewModel, navController: NavController) {
         Spacer(modifier = Modifier.height(8.dp))
 
         if (accounts.isEmpty()) {
-            Text("No accounts yet. Tap 'Create New' to add one.")
+            Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.msg_no_accounts))
         } else {
             LazyColumn {
                 items(accounts) { account ->
@@ -147,7 +147,7 @@ private fun AccountsTotalHeader(totalState: AccountsTotalState) {
             }
             is AccountsTotalState.Success -> {
                 Text(
-                    text = "Total: ${formatBalance(totalState.total)} ${totalState.currencyCode}",
+                    text = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_total, formatBalance(totalState.total), totalState.currencyCode),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center
@@ -155,7 +155,7 @@ private fun AccountsTotalHeader(totalState: AccountsTotalState) {
             }
             is AccountsTotalState.RateMissing -> {
                 Text(
-                    text = "Total unavailable (missing rates)",
+                    text = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_total_missing_rates),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center
@@ -199,21 +199,21 @@ private fun AccountRow(
             Text("${account.name} (${account.currency})")
             
             // Show balance with optional converted value
-            val balanceText = buildString {
-                append("Balance: ${formatBalance(account.balance)}")
-                if (account.currency != defaultCurrency) {
-                    val converted = convertedBalance
-                    if (converted != null) {
-                        append(" (${formatBalance(converted)} $defaultCurrency)")
-                    } else {
-                        append(" (— $defaultCurrency)")
-                    }
+            val formattedOriginal = formatBalance(account.balance)
+            val balanceText = if (account.currency != defaultCurrency) {
+                val converted = convertedBalance
+                if (converted != null) {
+                    androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_balance_converted, formattedOriginal, formatBalance(converted), defaultCurrency)
+                } else {
+                    androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_balance_no_converted, formattedOriginal, defaultCurrency)
                 }
+            } else {
+                androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_balance, formattedOriginal)
             }
             Text(balanceText, style = MaterialTheme.typography.bodySmall)
         }
         Button(onClick = onEditClick) {
-            Text("Edit")
+            Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_edit))
         }
     }
 }

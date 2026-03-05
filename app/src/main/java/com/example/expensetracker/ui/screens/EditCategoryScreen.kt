@@ -6,6 +6,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -48,11 +50,11 @@ fun EditCategoryScreen(categoryId: Int, viewModel: ExpenseViewModel, navControll
     if (showErrorDialog) {
         AlertDialog(
             onDismissRequest = { showErrorDialog = false },
-            title = { Text("Error") },
+            title = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.title_error)) },
             text = { Text(errorMessage) },
             confirmButton = {
                 Button(onClick = { showErrorDialog = false }) {
-                    Text("OK")
+                    Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_ok))
                 }
             }
         )
@@ -61,11 +63,11 @@ fun EditCategoryScreen(categoryId: Int, viewModel: ExpenseViewModel, navControll
     if (showCannotDeleteDefaultDialog) {
         AlertDialog(
             onDismissRequest = { showCannotDeleteDefaultDialog = false },
-            title = { Text("Cannot Delete") },
-            text = { Text("The 'Default' category cannot be deleted.") },
+            title = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.title_cannot_delete)) },
+            text = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.msg_cannot_delete_default_category)) },
             confirmButton = {
                 Button(onClick = { showCannotDeleteDefaultDialog = false }) {
-                    Text("OK")
+                    Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_ok))
                 }
             }
         )
@@ -74,8 +76,8 @@ fun EditCategoryScreen(categoryId: Int, viewModel: ExpenseViewModel, navControll
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Category") },
-            text = { Text("Are you sure you want to delete this category?") },
+            title = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.title_delete_category)) },
+            text = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.msg_delete_category_confirm)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -84,12 +86,12 @@ fun EditCategoryScreen(categoryId: Int, viewModel: ExpenseViewModel, navControll
                         navController.popBackStack()
                     }
                 ) {
-                    Text("Yes")
+                    Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_yes))
                 }
             },
             dismissButton = {
                 Button(onClick = { showDeleteDialog = false }) {
-                    Text("No")
+                    Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_no))
                 }
             }
         )
@@ -121,7 +123,14 @@ fun EditCategoryScreenContent(
     onSave: (String) -> Unit,
     onDeleteRequest: () -> Unit
 ) {
-    var name by remember(category) { mutableStateOf(category?.name ?: "") }
+    var name by remember(category) {
+        mutableStateOf(
+            TextFieldValue(
+                text = category?.name ?: "",
+                selection = TextRange((category?.name ?: "").length)
+            )
+        )
+    }
     
     val focusRequester = remember { FocusRequester() }
 
@@ -130,12 +139,12 @@ fun EditCategoryScreenContent(
     }
 
     Column(modifier = Modifier.padding(16.dp).testTag(TestTags.EDIT_CATEGORY_ROOT)) {
-        Text("Edit Category", style = MaterialTheme.typography.headlineSmall)
+        Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.title_edit_category), style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Category Name") },
+            label = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_category_name)) },
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(TestTags.EDIT_CATEGORY_NAME_FIELD)
@@ -145,18 +154,18 @@ fun EditCategoryScreenContent(
         Spacer(modifier = Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
             Button(
-                onClick = { onSave(name) },
+                onClick = { onSave(name.text) },
                 modifier = Modifier.weight(1f).padding(end = 8.dp).testTag(TestTags.EDIT_CATEGORY_SAVE),
                 enabled = !isDefaultCategory
             ) {
-                Text("Save")
+                Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_save))
             }
             Button(
                 onClick = onDeleteRequest,
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                 modifier = Modifier.weight(1f).padding(start = 8.dp).testTag(TestTags.EDIT_CATEGORY_DELETE)
             ) {
-                Text("Delete")
+                Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_delete))
             }
         }
     }

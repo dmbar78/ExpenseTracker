@@ -494,7 +494,7 @@ fun SettingsScreen(
 
         // Voice Recognition Section
         Text(
-            text = "Voice Recognition",
+            text = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.header_voice_recognition),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
             color = MaterialTheme.colorScheme.primary
@@ -508,13 +508,11 @@ fun SettingsScreen(
             shape = MaterialTheme.shapes.medium
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Enable Gemini AI Parsing", style = MaterialTheme.typography.bodyLarge)
+                Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_enable_gemini_parsing), style = MaterialTheme.typography.bodyLarge)
                 Switch(
                     checked = isGeminiEnabled,
                     onCheckedChange = { viewModel.setGeminiEnabled(it) }
@@ -527,7 +525,7 @@ fun SettingsScreen(
                 OutlinedTextField(
                     value = geminiApiKey,
                     onValueChange = { viewModel.setGeminiApiKey(it) },
-                    label = { Text("Gemini API Key") },
+                    label = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_gemini_api_key)) },
                     visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     singleLine = true,
@@ -545,7 +543,7 @@ fun SettingsScreen(
                         value = geminiModel,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Gemini Model") },
+                        label = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_gemini_model)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor()
                     )
@@ -573,14 +571,14 @@ fun SettingsScreen(
                     if (testConnectionState == com.example.expensetracker.viewmodel.TestConnectionState.Loading) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                     } else {
-                        Text("Test Connection")
+                        Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_test_connection))
                     }
                 }
                 
                 when (testConnectionState) {
                     is com.example.expensetracker.viewmodel.TestConnectionState.Success -> {
                         Text(
-                            text = "Connection Successful!",
+                            text = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.msg_connection_successful),
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(top = 8.dp)
                         )
@@ -588,7 +586,7 @@ fun SettingsScreen(
                     is com.example.expensetracker.viewmodel.TestConnectionState.Error -> {
                         val errMessage = (testConnectionState as com.example.expensetracker.viewmodel.TestConnectionState.Error).message
                         Text(
-                            text = "Error: $errMessage",
+                            text = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.msg_error_prefix, errMessage),
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(top = 8.dp)
                         )

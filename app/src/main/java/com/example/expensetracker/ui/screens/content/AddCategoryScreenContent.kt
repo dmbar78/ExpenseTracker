@@ -5,6 +5,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -36,7 +38,14 @@ fun AddCategoryScreenContent(
     callbacks: AddCategoryCallbacks,
     modifier: Modifier = Modifier
 ) {
-    var localName by remember(state.categoryName) { mutableStateOf(state.categoryName) }
+    var localName by remember(state.categoryName) {
+        mutableStateOf(
+            TextFieldValue(
+                text = state.categoryName,
+                selection = TextRange(state.categoryName.length)
+            )
+        )
+    }
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -44,15 +53,15 @@ fun AddCategoryScreenContent(
     }
 
     Column(modifier = modifier.padding(16.dp).testTag(TestTags.ADD_CATEGORY_ROOT)) {
-        Text("Add Category", style = MaterialTheme.typography.headlineSmall)
+        Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.title_add_category), style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = localName,
             onValueChange = {
                 localName = it
-                callbacks.onNameChange(it)
+                callbacks.onNameChange(it.text)
             },
-            label = { Text("Category Name") },
+            label = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_category_name)) },
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(TestTags.ADD_CATEGORY_NAME_FIELD)
@@ -61,12 +70,12 @@ fun AddCategoryScreenContent(
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = {
-                val newCategory = Category(name = localName)
+                val newCategory = Category(name = localName.text)
                 callbacks.onSave(newCategory)
             },
             modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_CATEGORY_SAVE)
         ) {
-            Text("Save")
+            Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_save))
         }
     }
 }

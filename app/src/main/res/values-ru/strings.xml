@@ -67,9 +67,64 @@
     <string name="title_filter_transfers">Фильтр переводов</string>
     <string name="title_filter_category">Фильтр по категории</string>
     <string name="title_search_query">Поиск по комментарию/тегу</string>
+    <string name="lbl_filter_time">Время</string>
+    <string name="lbl_filter_expense_income_account">Счет прихода/расхода</string>
+    <string name="lbl_filter_transfer_from_to">Перевод откуда/куда</string>
+    <string name="lbl_filter_category">Категория</string>
+    <string name="lbl_filter_comment_keyword">Комментарий/Тег</string>
+    <string name="btn_reset_all">Сбросить все</string>
+    <string name="btn_reset">Сброс</string>
+    
+    <string name="lbl_time_day">День</string>
+    <string name="lbl_time_week">Неделя</string>
+    <string name="lbl_time_month">Месяц</string>
+    <string name="lbl_time_year">Год</string>
+    <string name="lbl_time_period">Период</string>
+    <string name="title_select_week">Выберите неделю</string>
+    <string name="btn_prev">← Пред</string>
+    <string name="btn_today">Сегодня</string>
+    <string name="btn_next">След →</string>
+    <string name="title_select_month">Выберите месяц</string>
+    <string name="title_select_year">Выберите год</string>
+    <string name="title_select_period">Выберите период</string>
+    <string name="opt_all_time">За всё время (от первой транзакции до сегодня)</string>
+    <string name="btn_select_start_date">Начальная дата</string>
+    <string name="btn_select_end_date">Конечная дата</string>
+    <string name="lbl_from_date">От: %1$s</string>
+    <string name="lbl_to_date">До: %1$s</string>
+    
+    <string name="opt_select_account">Выберите счет</string>
+    <string name="opt_any">Любой</string>
+    <string name="lbl_from_account">Счет списания</string>
+    <string name="lbl_to_account">Счет зачисления</string>
+    <string name="opt_select_category">Выберите категорию</string>
+    <string name="lbl_search_text">Текст для поиска</string>
+    <string name="hint_enter_search_text">Введите текст поиска...</string>
+    <string name="prefix_transfer">Перевод: </string>
+    <string name="prefix_from">Из %1$s</string>
+    <string name="prefix_to">В %1$s</string>
+    <string name="lbl_arrow"> → </string>
+    
+    <!-- Categories -->
+    <string name="msg_no_categories">Категорий пока нет. Нажмите \'Создать\', чтобы добавить.</string>
+    <string name="title_add_category">Добавить категорию</string>
+    <string name="lbl_category_name">Название категории</string>
+    <string name="title_edit_category">Редактировать категорию</string>
+    <string name="title_cannot_delete">Удаление невозможно</string>
+    <string name="msg_cannot_delete_default_category">Категорию \'Default\' нельзя удалить.</string>
+    <string name="title_delete_category">Удалить категорию</string>
+    <string name="msg_delete_category_confirm">Вы уверены, что хотите удалить эту категорию?</string>
     <string name="title_add_account">Добавить счет</string>
+    <string name="title_edit_account">Редактировать счет</string>
+    <string name="title_delete_account">Удалить счет</string>
+    <string name="msg_delete_account_confirm">Вы уверены, что хотите удалить этот счет?</string>
     <string name="lbl_account_name">Имя счета</string>
     <string name="lbl_initial_balance">Баланс</string>
+    <string name="msg_no_accounts">Счетов пока нет. Нажмите \'Создать\', чтобы добавить.</string>
+    <string name="btn_create_new">Создать</string>
+    <string name="lbl_balance">Баланс: %1$s</string>
+    <string name="lbl_balance_converted">Баланс: %1$s (%2$s %3$s)</string>
+    <string name="lbl_balance_no_converted">Баланс: %1$s (— %2$s)</string>
     <string name="msg_no_currencies">Валюты еще не добавлены. Нажмите \'Создать новый\', чтобы добавить одну.</string>
     <string name="lbl_default">По умолчанию</string>
     <string name="title_add_currency">Добавить валюту</string>
@@ -94,6 +149,16 @@
     <string name="msg_no_rate">Курс не найден</string>
     <string name="msg_enter_valid_rate">Пожалуйста, введите действительный курс больше 0</string>
 
+    <!-- Filter Components -->
+    <string name="lbl_date_from">С:</string>
+    <string name="lbl_select_start_date">Начальная дата</string>
+    <string name="lbl_date_to">По:</string>
+    <string name="lbl_select_end_date">Конечная дата</string>
+    <string name="lbl_select_account">Выберите счет</string>
+    <string name="lbl_any">Любой</string>
+    <string name="lbl_select_category">Выберите категорию</string>
+    <string name="lbl_enter_search_text">Введите текст для поиска...</string>
+
     <!-- Delete Dialogs -->
     <string name="title_delete_record">Удалить запись?</string>
     <string name="msg_delete_record_linked">Есть связанные платежи. Если вы удалите эту запись, они также будут удалены. Вы уверены?</string>
@@ -101,6 +166,18 @@
     <string name="msg_delete_item_confirm">Вы уверены, что хотите удалить этот %1$s?</string>
     <string name="title_delete_transfer">Удалить перевод</string>
     <string name="msg_delete_transfer_confirm">Вы уверены, что хотите удалить этот перевод?</string>
+
+    <!-- Gemini Voice Recognition -->
+    <string name="lbl_enable_gemini_parsing">Включить анализ Gemini AI</string>
+    <string name="lbl_gemini_api_key">Gemini API Ключ</string>
+    <string name="lbl_gemini_model">Модель Gemini</string>
+    <string name="btn_test_connection">Проверить подключение</string>
+    <string name="msg_connection_successful">Подключение успешно!</string>
+    <string name="msg_error_prefix">Ошибка: %1$s</string>
+
+    <!-- Backup -->
+    <string name="msg_backup_exported_successfully">Резервная копия успешно экспортирована</string>
+    <string name="msg_backup_restored_successfully">Резервная копия успешно восстановлена</string>
 
     <!-- Errors -->
     <string name="err_account_not_found">Счет не найден. Пожалуйста, выберите существующий счет.</string>
@@ -214,4 +291,17 @@
     <string name="btn_edit">Редактировать</string>
     <string name="title_delete_keyword">Удалить тег</string>
     <string name="msg_delete_keyword_confirm">Вы уверены, что хотите удалить тег?</string>
+
+    <!-- Voice Recognition Settings -->
+    <string name="header_voice_recognition">Распознавание голоса</string>
+
+    <!-- Photo Management -->
+    <string name="title_photo">Фото</string>
+    <string name="desc_expense_photo">Фото чека</string>
+    <string name="desc_remove_photo">Удалить фото</string>
+    <string name="title_add_photo">Добавить фото</string>
+    <string name="title_delete_photo">Удалить фото</string>
+    <string name="msg_delete_photo_confirm">Вы уверены, что хотите удалить это фото?</string>
+    <string name="btn_take_photo">Сделать снимок</string>
+    <string name="btn_choose_gallery">Выбрать из галереи</string>
 </resources>

@@ -67,9 +67,64 @@
     <string name="title_filter_transfers">Filter Transfers</string>
     <string name="title_filter_category">Filter by Category</string>
     <string name="title_search_query">Search Comment/Keyword</string>
+    <string name="lbl_filter_time">Time</string>
+    <string name="lbl_filter_expense_income_account">Expense/Income Account</string>
+    <string name="lbl_filter_transfer_from_to">Transfer From/To</string>
+    <string name="lbl_filter_category">Category</string>
+    <string name="lbl_filter_comment_keyword">Comment/Keyword</string>
+    <string name="btn_reset_all">Reset All</string>
+    <string name="btn_reset">Reset</string>
+    
+    <string name="lbl_time_day">Day</string>
+    <string name="lbl_time_week">Week</string>
+    <string name="lbl_time_month">Month</string>
+    <string name="lbl_time_year">Year</string>
+    <string name="lbl_time_period">Period</string>
+    <string name="title_select_week">Select Week</string>
+    <string name="btn_prev">← Prev</string>
+    <string name="btn_today">Today</string>
+    <string name="btn_next">Next →</string>
+    <string name="title_select_month">Select Month</string>
+    <string name="title_select_year">Select Year</string>
+    <string name="title_select_period">Select Period</string>
+    <string name="opt_all_time">All Time (from earliest transaction to today)</string>
+    <string name="btn_select_start_date">Select Start Date</string>
+    <string name="btn_select_end_date">Select End Date</string>
+    <string name="lbl_from_date">From: %1$s</string>
+    <string name="lbl_to_date">To: %1$s</string>
+    
+    <string name="opt_select_account">Select Account</string>
+    <string name="opt_any">Any</string>
+    <string name="lbl_from_account">From Account</string>
+    <string name="lbl_to_account">To Account</string>
+    <string name="opt_select_category">Select Category</string>
+    <string name="lbl_search_text">Search text</string>
+    <string name="hint_enter_search_text">Enter text to search...</string>
+    <string name="prefix_transfer">Transfer: </string>
+    <string name="prefix_from">From %1$s</string>
+    <string name="prefix_to">To %1$s</string>
+    <string name="lbl_arrow"> → </string>
+    
+    <!-- Categories -->
+    <string name="msg_no_categories">No categories yet. Tap \'Create New\' to add one.</string>
+    <string name="title_add_category">Add Category</string>
+    <string name="lbl_category_name">Category Name</string>
+    <string name="title_edit_category">Edit Category</string>
+    <string name="title_cannot_delete">Cannot Delete</string>
+    <string name="msg_cannot_delete_default_category">The \'Default\' category cannot be deleted.</string>
+    <string name="title_delete_category">Delete Category</string>
+    <string name="msg_delete_category_confirm">Are you sure you want to delete this category?</string>
     <string name="title_add_account">Add Account</string>
+    <string name="title_edit_account">Edit Account</string>
+    <string name="title_delete_account">Delete Account</string>
+    <string name="msg_delete_account_confirm">Are you sure you want to delete this account?</string>
     <string name="lbl_account_name">Account Name</string>
     <string name="lbl_initial_balance">Balance</string>
+    <string name="msg_no_accounts">No accounts yet. Tap \'Create New\' to add one.</string>
+    <string name="btn_create_new">Create New</string>
+    <string name="lbl_balance">Balance: %1$s</string>
+    <string name="lbl_balance_converted">Balance: %1$s (%2$s %3$s)</string>
+    <string name="lbl_balance_no_converted">Balance: %1$s (— %2$s)</string>
     <string name="msg_no_currencies">No currencies yet. Tap \'Create New\' to add one.</string>
     <string name="lbl_default">Default</string>
     <string name="title_add_currency">Add Currency</string>
@@ -93,6 +148,16 @@
     <string name="lbl_exchange_rate">Exchange Rate</string>
     <string name="msg_no_rate">No rate available</string>
     <string name="msg_enter_valid_rate">Please enter a valid rate greater than 0</string>
+
+    <!-- Filter Components -->
+    <string name="lbl_date_from">From:</string>
+    <string name="lbl_select_start_date">Select Start Date</string>
+    <string name="lbl_date_to">To:</string>
+    <string name="lbl_select_end_date">Select End Date</string>
+    <string name="lbl_select_account">Select Account</string>
+    <string name="lbl_any">Any</string>
+    <string name="lbl_select_category">Select Category</string>
+    <string name="lbl_enter_search_text">Enter text to search...</string>
    
     <!-- Delete Dialogs -->
     <string name="title_delete_record">Delete Record?</string>
@@ -101,6 +166,18 @@
     <string name="msg_delete_item_confirm">Are you sure you want to delete this %1$s?</string>
     <string name="title_delete_transfer">Delete Transfer</string>
     <string name="msg_delete_transfer_confirm">Are you sure you want to delete this transfer?</string>
+
+    <!-- Gemini Voice Recognition -->
+    <string name="lbl_enable_gemini_parsing">Enable Gemini AI Parsing</string>
+    <string name="lbl_gemini_api_key">Gemini API Key</string>
+    <string name="lbl_gemini_model">Gemini Model</string>
+    <string name="btn_test_connection">Test Connection</string>
+    <string name="msg_connection_successful">Connection Successful!</string>
+    <string name="msg_error_prefix">Error: %1$s</string>
+
+    <!-- Backup -->
+    <string name="msg_backup_exported_successfully">Backup exported successfully</string>
+    <string name="msg_backup_restored_successfully">Backup restored successfully</string>
 
     <!-- Errors -->
     <string name="err_account_not_found">Account not found. Please select a valid account.</string>
@@ -214,4 +291,17 @@
     <string name="btn_edit">Edit</string>
     <string name="title_delete_keyword">Delete Keyword</string>
     <string name="msg_delete_keyword_confirm">Are you sure you want to delete "%1$s"? This will remove it from ALL expenses.</string>
+
+    <!-- Voice Recognition Settings -->
+    <string name="header_voice_recognition">Voice Recognition</string>
+
+    <!-- Photo Management -->
+    <string name="title_photo">Photo</string>
+    <string name="desc_expense_photo">Expense Photo</string>
+    <string name="desc_remove_photo">Remove Photo</string>
+    <string name="title_add_photo">Add Photo</string>
+    <string name="title_delete_photo">Delete Photo</string>
+    <string name="msg_delete_photo_confirm">Are you sure you want to delete this photo?</string>
+    <string name="btn_take_photo">Take Photo</string>
+    <string name="btn_choose_gallery">Choose from Gallery</string>
 </resources>

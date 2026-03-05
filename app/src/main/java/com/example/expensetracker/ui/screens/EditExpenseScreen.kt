@@ -721,8 +721,8 @@ fun EditExpenseScreen(
     if (showPhotoSourceDialog) {
         AlertDialog(
             onDismissRequest = { showPhotoSourceDialog = false },
-            title = { Text("Add Photo") },
-            text = { Text("Choose a source") },
+            title = { Text(stringResource(R.string.title_add_photo)) },
+            text = { Text(stringResource(R.string.title_add_photo)) },
             confirmButton = {
                 TextButton(onClick = {
                     showPhotoSourceDialog = false
@@ -734,14 +734,14 @@ fun EditExpenseScreen(
                          // Request permission
                          permissionLauncher.launch(Manifest.permission.CAMERA)
                     }
-                }) { Text("Camera") }
+                }) { Text(stringResource(R.string.btn_take_photo)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showPhotoSourceDialog = false
                     // Gallery
                     galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }) { Text("Gallery") }
+                }) { Text(stringResource(R.string.btn_choose_gallery)) }
             }
         )
     }
@@ -750,17 +750,17 @@ fun EditExpenseScreen(
     if (showDeletePhotoDialog) {
         AlertDialog(
             onDismissRequest = { showDeletePhotoDialog = false },
-            title = { Text("Delete Image?") },
-            text = { Text("Are you sure you want to remove the image?") },
+            title = { Text(stringResource(R.string.title_delete_photo)) },
+            text = { Text(stringResource(R.string.msg_delete_photo_confirm)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDeletePhotoDialog = false
                     photoUriToDelete = photoUri // Mark for potential cleanup
                     photoUri = null
-                }) { Text("Delete") }
+                }) { Text(stringResource(R.string.btn_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeletePhotoDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeletePhotoDialog = false }) { Text(stringResource(R.string.btn_cancel)) }
             }
         )
     }

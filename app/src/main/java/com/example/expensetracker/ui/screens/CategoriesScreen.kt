@@ -31,15 +31,15 @@ fun CategoriesScreen(viewModel: ExpenseViewModel, navController: NavController) 
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Categories", style = MaterialTheme.typography.headlineSmall)
+            Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.nav_categories), style = MaterialTheme.typography.headlineSmall)
             Button(onClick = { navController.navigate("addCategory") }) {
-                Text("Create New")
+                Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_create_new))
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
 
         if (categories.isEmpty()) {
-            Text("No categories yet. Tap 'Create New' to add one.")
+            Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.msg_no_categories))
         } else {
             LazyColumn {
                 items(categories) {
@@ -50,7 +50,7 @@ fun CategoriesScreen(viewModel: ExpenseViewModel, navController: NavController) 
                     ) {
                         Text(it.name)
                         Button(onClick = { navController.navigate("editCategory/${it.id}") }) {
-                            Text("Edit")
+                            Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.btn_edit))
                         }
                     }
                 }
