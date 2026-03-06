@@ -88,7 +88,7 @@ fun EditTransferScreenContent(
 
     var localSourceAccountName by remember(state.sourceAccountName) { mutableStateOf(state.sourceAccountName) }
     var localDestAccountName by remember(state.destAccountName) { mutableStateOf(state.destAccountName) }
-    var localAmount by remember(state.amount, state.isCopyMode) {
+    var localAmount by remember {
         mutableStateOf(
             TextFieldValue(
                 text = state.amount,
@@ -99,6 +99,14 @@ fun EditTransferScreenContent(
                 }
             )
         )
+    }
+    LaunchedEffect(state.amount, state.isCopyMode) {
+        if (localAmount.text != state.amount) {
+            localAmount = TextFieldValue(
+                text = state.amount,
+                selection = TextRange(state.amount.length)
+            )
+        }
     }
     var localCurrency by remember(state.currency) { mutableStateOf(state.currency) }
     var localDestAmount by remember(state.destAmount) { mutableStateOf(state.destAmount) }

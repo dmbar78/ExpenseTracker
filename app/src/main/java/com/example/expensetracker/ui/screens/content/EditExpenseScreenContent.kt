@@ -146,7 +146,7 @@ fun EditExpenseScreenContent(
     var isSaving by remember { mutableStateOf(false) }
     
     // Local mutable state for form fields (copy from state initially)
-    var localAmount by remember(state.amount, state.isCopyMode) {
+    var localAmount by remember {
         mutableStateOf(
             TextFieldValue(
                 text = state.amount,
@@ -157,6 +157,14 @@ fun EditExpenseScreenContent(
                 }
             )
         )
+    }
+    LaunchedEffect(state.amount, state.isCopyMode) {
+        if (localAmount.text != state.amount) {
+            localAmount = TextFieldValue(
+                text = state.amount,
+                selection = TextRange(state.amount.length)
+            )
+        }
     }
     var localAccountName by remember(state.accountName) { mutableStateOf(state.accountName) }
     var localCategory by remember(state.category) { mutableStateOf(state.category) }
