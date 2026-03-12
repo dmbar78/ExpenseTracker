@@ -19,15 +19,18 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -88,10 +91,12 @@ data class EditExpenseCallbacks(
     val onAmountChange: (String) -> Unit = {},
     val onAccountSelect: (Account) -> Unit = {},
     val onCreateNewAccount: (currentAccountText: String) -> Unit = {},
+    val onCategoryInputChange: (String) -> Unit = {},
     val onCategorySelect: (Category) -> Unit = {},
     val onCreateNewCategory: (currentCategoryText: String) -> Unit = {},
     val onDateClick: () -> Unit = {},
     val onCommentChange: (String) -> Unit = {},
+    val onKeywordSelectionChange: (Set<Int>) -> Unit = {},
     val onSave: (Expense) -> Unit = {},
     val onSaveWithKeywords: (Expense, Set<Int>) -> Unit = { _, _ -> },
     val onSaveDebt: (Expense, Set<Int>, Boolean) -> Unit = { _, _, _ -> }, // New save callback with debt flag
@@ -132,16 +137,17 @@ fun EditExpenseScreenContent(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var isAccountDropdownExpanded by remember { mutableStateOf(false) }
-    var isCategoryDropdownExpanded by remember { mutableStateOf(false) }
-    var isKeywordDropdownExpanded by remember { mutableStateOf(false) }
-    var showCreateKeywordDialog by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var isAccountDropdownExpanded by rememberSaveable { mutableStateOf(false) }
+    var isCategoryDropdownExpanded by rememberSaveable { mutableStateOf(false) }
+    var isKeywordDropdownExpanded by rememberSaveable { mutableStateOf(false) }
+    var showCreateKeywordDialog by rememberSaveable { mutableStateOf(false) }
     
     // New Dialog States
-    var showEditKeywordDialog by remember { mutableStateOf<Keyword?>(null) }
-    var showDeleteKeywordDialog by remember { mutableStateOf<Keyword?>(null) }
-    var expandedKeywordId by remember { mutableStateOf<Int?>(null) } // For long-press menu
+    var showEditKeywordDialogId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var showDeleteKeywordDialogId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var expandedKeywordId by rememberSaveable { mutableStateOf<Int?>(null) } // For long-press menu
     
     var isSaving by remember { mutableStateOf(false) }
     
@@ -167,17 +173,14 @@ fun EditExpenseScreenContent(
         }
     }
     var localAccountName by remember(state.accountName) { mutableStateOf(state.accountName) }
-    var localCategory by remember(state.category) { mutableStateOf(state.category) }
     var localCurrency by remember(state.currency) { mutableStateOf(state.currency) }
-    var localComment by remember(state.comment) { mutableStateOf(state.comment) }
     var localAccountError by remember(state.accountError, state.defaultAccountUsed) { mutableStateOf(state.accountError || state.defaultAccountUsed) }
     var localCategoryError by remember(state.categoryError) { mutableStateOf(state.categoryError) }
     var localAmountError by remember(state.amountError) { mutableStateOf(state.amountError) }
     
     // Keyword state
-    var localSelectedKeywordIds by remember(state.selectedKeywordIds) { mutableStateOf(state.selectedKeywordIds) }
-    var keywordQuery by remember { mutableStateOf("") }
-    var newKeywordName by remember { mutableStateOf("") }
+    var keywordQuery by rememberSaveable { mutableStateOf("") }
+    var newKeywordName by rememberSaveable { mutableStateOf("") }
 
     Box(modifier = modifier) {
         LazyColumn(
@@ -326,11 +329,14 @@ fun EditExpenseScreenContent(
 
                 val focusRequester = remember { FocusRequester() }
 
-                // Auto-focus amount field when creating a NEW expense/income via plus button (empty amount)
-                // and for copied records to preserve existing copy-flow behavior.
-                LaunchedEffect(Unit) {
-                    if (state.expenseId == 0 && (state.amount.isEmpty() || state.isCopyMode)) {
+                // Manage initial focus by screen mode only.
+                // Do not key this on amount changes, otherwise typing the first digit retriggers
+                // the effect and clears focus unexpectedly.
+                LaunchedEffect(state.expenseId, state.isCopyMode) {
+                    if (state.expenseId == 0) {
                         focusRequester.requestFocus()
+                    } else {
+                        focusManager.clearFocus(force = true)
                     }
                 }
 
@@ -380,9 +386,9 @@ fun EditExpenseScreenContent(
                     modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN)
                 ) {
                     OutlinedTextField(
-                        value = localCategory,
+                        value = state.category,
                         onValueChange = {
-                            localCategory = it
+                            callbacks.onCategoryInputChange(it)
                             localCategoryError = false
                             isCategoryDropdownExpanded = true
                             // Do not call onCategorySelect here to avoid cursor jumps due to state recombination
@@ -399,9 +405,9 @@ fun EditExpenseScreenContent(
                     )
 
                     // Filter categories (Cached)
-                    val filteredCategories = remember(localCategory, categories) {
+                    val filteredCategories = remember(state.category, categories) {
                         categories.filter {
-                            it.name.contains(localCategory, ignoreCase = true)
+                            it.name.contains(state.category, ignoreCase = true)
                         }.sortedBy { it.name }
                     }
 
@@ -413,7 +419,7 @@ fun EditExpenseScreenContent(
                             text = { Text(stringResource(R.string.option_create_new)) },
                             onClick = {
                                 isCategoryDropdownExpanded = false
-                                callbacks.onCreateNewCategory(localCategory)
+                                callbacks.onCreateNewCategory(state.category)
                             },
                             modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_CATEGORY_CREATE_NEW)
                         )
@@ -423,7 +429,6 @@ fun EditExpenseScreenContent(
                             DropdownMenuItem(
                                 text = { Text(categoryItem.name) },
                                 onClick = {
-                                    localCategory = categoryItem.name
                                     localCategoryError = false
                                     isCategoryDropdownExpanded = false
                                     callbacks.onCategorySelect(categoryItem)
@@ -433,7 +438,7 @@ fun EditExpenseScreenContent(
                             )
                         }
 
-                        if (filteredCategories.isEmpty() && localCategory.isNotEmpty()) {
+                        if (filteredCategories.isEmpty() && state.category.isNotEmpty()) {
                              DropdownMenuItem(
                                 text = { Text(stringResource(R.string.msg_no_match)) },
                                 onClick = { },
@@ -460,17 +465,18 @@ fun EditExpenseScreenContent(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 // Selected keywords chips
-                if (localSelectedKeywordIds.isNotEmpty()) {
+                if (state.selectedKeywordIds.isNotEmpty()) {
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        keywords.filter { it.id in localSelectedKeywordIds }.forEach { keyword ->
+                        keywords.filter { it.id in state.selectedKeywordIds }.forEach { keyword ->
                             Box {
                                 KeywordChip(
                                     label = keyword.name,
-                                    onRemove = { localSelectedKeywordIds = localSelectedKeywordIds - keyword.id },
+                                    testTag = TestTags.KEYWORD_CHIP_PREFIX + keyword.id,
+                                    onRemove = { callbacks.onKeywordSelectionChange(state.selectedKeywordIds - keyword.id) },
                                     onLongClick = { expandedKeywordId = keyword.id }
                                 )
                                 
@@ -482,7 +488,7 @@ fun EditExpenseScreenContent(
                                         text = { Text(stringResource(R.string.btn_edit)) },
                                         onClick = {
                                             expandedKeywordId = null
-                                            showEditKeywordDialog = keyword
+                                            showEditKeywordDialogId = keyword.id
                                         },
                                         modifier = Modifier.testTag("EditMenuItem")
                                     )
@@ -490,7 +496,7 @@ fun EditExpenseScreenContent(
                                         text = { Text(stringResource(R.string.btn_delete), color = MaterialTheme.colorScheme.error) },
                                         onClick = {
                                             expandedKeywordId = null
-                                            showDeleteKeywordDialog = keyword
+                                            showDeleteKeywordDialogId = keyword.id
                                         },
                                         modifier = Modifier.testTag("DeleteMenuItem")
                                     )
@@ -536,10 +542,10 @@ fun EditExpenseScreenContent(
                         
                         // Build filtered + sorted keyword list: selected first, then matching by query (Cached)
                         val trimmedKeywordQuery = keywordQuery.trim()
-                        val filteredKeywords = remember(keywords, trimmedKeywordQuery, localSelectedKeywordIds) {
+                        val filteredKeywords = remember(keywords, trimmedKeywordQuery, state.selectedKeywordIds) {
                             keywords
                                 .filter { trimmedKeywordQuery.isBlank() || it.name.contains(trimmedKeywordQuery, ignoreCase = true) }
-                                .sortedWith(compareByDescending<Keyword> { it.id in localSelectedKeywordIds }.thenBy { it.name })
+                            .sortedWith(compareByDescending<Keyword> { it.id in state.selectedKeywordIds }.thenBy { it.name })
                         }
                         
                         if (filteredKeywords.isNotEmpty()) {
@@ -554,7 +560,7 @@ fun EditExpenseScreenContent(
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Checkbox(
-                                            checked = keyword.id in localSelectedKeywordIds,
+                                            checked = keyword.id in state.selectedKeywordIds,
                                             onCheckedChange = null // Handled by row click
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -562,11 +568,12 @@ fun EditExpenseScreenContent(
                                     }
                                 },
                                 onClick = {
-                                    localSelectedKeywordIds = if (keyword.id in localSelectedKeywordIds) {
-                                        localSelectedKeywordIds - keyword.id
+                                    val updatedKeywordIds = if (keyword.id in state.selectedKeywordIds) {
+                                        state.selectedKeywordIds - keyword.id
                                     } else {
-                                        localSelectedKeywordIds + keyword.id
+                                        state.selectedKeywordIds + keyword.id
                                     }
+                                    callbacks.onKeywordSelectionChange(updatedKeywordIds)
                                     callbacks.onHideKeyboard()
                                     keywordQuery = ""
                                     // Don't close dropdown on selection
@@ -581,9 +588,8 @@ fun EditExpenseScreenContent(
 
                 // Comment field
                 OutlinedTextField(
-                    value = localComment,
+                    value = state.comment,
                     onValueChange = {
-                        localComment = it
                         callbacks.onCommentChange(it)
                     },
                     label = { Text(stringResource(R.string.lbl_comment)) },
@@ -638,6 +644,7 @@ fun EditExpenseScreenContent(
                         modifier = Modifier
                             .size(50.dp)
                             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                            .testTag(TestTags.EDIT_EXPENSE_ADD_PHOTO_BUTTON)
                             .clickable { callbacks.onPhotoSelected(Uri.EMPTY) } // Signal to open dialog
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
                         contentAlignment = Alignment.Center
@@ -796,9 +803,9 @@ fun EditExpenseScreenContent(
                         // Validation with case-insensitive matching
                         var isValid = true
                         val resolvedAccount = accounts.find { it.name.equals(localAccountName, ignoreCase = true) }
-                        val resolvedCategory = categories.find { it.name.equals(localCategory, ignoreCase = true) }
+                        val resolvedCategory = categories.find { it.name.equals(state.category, ignoreCase = true) }
                         val newAccountError = localAccountName.isBlank() || resolvedAccount == null
-                        val newCategoryError = localCategory.isBlank() || resolvedCategory == null
+                        val newCategoryError = state.category.isBlank() || resolvedCategory == null
                         val parsedAmount = parseMoneyInput(localAmount.text)
                         val newAmountError = parsedAmount == null || parsedAmount <= BigDecimal.ZERO
 
@@ -834,7 +841,7 @@ fun EditExpenseScreenContent(
                                     category = resolvedCategory.name, // Use canonical name
                                     currency = resolvedAccount.currency,
                                     expenseDate = state.expenseDate,
-                                    comment = localComment
+                                    comment = state.comment
                                 )
                             } else {
                                 Expense(
@@ -844,10 +851,10 @@ fun EditExpenseScreenContent(
                                     currency = resolvedAccount.currency,
                                     expenseDate = state.expenseDate,
                                     type = state.type,
-                                    comment = localComment
+                                    comment = state.comment
                                 )
                             }
-                            callbacks.onSaveDebt(expenseToSave, localSelectedKeywordIds, state.isDebt)
+                            callbacks.onSaveDebt(expenseToSave, state.selectedKeywordIds, state.isDebt)
                         }
                     },
                     enabled = !isSaving,
@@ -915,7 +922,8 @@ fun EditExpenseScreenContent(
     }
     
     // Edit Keyword Dialog
-    showEditKeywordDialog?.let { keywordToEdit ->
+    showEditKeywordDialogId?.let { keywordId ->
+        val keywordToEdit = keywords.find { it.id == keywordId } ?: return@let
         var editedName by remember(keywordToEdit.id) {
             mutableStateOf(
                 TextFieldValue(
@@ -929,7 +937,7 @@ fun EditExpenseScreenContent(
         var hasRequestedFocus by remember { mutableStateOf(false) }
         
         AlertDialog(
-            onDismissRequest = { showEditKeywordDialog = null },
+            onDismissRequest = { showEditKeywordDialogId = null },
             title = { Text(stringResource(R.string.title_edit_keyword)) },
             text = {
                 OutlinedTextField(
@@ -955,7 +963,7 @@ fun EditExpenseScreenContent(
                     onClick = {
                         if (editedName.text.isNotBlank() && editedName.text != keywordToEdit.name) {
                             callbacks.onEditKeyword(keywordToEdit.copy(name = editedName.text.trim()))
-                            showEditKeywordDialog = null
+                            showEditKeywordDialogId = null
                         }
                     },
                     modifier = Modifier.testTag("EditKeywordSaveButton")
@@ -964,7 +972,7 @@ fun EditExpenseScreenContent(
                 }
             },
             dismissButton = {
-                Button(onClick = { showEditKeywordDialog = null }) {
+                Button(onClick = { showEditKeywordDialogId = null }) {
                     Text(stringResource(R.string.btn_cancel))
                 }
             }
@@ -972,18 +980,18 @@ fun EditExpenseScreenContent(
     }
 
     // Delete Keyword Confirmation Dialog
-    showDeleteKeywordDialog?.let { keywordToDelete ->
+    showDeleteKeywordDialogId?.let { keywordId ->
+        val keywordToDelete = keywords.find { it.id == keywordId } ?: return@let
         AlertDialog(
-            onDismissRequest = { showDeleteKeywordDialog = null },
+            onDismissRequest = { showDeleteKeywordDialogId = null },
             title = { Text(stringResource(R.string.title_delete_keyword)) },
             text = { Text(stringResource(R.string.msg_delete_keyword_confirm, keywordToDelete.name)) },
             confirmButton = {
                 Button(
                     onClick = {
                         callbacks.onDeleteKeyword(keywordToDelete)
-                        // Also remove from local selection if it was selected (it is, since we long pressed it)
-                        localSelectedKeywordIds = localSelectedKeywordIds - keywordToDelete.id
-                        showDeleteKeywordDialog = null
+                        callbacks.onKeywordSelectionChange(state.selectedKeywordIds - keywordToDelete.id)
+                        showDeleteKeywordDialogId = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.testTag("DeleteKeywordConfirmButton")
@@ -992,7 +1000,7 @@ fun EditExpenseScreenContent(
                 }
             },
             dismissButton = {
-                Button(onClick = { showDeleteKeywordDialog = null }) {
+                Button(onClick = { showDeleteKeywordDialogId = null }) {
                     Text(stringResource(R.string.btn_cancel))
                 }
             }
@@ -1046,7 +1054,7 @@ fun EditExpenseScreenContent(
                             coroutineScope.launch {
                                 val newId = callbacks.onCreateKeyword(keywordName.trim())
                                 if (newId > 0) {
-                                    localSelectedKeywordIds = localSelectedKeywordIds + newId.toInt()
+                                    callbacks.onKeywordSelectionChange(state.selectedKeywordIds + newId.toInt())
                                 }
                                 callbacks.onHideKeyboard()
                                 newKeywordName = ""
@@ -1082,6 +1090,7 @@ fun EditExpenseScreenContent(
 @Composable
 private fun KeywordChip(
     label: String,
+    testTag: String,
     onRemove: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -1091,7 +1100,7 @@ private fun KeywordChip(
         modifier = Modifier.combinedClickable(
             onClick = {}, // No-op click, handled by parent/remove
             onLongClick = onLongClick
-        ).testTag("KeywordChip")
+        ).testTag(testTag)
     ) {
         Row(
             modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),

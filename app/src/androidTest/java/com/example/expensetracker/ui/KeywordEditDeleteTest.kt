@@ -39,7 +39,7 @@ class KeywordEditDeleteTest {
         }
 
         // 1. Find the chip and Long Press it
-        composeTestRule.onNodeWithTag("KeywordChip").performTouchInput {
+           composeTestRule.onNodeWithTag(TestTags.KEYWORD_CHIP_PREFIX + "1").performTouchInput {
              longClick()
         }
         
@@ -79,7 +79,7 @@ class KeywordEditDeleteTest {
         }
 
         // 1. Find the chip and Long Press it
-        composeTestRule.onNodeWithTag("KeywordChip").performTouchInput {
+           composeTestRule.onNodeWithTag(TestTags.KEYWORD_CHIP_PREFIX + "1").performTouchInput {
              longClick()
         }
         

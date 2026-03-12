@@ -1,6 +1,10 @@
 package com.example.expensetracker.ui
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -37,7 +41,7 @@ class CategorySearchTest {
 
     @Test
     fun categorySearch_filteringWorks() {
-        val state = EditExpenseState(
+        val initialState = EditExpenseState(
             expenseId = 0,
             amount = "10",
             accountName = "Test Account",
@@ -47,12 +51,20 @@ class CategorySearchTest {
         )
         
         composeTestRule.setContent {
+            var state by remember { mutableStateOf(initialState) }
             EditExpenseScreenContent(
                 state = state,
                 accounts = testAccounts,
                 categories = testCategories,
                 keywords = testKeywords,
-                callbacks = EditExpenseCallbacks()
+                callbacks = EditExpenseCallbacks(
+                    onCategoryInputChange = { input ->
+                        state = state.copy(category = input)
+                    },
+                    onCategorySelect = { selected ->
+                        state = state.copy(category = selected.name)
+                    }
+                )
             )
         }
 

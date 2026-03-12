@@ -9,10 +9,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.navigation.NavController
+import com.example.expensetracker.ui.TestTags
 import com.example.expensetracker.ui.screens.content.EditExpenseCallbacks
 import com.example.expensetracker.ui.screens.content.EditExpenseScreenContent
 import com.example.expensetracker.ui.screens.content.EditExpenseState
@@ -167,12 +170,21 @@ fun EditExpenseScreen(
     var categoryError by rememberSaveable { mutableStateOf(initialCategoryError) }
     
     // Selected keywords state
-    var selectedKeywordIds by rememberSaveable { mutableStateOf(emptySet<Int>()) }
+    var selectedKeywordIds by rememberSaveable(
+        stateSaver = listSaver(
+            save = { it.toList() },
+            restore = { it.toSet() }
+        )
+    ) { mutableStateOf(emptySet<Int>()) }
     
     // Load keywords for existing expense or cloned expense
     // Load keywords for existing expense or cloned expense
     // CRITICAL FIX: Only update if the loaded keywords match the CURRENT expense ID
-    LaunchedEffect(loadedKeywordIds, expenseId) {
+    LaunchedEffect(loadedKeywordIds, expenseId, copyFromId) {
+        if (expenseId == 0 && copyFromId == null) {
+            return@LaunchedEffect
+        }
+
         val (loadedId, keywords) = loadedKeywordIds
         
         // Match condition:
@@ -217,6 +229,10 @@ fun EditExpenseScreen(
     // Photo State
     var photoUri by rememberSaveable { mutableStateOf<String?>(null) }
     var photoUriToDelete by rememberSaveable { mutableStateOf<String?>(null) }
+    var tempPhotoUriString by rememberSaveable { mutableStateOf<String?>(null) }
+    var showPhotoSourceDialog by rememberSaveable { mutableStateOf(false) }
+    var showDeletePhotoDialog by rememberSaveable { mutableStateOf(false) }
+    var showCameraPermissionDialog by rememberSaveable { mutableStateOf(false) }
     
     // Update photo state when expense loads
     LaunchedEffect(expense) {
@@ -224,15 +240,12 @@ fun EditExpenseScreen(
             photoUri = expense!!.photoUri
         } else if (expenseId == 0 && copyFromId == null) {
             photoUri = null
+            photoUriToDelete = null
+            tempPhotoUriString = null
         }
     }
 
     // Camera/Gallery Logic
-    var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
-    var showPhotoSourceDialog by remember { mutableStateOf(false) }
-    var showDeletePhotoDialog by remember { mutableStateOf(false) }
-    var showCameraPermissionDialog by remember { mutableStateOf(false) }
-
     // Create a temporary file for the camera image
     fun createTempImageUri(): Uri {
         val tempFile = File.createTempFile("expense_photo_", ".jpg", context.cacheDir).apply {
@@ -243,9 +256,10 @@ fun EditExpenseScreen(
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success && tempPhotoUri != null) {
-            photoUri = tempPhotoUri.toString()
+        if (success && tempPhotoUriString != null) {
+            photoUri = tempPhotoUriString
         }
+        tempPhotoUriString = null
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -259,8 +273,9 @@ fun EditExpenseScreen(
     
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
-           tempPhotoUri = createTempImageUri()
-           cameraLauncher.launch(tempPhotoUri!!)
+           val tempUri = createTempImageUri()
+           tempPhotoUriString = tempUri.toString()
+           cameraLauncher.launch(tempUri)
         } else {
             // Permission denied. If shouldShowRequestPermissionRationale is false,
             // the user has permanently denied it, so we show the settings dialog.
@@ -485,6 +500,10 @@ fun EditExpenseScreen(
             onCreateNewAccount = { currentAccountText ->
                 navController.navigate("addAccount?accountName=${currentAccountText.trim()}")
             },
+            onCategoryInputChange = {
+                category = it
+                categoryError = false
+            },
             onCategorySelect = { selectedCategory ->
                 category = selectedCategory.name
                 categoryError = false
@@ -494,6 +513,7 @@ fun EditExpenseScreen(
             },
             onDateClick = { datePickerDialog.show() },
             onCommentChange = { comment = it },
+            onKeywordSelectionChange = { selectedKeywordIds = it },
             onDebtCheckedChange = { isDebt = it },
 
             onPaymentClick = { payment -> 
@@ -721,6 +741,7 @@ fun EditExpenseScreen(
     // Photo Source Dialog
     if (showPhotoSourceDialog) {
         AlertDialog(
+            modifier = Modifier.testTag(TestTags.EDIT_EXPENSE_ADD_PHOTO_DIALOG),
             onDismissRequest = { showPhotoSourceDialog = false },
             title = { Text(stringResource(R.string.title_add_photo)) },
             text = { Text(stringResource(R.string.title_add_photo)) },
@@ -729,8 +750,9 @@ fun EditExpenseScreen(
                     showPhotoSourceDialog = false
                     // Camera
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                         tempPhotoUri = createTempImageUri()
-                         cameraLauncher.launch(tempPhotoUri!!)
+                        val tempUri = createTempImageUri()
+                        tempPhotoUriString = tempUri.toString()
+                        cameraLauncher.launch(tempUri)
                     } else {
                          // Request permission
                          permissionLauncher.launch(Manifest.permission.CAMERA)

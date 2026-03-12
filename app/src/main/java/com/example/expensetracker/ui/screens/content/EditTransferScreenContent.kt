@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -81,9 +82,9 @@ fun EditTransferScreenContent(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var isSourceAccountDropdownExpanded by remember { mutableStateOf(false) }
-    var isDestAccountDropdownExpanded by remember { mutableStateOf(false) }
+    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var isSourceAccountDropdownExpanded by rememberSaveable { mutableStateOf(false) }
+    var isDestAccountDropdownExpanded by rememberSaveable { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
 
     var localSourceAccountName by remember(state.sourceAccountName) { mutableStateOf(state.sourceAccountName) }

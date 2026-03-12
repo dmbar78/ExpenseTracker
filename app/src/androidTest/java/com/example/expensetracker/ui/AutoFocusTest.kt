@@ -2,6 +2,7 @@ package com.example.expensetracker.ui
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.semantics.SemanticsProperties
 import com.example.expensetracker.data.Expense
 import com.example.expensetracker.data.TransferHistory
 // removed EditExpenseCallback
@@ -11,6 +12,7 @@ import com.example.expensetracker.ui.screens.content.EditExpenseState
 import com.example.expensetracker.ui.screens.content.EditTransferCallbacks
 import com.example.expensetracker.ui.screens.content.EditTransferScreenContent
 import com.example.expensetracker.ui.screens.content.EditTransferState
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import java.math.BigDecimal
@@ -42,6 +44,61 @@ class AutoFocusTest {
         // Assert Amount field is focused
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
             .assertIsFocused()
+    }
+
+    @Test
+    fun newExpense_typingAmount_keepsExactNumericValue() {
+        val state = EditExpenseState(
+            expenseId = 0,
+            amount = ""
+        )
+
+        composeTestRule.setContent {
+            EditExpenseScreenContent(
+                state = state,
+                accounts = emptyList(),
+                categories = emptyList(),
+                keywords = emptyList(),
+                callbacks = EditExpenseCallbacks()
+            )
+        }
+
+        composeTestRule.waitForIdle()
+
+        val typedAmount = "12345"
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
+            .assertIsFocused()
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
+            .performTextInput(typedAmount)
+        assertAmountFieldEditableTextEquals(typedAmount)
+    }
+
+    @Test
+    fun newIncome_typingAmount_keepsExactNumericValue() {
+        val state = EditExpenseState(
+            expenseId = 0,
+            type = "Income",
+            amount = ""
+        )
+
+        composeTestRule.setContent {
+            EditExpenseScreenContent(
+                state = state,
+                accounts = emptyList(),
+                categories = emptyList(),
+                keywords = emptyList(),
+                callbacks = EditExpenseCallbacks()
+            )
+        }
+
+        composeTestRule.waitForIdle()
+
+        val typedAmount = "67890"
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
+            .assertIsFocused()
+        composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
+            .performTextInput(typedAmount)
+        assertAmountFieldEditableTextEquals(typedAmount)
     }
 
     @Test
@@ -400,5 +457,15 @@ class AutoFocusTest {
             .performTextInput("X")
         composeTestRule.onNodeWithTag("EditKeywordName")
             .assertTextContains("TestKeywordX", substring = true)
+    }
+
+    private fun assertAmountFieldEditableTextEquals(expected: String) {
+        val actual = composeTestRule
+            .onNodeWithTag(TestTags.EDIT_EXPENSE_AMOUNT_FIELD)
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.EditableText]
+            .text
+
+        assertEquals(expected, actual)
     }
 }

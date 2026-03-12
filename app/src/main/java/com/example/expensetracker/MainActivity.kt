@@ -90,19 +90,26 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                if (isAppLocked) {
-                    com.example.expensetracker.ui.screens.PinLockScreen(
-                        mode = com.example.expensetracker.ui.screens.PinScreenMode.Unlock,
-                        onSuccess = {
-                            isAppLocked = false
-                        },
-                        onCancel = {
-                            // If cancelled on unlock, exit app/minimize?
-                            finish()
-                        }
-                    )
-                } else {
+                Box(modifier = Modifier.fillMaxSize()) {
                     MainContent()
+
+                    if (isAppLocked) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = MaterialTheme.colorScheme.surface
+                        ) {
+                            com.example.expensetracker.ui.screens.PinLockScreen(
+                                mode = com.example.expensetracker.ui.screens.PinScreenMode.Unlock,
+                                onSuccess = {
+                                    isAppLocked = false
+                                },
+                                onCancel = {
+                                    // If cancelled on unlock, exit app/minimize?
+                                    finish()
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }

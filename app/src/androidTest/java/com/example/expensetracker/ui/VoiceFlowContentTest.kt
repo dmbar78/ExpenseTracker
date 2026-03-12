@@ -2,6 +2,10 @@ package com.example.expensetracker.ui
 
 import android.Manifest
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -785,7 +789,7 @@ class VoiceFlowContentTest {
     fun createExpense_fillFieldsAndSave_callbackInvoked() {
         var savedExpense: Expense? = null
 
-        val state = EditExpenseState(
+        val initialState = EditExpenseState(
             expenseId = 0, // Create mode
             amount = "",
             accountName = "",
@@ -797,20 +801,31 @@ class VoiceFlowContentTest {
             categoryError = false
         )
 
-        val callbacks = EditExpenseCallbacks(
-            onSave = { savedExpense = it },
-            onSaveWithKeywords = { expense, _ -> savedExpense = expense },
-            onSaveDebt = { expense, _, _ -> savedExpense = expense },
-            onAccountSelect = {}
-        )
-
         composeTestRule.setContent {
+            var state by remember { mutableStateOf(initialState) }
             EditExpenseScreenContent(
                 state = state,
                 accounts = testAccounts,
                 categories = testCategories,
                 keywords = testKeywords,
-                callbacks = callbacks
+                callbacks = EditExpenseCallbacks(
+                    onSave = { savedExpense = it },
+                    onSaveWithKeywords = { expense, _ -> savedExpense = expense },
+                    onSaveDebt = { expense, _, _ -> savedExpense = expense },
+                    onAccountSelect = { selectedAccount ->
+                        state = state.copy(
+                            accountName = selectedAccount.name,
+                            currency = selectedAccount.currency,
+                            accountError = false
+                        )
+                    },
+                    onCategorySelect = { selectedCategory ->
+                        state = state.copy(category = selectedCategory.name, categoryError = false)
+                    },
+                    onCategoryInputChange = { input ->
+                        state = state.copy(category = input, categoryError = false)
+                    }
+                )
             )
         }
 
@@ -848,7 +863,7 @@ class VoiceFlowContentTest {
     fun createIncome_fillFieldsAndSave_callbackInvoked() {
         var savedExpense: Expense? = null
 
-        val state = EditExpenseState(
+        val initialState = EditExpenseState(
             expenseId = 0,
             amount = "",
             accountName = "",
@@ -860,19 +875,31 @@ class VoiceFlowContentTest {
             categoryError = false
         )
 
-        val callbacks = EditExpenseCallbacks(
-            onSave = { savedExpense = it },
-            onSaveWithKeywords = { expense, _ -> savedExpense = expense },
-            onSaveDebt = { expense, _, _ -> savedExpense = expense }
-        )
-
         composeTestRule.setContent {
+            var state by remember { mutableStateOf(initialState) }
             EditExpenseScreenContent(
                 state = state,
                 accounts = testAccounts,
                 categories = testCategories,
                 keywords = testKeywords,
-                callbacks = callbacks
+                callbacks = EditExpenseCallbacks(
+                    onSave = { savedExpense = it },
+                    onSaveWithKeywords = { expense, _ -> savedExpense = expense },
+                    onSaveDebt = { expense, _, _ -> savedExpense = expense },
+                    onAccountSelect = { selectedAccount ->
+                        state = state.copy(
+                            accountName = selectedAccount.name,
+                            currency = selectedAccount.currency,
+                            accountError = false
+                        )
+                    },
+                    onCategorySelect = { selectedCategory ->
+                        state = state.copy(category = selectedCategory.name, categoryError = false)
+                    },
+                    onCategoryInputChange = { input ->
+                        state = state.copy(category = input, categoryError = false)
+                    }
+                )
             )
         }
 
@@ -958,7 +985,7 @@ class VoiceFlowContentTest {
     fun createExpense_errorClearedOnSuccessfulSave() {
         var savedExpense: Expense? = null
 
-        val state = EditExpenseState(
+        val initialState = EditExpenseState(
             expenseId = 0,
             amount = "25",
             accountName = "unknownAccount",
@@ -970,19 +997,30 @@ class VoiceFlowContentTest {
             categoryError = false
         )
 
-        val callbacks = EditExpenseCallbacks(
-            onSaveWithKeywords = { expense, _ -> savedExpense = expense },
-            onSaveDebt = { expense, _, _ -> savedExpense = expense },
-            onAccountSelect = {}
-        )
-
         composeTestRule.setContent {
+            var state by remember { mutableStateOf(initialState) }
             EditExpenseScreenContent(
                 state = state,
                 accounts = testAccounts,
                 categories = testCategories,
                 keywords = testKeywords,
-                callbacks = callbacks
+                callbacks = EditExpenseCallbacks(
+                    onSaveWithKeywords = { expense, _ -> savedExpense = expense },
+                    onSaveDebt = { expense, _, _ -> savedExpense = expense },
+                    onAccountSelect = { selectedAccount ->
+                        state = state.copy(
+                            accountName = selectedAccount.name,
+                            currency = selectedAccount.currency,
+                            accountError = false
+                        )
+                    },
+                    onCategorySelect = { selectedCategory ->
+                        state = state.copy(category = selectedCategory.name, categoryError = false)
+                    },
+                    onCategoryInputChange = { input ->
+                        state = state.copy(category = input, categoryError = false)
+                    }
+                )
             )
         }
 

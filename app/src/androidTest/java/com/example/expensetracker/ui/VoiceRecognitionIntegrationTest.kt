@@ -3,6 +3,7 @@ package com.example.expensetracker.ui
 import android.Manifest
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
@@ -13,6 +14,7 @@ import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -71,6 +73,17 @@ class VoiceRecognitionIntegrationTest {
         // Verify state is ready (with increased timeout for Hilt initialization)
         composeTestRule.waitUntil(timeoutMillis = 10000) {
             viewModel.allAccounts.value.isEmpty()
+        }
+    }
+
+    @After
+    fun ensureActivityResumedBeforeRuleTeardown() {
+        // Some emulator runs leave MainActivity in PAUSED due transient system overlays.
+        // Force RESUMED so ActivityScenarioRule can reliably transition to DESTROYED.
+        try {
+            composeTestRule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        } catch (_: Throwable) {
+            // Ignore: scenario may already be closing/destroyed.
         }
     }
 

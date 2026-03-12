@@ -5,6 +5,9 @@ package com.example.expensetracker.ui
  * These are treated as a public test API - keep them stable.
  */
 object TestTags {
+    // AccountsScreen
+    const val ACCOUNTS_ROOT = "accounts_root"
+
     // EditExpenseScreen
     const val EDIT_EXPENSE_ROOT = "editExpense_root"
     const val EDIT_EXPENSE_DATE_FIELD = "editExpense_dateField"
@@ -17,6 +20,8 @@ object TestTags {
     const val EDIT_EXPENSE_ACCOUNT_CREATE_NEW = "editExpense_accountCreateNew"
     const val EDIT_EXPENSE_CURRENCY_VALUE = "editExpense_currencyValue"
     const val EDIT_EXPENSE_COMMENT_FIELD = "editExpense_commentField"
+    const val EDIT_EXPENSE_ADD_PHOTO_BUTTON = "editExpense_addPhotoButton"
+    const val EDIT_EXPENSE_ADD_PHOTO_DIALOG = "editExpense_addPhotoDialog"
     const val EDIT_EXPENSE_SAVE = "editExpense_save"
     const val EDIT_EXPENSE_DELETE = "editExpense_delete"
     const val EDIT_EXPENSE_DELETE_CONFIRM = "editExpense_deleteConfirm"
@@ -98,6 +103,7 @@ object TestTags {
     const val CATEGORY_OPTION_PREFIX = "categoryOption_"
     const val CURRENCY_OPTION_PREFIX = "currencyOption_"
     const val KEYWORD_OPTION_PREFIX = "keywordOption_"
+    const val KEYWORD_CHIP_PREFIX = "keywordChip_"
 
     // PinLockScreen
     const val PIN_LOCK_ROOT = "pinLock_root"

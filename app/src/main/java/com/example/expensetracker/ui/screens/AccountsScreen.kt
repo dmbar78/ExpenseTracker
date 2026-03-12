@@ -24,9 +24,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.expensetracker.ui.TestTags
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import java.math.BigDecimal
@@ -88,7 +90,7 @@ fun AccountsScreen(viewModel: ExpenseViewModel, navController: NavController) {
         }
     }
 
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.padding(16.dp).testTag(TestTags.ACCOUNTS_ROOT)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
