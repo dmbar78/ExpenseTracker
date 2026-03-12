@@ -500,24 +500,18 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.primary
         )
         
-        Surface(
-            modifier = Modifier
+        Row(
+             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { viewModel.setGeminiEnabled(!isGeminiEnabled) },
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = MaterialTheme.shapes.medium
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_enable_gemini_parsing), style = MaterialTheme.typography.bodyLarge)
-                Switch(
-                    checked = isGeminiEnabled,
-                    onCheckedChange = { viewModel.setGeminiEnabled(it) }
-                )
-            }
+            Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_enable_gemini_parsing), style = MaterialTheme.typography.bodyLarge)
+            Switch(
+                checked = isGeminiEnabled,
+                onCheckedChange = { viewModel.setGeminiEnabled(it) }
+            )
         }
         
         androidx.compose.animation.AnimatedVisibility(visible = isGeminiEnabled) {
