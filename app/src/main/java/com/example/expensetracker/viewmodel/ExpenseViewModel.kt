@@ -156,6 +156,9 @@ class ExpenseViewModel @Inject constructor(
     private val _geminiModel = MutableStateFlow(UserPreferences.DEFAULT_GEMINI_MODEL)
     val geminiModel: StateFlow<String> = _geminiModel.asStateFlow()
 
+    private val _overrideDefaultAccountWithFilter = MutableStateFlow(false)
+    val overrideDefaultAccountWithFilter: StateFlow<Boolean> = _overrideDefaultAccountWithFilter.asStateFlow()
+
     private val _testConnectionState = MutableStateFlow<TestConnectionState>(TestConnectionState.Idle)
     val testConnectionState: StateFlow<TestConnectionState> = _testConnectionState.asStateFlow()
 
@@ -311,6 +314,9 @@ class ExpenseViewModel @Inject constructor(
         }
         viewModelScope.launch {
             userPreferences.geminiModel.collect { _geminiModel.value = it }
+        }
+        viewModelScope.launch {
+            userPreferences.overrideDefaultAccountWithFilter.collect { _overrideDefaultAccountWithFilter.value = it }
         }
 
         // Pre-populate currencies
@@ -699,6 +705,10 @@ class ExpenseViewModel @Inject constructor(
 
     fun setGeminiModel(model: String) = viewModelScope.launch {
         userPreferences.setGeminiModel(model)
+    }
+
+    fun setOverrideDefaultAccountWithFilter(override: Boolean) = viewModelScope.launch {
+        userPreferences.setOverrideDefaultAccountWithFilter(override)
     }
 
     fun testGeminiConnection(apiKey: String, model: String) = viewModelScope.launch {

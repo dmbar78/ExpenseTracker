@@ -217,6 +217,7 @@
     
     <string name="header_general">Общие</string>
     <string name="title_default_expense_account">Счет расходов по умолчанию</string>
+    <string name="title_override_default_account">Изменить значение счета по умолчанию для расходов/доходов, если включен фильтр по счету</string>
     <string name="title_default_transfer_account">Счет переводов по умолчанию</string>
     <string name="msg_choose_account_prefill">Выберите счет для подстановки.</string>
     <string name="title_default_currency">Валюта по умолчанию</string>

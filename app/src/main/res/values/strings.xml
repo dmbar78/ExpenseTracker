@@ -217,6 +217,7 @@
     
     <string name="header_general">General</string>
     <string name="title_default_expense_account">Default Expense Account</string>
+    <string name="title_override_default_account">Override default expense/income account value if account filter enabled</string>
     <string name="title_default_transfer_account">Default Transfer Account</string>
     <string name="msg_choose_account_prefill">Choose an account to pre-fill.</string>
     <string name="title_default_currency">Default currency</string>

@@ -27,6 +27,7 @@ class UserPreferences(private val context: Context) {
         private val GEMINI_ENABLED = booleanPreferencesKey("gemini_enabled")
         private val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
         private val GEMINI_MODEL = stringPreferencesKey("gemini_model")
+        private val OVERRIDE_DEFAULT_ACCOUNT_WITH_FILTER = booleanPreferencesKey("override_default_account_with_filter")
         
         // Initial default currency on first app install
         const val INITIAL_DEFAULT_CURRENCY = "EUR"
@@ -59,6 +60,10 @@ class UserPreferences(private val context: Context) {
 
     val geminiModel: Flow<String> = context.userPreferencesDataStore.data.map { prefs ->
         prefs[GEMINI_MODEL] ?: DEFAULT_GEMINI_MODEL
+    }
+
+    val overrideDefaultAccountWithFilter: Flow<Boolean> = context.userPreferencesDataStore.data.map { prefs ->
+        prefs[OVERRIDE_DEFAULT_ACCOUNT_WITH_FILTER] ?: false
     }
     
     /**
@@ -105,6 +110,12 @@ class UserPreferences(private val context: Context) {
     suspend fun setGeminiModel(model: String) {
         context.userPreferencesDataStore.edit { prefs ->
             prefs[GEMINI_MODEL] = model
+        }
+    }
+
+    suspend fun setOverrideDefaultAccountWithFilter(override: Boolean) {
+        context.userPreferencesDataStore.edit { prefs ->
+            prefs[OVERRIDE_DEFAULT_ACCOUNT_WITH_FILTER] = override
         }
     }
 }

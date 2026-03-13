@@ -110,6 +110,9 @@ fun EditExpenseScreen(
     // Observe selected/cloned keywords
     val loadedKeywordIds by viewModel.selectedExpenseKeywords.collectAsState()
     val defaultExpenseAccountId by viewModel.defaultExpenseAccountId.collectAsState()
+    val overrideDefaultAccountWithFilter by viewModel.overrideDefaultAccountWithFilter.collectAsState()
+    val filterState by viewModel.filterState.collectAsState()
+    val accountFilter = filterState.expenseIncomeAccount
     
     // Debt State
     // We need to know if this expense has a linked Debt record
@@ -428,13 +431,21 @@ fun EditExpenseScreen(
 
     // Pre-populate default account if creating new expense and no account specified
     // Add accountName to keys so it re-runs when accountName is reset to empty
-    LaunchedEffect(accounts, defaultExpenseAccountId, accountName) {
+    LaunchedEffect(accounts, defaultExpenseAccountId, accountName, overrideDefaultAccountWithFilter, accountFilter) {
         if (expenseId == 0 && accountName.isEmpty() && (initialAccountName.isNullOrBlank())) {
-             defaultExpenseAccountId?.let { id ->
-                 val defaultAccount = accounts.find { it.id == id }
-                 if (defaultAccount != null) {
-                     accountName = defaultAccount.name
-                     currency = defaultAccount.currency
+             if (overrideDefaultAccountWithFilter && !accountFilter.isNullOrBlank()) {
+                 val account = accounts.find { it.name.equals(accountFilter, ignoreCase = true) }
+                 if (account != null) {
+                     accountName = account.name
+                     currency = account.currency
+                 }
+             } else {
+                 defaultExpenseAccountId?.let { id ->
+                     val defaultAccount = accounts.find { it.id == id }
+                     if (defaultAccount != null) {
+                         accountName = defaultAccount.name
+                         currency = defaultAccount.currency
+                     }
                  }
              }
         }

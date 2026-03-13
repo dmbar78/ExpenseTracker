@@ -481,6 +481,26 @@ fun SettingsScreen(
             onClick = { showTransferAccountPicker = true }
         )
 
+        val overrideDefaultAccountWithFilter by viewModel.overrideDefaultAccountWithFilter.collectAsState()
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.title_override_default_account),
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f)
+            )
+            Checkbox(
+                checked = overrideDefaultAccountWithFilter,
+                onCheckedChange = { viewModel.setOverrideDefaultAccountWithFilter(it) }
+            )
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
 
         SettingsItem(
