@@ -1298,11 +1298,21 @@ class ExpenseViewModel @Inject constructor(
         var defaultAccountUsed = false
         
         if (inputAccount == null) {
-            val defaultId = _defaultExpenseAccountId.value
-            if (defaultId != null && defaultId > 0) {
-                finalAccount = accounts.find { it.id == defaultId }
+            val useFilter = _overrideDefaultAccountWithFilter.value
+            val filterAccName = _filterState.value.expenseIncomeAccount
+
+            if (useFilter && !filterAccName.isNullOrBlank()) {
+                finalAccount = accounts.find { it.name.equals(filterAccName, ignoreCase = true) }
                 if (finalAccount != null) {
-                    defaultAccountUsed = true
+                    defaultAccountUsed = true // conceptually it acted as a default
+                }
+            } else {
+                val defaultId = _defaultExpenseAccountId.value
+                if (defaultId != null && defaultId > 0) {
+                    finalAccount = accounts.find { it.id == defaultId }
+                    if (finalAccount != null) {
+                        defaultAccountUsed = true
+                    }
                 }
             }
         }
