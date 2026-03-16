@@ -63,6 +63,7 @@ class DebtLogicTest {
         whenever(userPreferences.isGeminiEnabled).thenReturn(MutableStateFlow(false))
         whenever(userPreferences.geminiApiKey).thenReturn(MutableStateFlow(""))
         whenever(userPreferences.geminiModel).thenReturn(MutableStateFlow(UserPreferences.DEFAULT_GEMINI_MODEL))
+        whenever(userPreferences.overrideDefaultAccountWithFilter).thenReturn(MutableStateFlow(false))
         whenever(filterPreferences.filterState).thenReturn(MutableStateFlow(FilterState()))
         whenever(expenseRepository.getExpensesByType(any())).thenReturn(MutableStateFlow(emptyList())) // Use any() from mockito-kotlin
 

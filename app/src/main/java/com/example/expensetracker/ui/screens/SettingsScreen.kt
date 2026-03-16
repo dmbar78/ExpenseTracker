@@ -497,7 +497,8 @@ fun SettingsScreen(
             )
             Checkbox(
                 checked = overrideDefaultAccountWithFilter,
-                onCheckedChange = { viewModel.setOverrideDefaultAccountWithFilter(it) }
+                onCheckedChange = { viewModel.setOverrideDefaultAccountWithFilter(it) },
+                modifier = Modifier.testTag(TestTags.OVERRIDE_DEFAULT_ACCOUNT_CHECKBOX)
             )
         }
 

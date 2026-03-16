@@ -118,4 +118,8 @@ object TestTags {
     const val SETTINGS_CHANGE_PIN = "settings_changePin"
     const val SETTINGS_REMOVE_PIN = "settings_removePin"
     const val SETTINGS_BIOMETRIC_SWITCH = "settings_biometricSwitch"
+    
+    // Filter Dialogs
+    const val FILTER_ACCOUNT_DROPDOWN = "filter_accountDropdown"
+    const val OVERRIDE_DEFAULT_ACCOUNT_CHECKBOX = "override_defaultAccountCheckbox"
 }

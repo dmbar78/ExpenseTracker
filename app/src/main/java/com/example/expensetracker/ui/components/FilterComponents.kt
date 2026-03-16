@@ -26,6 +26,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.ui.res.stringResource
 import com.example.expensetracker.R
+import androidx.compose.ui.platform.testTag
+import com.example.expensetracker.ui.TestTags
 
 // ==================== Filter Icon Button ====================
 
@@ -771,6 +773,7 @@ fun AccountFilterDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor()
+                            .testTag(TestTags.FILTER_ACCOUNT_DROPDOWN)
                     )
                     
                     ExposedDropdownMenu(

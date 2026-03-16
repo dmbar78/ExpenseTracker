@@ -91,6 +91,7 @@ class ExpenseViewModelTest {
         whenever(userPreferences.isGeminiEnabled).thenReturn(MutableStateFlow(false))
         whenever(userPreferences.geminiApiKey).thenReturn(MutableStateFlow(""))
         whenever(userPreferences.geminiModel).thenReturn(MutableStateFlow(UserPreferences.DEFAULT_GEMINI_MODEL))
+        whenever(userPreferences.overrideDefaultAccountWithFilter).thenReturn(MutableStateFlow(false))
         whenever(filterPreferences.filterState).thenReturn(MutableStateFlow(FilterState()))
         whenever(expenseRepository.getExpensesByType(anyString())).thenReturn(MutableStateFlow(emptyList()))
         whenever(debtRepository.getAllDebts()).thenReturn(MutableStateFlow(emptyList()))
@@ -409,5 +410,156 @@ class ExpenseViewModelTest {
         verify(ledgerRepository).updateExpense(captor.capture())
         assertNull(captor.firstValue.photoUri)
         verify(keywordDao).setKeywordsForExpense(2, keywords)
+    }
+
+    @Test
+    fun voiceParse_fallsBackToDefaultAccount_whenOverrideIsFalse() = runTest {
+        org.mockito.Mockito.mockStatic(android.net.Uri::class.java).use { mockedUri ->
+            mockedUri.`when`<String> { android.net.Uri.encode(org.mockito.kotlin.any()) }.thenAnswer { it.getArgument(0) }
+            
+            // GIVEN
+            val defaultAccount = Account(id = 1, name = "Cash", currency = "USD", balance = BigDecimal.ZERO)
+            val category = Category(id = 1, name = "Food")
+            whenever(accountRepository.allAccounts).thenReturn(MutableStateFlow(listOf(defaultAccount)))
+            whenever(categoryRepository.allCategories).thenReturn(MutableStateFlow(listOf(category)))
+            whenever(userPreferences.isGeminiEnabled).thenReturn(MutableStateFlow(false))
+            whenever(userPreferences.defaultExpenseAccountId).thenReturn(MutableStateFlow(1)) // Valid default
+            whenever(userPreferences.overrideDefaultAccountWithFilter).thenReturn(MutableStateFlow(false))
+
+            viewModel = ExpenseViewModel(
+                application, expenseRepository, accountRepository, categoryRepository, currencyRepository,
+                transferHistoryRepository, ledgerRepository, filterPreferences, userPreferences,
+                exchangeRateRepository, backupRepository, keywordDao, debtRepository
+            )
+            val dummyJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.allAccounts.collect { }
+            }
+            advanceUntilIdle() // let init load data and state flows initialize
+
+            val navigationIntents = mutableListOf<String>()
+            val job = launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.navigateToFlow.collect { navigationIntents.add(it) }
+            }
+
+            // WHEN
+            // "UnknownAccount" is not in the repository.
+            viewModel.onVoiceRecognitionResult("expense from UnknownAccount 50 category Food")
+            advanceUntilIdle()
+
+            // THEN
+            // Since inputAccount is null, and default exists, it should fall back to Default Account ("Cash")
+            // and navigate to Edit screen because defaultAccountUsed = true.
+            verify(ledgerRepository, never()).addExpense(org.mockito.kotlin.any())
+            
+            assertEquals(1, navigationIntents.size)
+            val intent = navigationIntents.first()
+            assertTrue(intent.contains("editExpense/0"))
+            assertTrue("Account error should be false", intent.contains("accountError=false"))
+            assertTrue("Category error should be false", intent.contains("categoryError=false"))
+            assertTrue("Default account used should be true", intent.contains("defaultAccountUsed=true"))
+            assertTrue("Should prefill with default account", intent.contains("accountName=Cash"))
+            
+            job.cancel()
+            dummyJob.cancel()
+        }
+    }
+
+    @Test
+    fun voiceParse_fallsBackToFilterAccount_whenOverrideIsTrueAndFilterIsSet() = runTest {
+        org.mockito.Mockito.mockStatic(android.net.Uri::class.java).use { mockedUri ->
+            mockedUri.`when`<String> { android.net.Uri.encode(org.mockito.kotlin.any()) }.thenAnswer { it.getArgument(0) }
+            
+            // GIVEN
+            val defaultAccount = Account(id = 1, name = "Cash", currency = "USD", balance = BigDecimal.ZERO)
+            val filterAccount = Account(id = 2, name = "Bank", currency = "USD", balance = BigDecimal.ZERO)
+            val category = Category(id = 1, name = "Food")
+            
+            whenever(accountRepository.allAccounts).thenReturn(MutableStateFlow(listOf(defaultAccount, filterAccount)))
+            whenever(categoryRepository.allCategories).thenReturn(MutableStateFlow(listOf(category)))
+            whenever(userPreferences.isGeminiEnabled).thenReturn(MutableStateFlow(false))
+            whenever(userPreferences.defaultExpenseAccountId).thenReturn(MutableStateFlow(1))
+            whenever(userPreferences.overrideDefaultAccountWithFilter).thenReturn(MutableStateFlow(true)) // Override active
+            whenever(filterPreferences.filterState).thenReturn(MutableStateFlow(FilterState(expenseIncomeAccount = "Bank"))) // Filter active
+
+            viewModel = ExpenseViewModel(
+                application, expenseRepository, accountRepository, categoryRepository, currencyRepository,
+                transferHistoryRepository, ledgerRepository, filterPreferences, userPreferences,
+                exchangeRateRepository, backupRepository, keywordDao, debtRepository
+            )
+            val dummyJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.allAccounts.collect { }
+            }
+            advanceUntilIdle() // let init load data and state flows initialize
+
+            val navigationIntents = mutableListOf<String>()
+            val job = launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.navigateToFlow.collect { navigationIntents.add(it) }
+            }
+
+            // WHEN
+            viewModel.onVoiceRecognitionResult("expense from UnknownAccount 50 category Food")
+            advanceUntilIdle()
+
+            // THEN
+            // Should fall back to "Bank" from the filter state, ignoring the default "Cash"
+            // and navigate to Edit screen.
+            verify(ledgerRepository, never()).addExpense(org.mockito.kotlin.any())
+            
+            assertEquals(1, navigationIntents.size)
+            val intent = navigationIntents.first()
+            assertTrue(intent.contains("editExpense/0"))
+            assertTrue("Account error should be false", intent.contains("accountError=false"))
+            assertTrue("Category error should be false", intent.contains("categoryError=false"))
+            assertTrue("Default account used should be true", intent.contains("defaultAccountUsed=true"))
+            assertTrue("Should prefill with filter account", intent.contains("accountName=Bank"))
+            
+            job.cancel()
+            dummyJob.cancel()
+        }
+    }
+
+    @Test
+    fun voiceParse_navigatesWithBlankAccount_whenOverrideIsFalseAndNoDefault() = runTest {
+        org.mockito.Mockito.mockStatic(android.net.Uri::class.java).use { mockedUri ->
+            mockedUri.`when`<String> { android.net.Uri.encode(org.mockito.kotlin.any()) }.thenAnswer { it.getArgument(0) }
+            
+            // GIVEN
+            val category = Category(id = 1, name = "Food")
+            whenever(accountRepository.allAccounts).thenReturn(MutableStateFlow(emptyList())) // No accounts match
+            whenever(categoryRepository.allCategories).thenReturn(MutableStateFlow(listOf(category)))
+            whenever(userPreferences.isGeminiEnabled).thenReturn(MutableStateFlow(false))
+            whenever(userPreferences.defaultExpenseAccountId).thenReturn(MutableStateFlow(null)) // No default
+            whenever(userPreferences.overrideDefaultAccountWithFilter).thenReturn(MutableStateFlow(false))
+
+            viewModel = ExpenseViewModel(
+                application, expenseRepository, accountRepository, categoryRepository, currencyRepository,
+                transferHistoryRepository, ledgerRepository, filterPreferences, userPreferences,
+                exchangeRateRepository, backupRepository, keywordDao, debtRepository
+            )
+            advanceUntilIdle()
+
+            val navigationIntents = mutableListOf<String>()
+            val job = launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.navigateToFlow.collect { navigationIntents.add(it) }
+            }
+
+            // WHEN
+            viewModel.onVoiceRecognitionResult("expense from UnknownAccount 50 category Food")
+            advanceUntilIdle()
+
+            // THEN
+            // Since inputAccount is null, and default does not exist, it navigates with accountError=true
+            verify(ledgerRepository, never()).addExpense(org.mockito.kotlin.any()) // No insert
+            
+            assertEquals(1, navigationIntents.size)
+            val intent = navigationIntents.first()
+            assertTrue(intent.contains("editExpense/0"))
+            assertTrue("Account error should be true", intent.contains("accountError=true"))
+            assertTrue("Category error should be false", intent.contains("categoryError=false"))
+            assertTrue("Default account used should be false", intent.contains("defaultAccountUsed=false"))
+            assertTrue("Original string should persist", intent.contains("accountName=UnknownAccount"))
+            
+            job.cancel()
+        }
     }
 }
