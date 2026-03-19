@@ -122,4 +122,11 @@ object TestTags {
     // Filter Dialogs
     const val FILTER_ACCOUNT_DROPDOWN = "filter_accountDropdown"
     const val OVERRIDE_DEFAULT_ACCOUNT_CHECKBOX = "override_defaultAccountCheckbox"
+    
+    // Home Screen Diagram
+    const val HOME_DIAGRAM_ICON_EXPENSES = "home_diagramIcon_expenses"
+    const val HOME_DIAGRAM_ICON_INCOMES = "home_diagramIcon_incomes"
+    const val HOME_DIAGRAM_CONTAINER_EXPENSES = "home_diagram_container_expenses"
+    const val HOME_DIAGRAM_CONTAINER_INCOMES = "home_diagram_container_incomes"
+    const val HOME_DIAGRAM_SECTOR_PREFIX = "home_diagramSector_"
 }

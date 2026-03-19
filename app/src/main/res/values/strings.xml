@@ -28,6 +28,10 @@
     <string name="lbl_total_missing_rates">Total unavailable (missing rates)</string>
     <string name="msg_no_debts">No debts found matching filters</string>
     <string name="desc_sort">Sort</string>
+    <string name="desc_diagram_toggle">Toggle category breakdown</string>
+    <string name="lbl_category_breakdown">Category Breakdown</string>
+    <string name="lbl_keyword_breakdown">Keyword Breakdown</string>
+    <string name="lbl_no_data">No data available</string>
 
     <!-- Edit Expense/Income -->
     <string name="title_edit_expense">Edit Expense</string>

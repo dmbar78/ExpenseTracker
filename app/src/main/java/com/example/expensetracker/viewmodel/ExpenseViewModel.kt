@@ -953,7 +953,127 @@ class ExpenseViewModel @Inject constructor(
     
     // ==================== End Currency/Exchange Rate Methods ====================
     
-    // ==================== Debt Methods ====================
+    // ==================== Breakdown/Aggregation Methods ====================
+    
+    /**
+     * Calculate category breakdown for filtered expenses/incomes in current default currency.
+     * Returns null if any required rate is missing or list is empty.
+     */
+    suspend fun calculateCategoryBreakdown(
+        expenses: List<Expense>,
+        currentDefault: String
+    ): CategoryBreakdown? {
+        if (expenses.isEmpty()) {
+            return CategoryBreakdown(emptyList(), BigDecimal.ZERO, currentDefault, false)
+        }
+        
+        var hasMissingRates = false
+        val categoryTotals = mutableMapOf<String, BigDecimal>()
+        
+        for (expense in expenses) {
+            val amountInDefault = getAmountInCurrentDefault(
+                amount = expense.amount,
+                currency = expense.currency,
+                date = expense.expenseDate,
+                originalDefaultCurrency = expense.originalDefaultCurrencyCode,
+                amountInOriginalDefault = expense.amountInOriginalDefault,
+                currentDefault = currentDefault
+            )
+            
+            if (amountInDefault == null) {
+                hasMissingRates = true
+                continue // Skip this expense if rate is missing
+            }
+            
+            categoryTotals[expense.category] = categoryTotals.getOrDefault(expense.category, BigDecimal.ZERO).add(amountInDefault)
+        }
+        
+        val total = categoryTotals.values.fold(BigDecimal.ZERO) { acc, value -> acc.add(value) }
+        
+        val entries = categoryTotals.toList()
+            .sortedByDescending { it.second }
+            .map { (category, amount) ->
+                val percentage = if (total > BigDecimal.ZERO) {
+                    (amount.divide(total, 4, RoundingMode.HALF_UP).multiply(BigDecimal("100"))).toDouble()
+                } else {
+                    0.0
+                }
+                CategoryBreakdownEntry(category, amount, percentage)
+            }
+        
+        return CategoryBreakdown(entries, total, currentDefault, hasMissingRates)
+    }
+    
+    /**
+     * Calculate keyword breakdown for a selected category in filtered expenses/incomes.
+     * Returns null if category has no expenses or rates are missing.
+     */
+    suspend fun calculateKeywordBreakdown(
+        expenses: List<Expense>,
+        categoryName: String,
+        currentDefault: String
+    ): KeywordBreakdown? {
+        val categoryExpenses = expenses.filter { it.category.equals(categoryName, ignoreCase = true) }
+        
+        if (categoryExpenses.isEmpty()) {
+            return KeywordBreakdown(categoryName, emptyList(), BigDecimal.ZERO, currentDefault, false)
+        }
+        
+        // Get keyword name map by building from cross-refs and keyword DAO
+        val crossRefs = keywordDao.getAllExpenseKeywordCrossRefs().first()
+        val keywords = keywordDao.getAllKeywords().first()
+        val keywordIdToName = keywords.associate { it.id to it.name }
+        val expenseKeywordMap = crossRefs.groupBy { it.expenseId }
+            .mapValues { (_, refs) -> refs.mapNotNull { keywordIdToName[it.keywordId] } }
+        
+        var hasMissingRates = false
+        val keywordTotals = mutableMapOf<String, BigDecimal>()
+        
+        for (expense in categoryExpenses) {
+            val expenseKeywords = expenseKeywordMap[expense.id] ?: emptyList()
+            
+            val amountInDefault = getAmountInCurrentDefault(
+                amount = expense.amount,
+                currency = expense.currency,
+                date = expense.expenseDate,
+                originalDefaultCurrency = expense.originalDefaultCurrencyCode,
+                amountInOriginalDefault = expense.amountInOriginalDefault,
+                currentDefault = currentDefault
+            )
+            
+            if (amountInDefault == null) {
+                hasMissingRates = true
+                continue
+            }
+            
+            if (expenseKeywords.isEmpty()) {
+                // Assign to "(No Keyword)" entry
+                keywordTotals["(No Keyword)"] = keywordTotals.getOrDefault("(No Keyword)", BigDecimal.ZERO).add(amountInDefault)
+            } else {
+                for (keyword in expenseKeywords) {
+                    keywordTotals[keyword] = keywordTotals.getOrDefault(keyword, BigDecimal.ZERO).add(amountInDefault)
+                }
+            }
+        }
+        
+        val categoryTotal = keywordTotals.values.fold(BigDecimal.ZERO) { acc, value -> acc.add(value) }
+        
+        val entries = keywordTotals.toList()
+            .sortedByDescending { it.second }
+            .map { (keyword, amount) ->
+                val percentage = if (categoryTotal > BigDecimal.ZERO) {
+                    (amount.divide(categoryTotal, 4, RoundingMode.HALF_UP).multiply(BigDecimal("100"))).toDouble()
+                } else {
+                    0.0
+                }
+                KeywordBreakdownEntry(keyword, amount, percentage)
+            }
+        
+        return KeywordBreakdown(categoryName, entries, categoryTotal, currentDefault, hasMissingRates)
+    }
+    
+    // ==================== End Breakdown/Aggregation Methods ====================
+
 
     fun createDebt(parentExpenseId: Int, notes: String? = null) = viewModelScope.launch {
         try {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,29 +26,38 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.expensetracker.R
 import com.example.expensetracker.data.Expense
 import com.example.expensetracker.data.TimeFilter
 import com.example.expensetracker.data.TransferHistory
 import com.example.expensetracker.data.getWeekStartMillis
 import com.example.expensetracker.ui.components.*
+import com.example.expensetracker.ui.TestTags
+import com.example.expensetracker.viewmodel.CategoryBreakdown
 import com.example.expensetracker.viewmodel.ExpenseViewModel
+import com.example.expensetracker.viewmodel.KeywordBreakdown
 import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import com.example.expensetracker.viewmodel.SortOption
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.FloatingActionButton
 
 /**
  * Represents the state of a total calculation.
@@ -140,6 +150,77 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
     var showCategoryDialog by remember { mutableStateOf(false) }
     var showTextQueryDialog by remember { mutableStateOf(false) }
 
+    // Diagram state - per-tab independent, session-scoped (not persisted)
+    var expensesIsDiagramVisible by rememberSaveable { mutableStateOf(false) }
+    var expensesDrillDownLevel by rememberSaveable { mutableStateOf("category") } // "category" or "keyword"
+    var expensesSelectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    
+    var incomesIsDiagramVisible by rememberSaveable { mutableStateOf(false) }
+    var incomesDrillDownLevel by rememberSaveable { mutableStateOf("category") }
+    var incomesSelectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Diagram breakdown data states
+    var expensesCategoryBreakdown by remember { mutableStateOf<CategoryBreakdown?>(null) }
+    var expensesKeywordBreakdown by remember { mutableStateOf<KeywordBreakdown?>(null) }
+    var incomesCategoryBreakdown by remember { mutableStateOf<CategoryBreakdown?>(null) }
+    var incomesKeywordBreakdown by remember { mutableStateOf<KeywordBreakdown?>(null) }
+
+    // Calculate category breakdown for expenses
+    LaunchedEffect(filteredExpenses, defaultCurrency, expensesIsDiagramVisible, expensesDrillDownLevel) {
+        if (expensesIsDiagramVisible && expensesDrillDownLevel == "category") {
+            expensesCategoryBreakdown = viewModel.calculateCategoryBreakdown(
+                filteredExpenses,
+                defaultCurrency
+            )
+        }
+    }
+
+    // Calculate keyword breakdown for expenses
+    LaunchedEffect(filteredExpenses, defaultCurrency, expensesIsDiagramVisible, expensesDrillDownLevel, expensesSelectedCategory) {
+        val selectedCategory = expensesSelectedCategory
+        if (expensesIsDiagramVisible && expensesDrillDownLevel == "keyword" && selectedCategory != null) {
+            expensesKeywordBreakdown = viewModel.calculateKeywordBreakdown(
+                filteredExpenses,
+                selectedCategory,
+                defaultCurrency
+            )
+        }
+    }
+
+    // Calculate category breakdown for incomes
+    LaunchedEffect(filteredIncomes, defaultCurrency, incomesIsDiagramVisible, incomesDrillDownLevel) {
+        if (incomesIsDiagramVisible && incomesDrillDownLevel == "category") {
+            incomesCategoryBreakdown = viewModel.calculateCategoryBreakdown(
+                filteredIncomes,
+                defaultCurrency
+            )
+        }
+    }
+
+    // Calculate keyword breakdown for incomes
+    LaunchedEffect(filteredIncomes, defaultCurrency, incomesIsDiagramVisible, incomesDrillDownLevel, incomesSelectedCategory) {
+        val selectedCategory = incomesSelectedCategory
+        if (incomesIsDiagramVisible && incomesDrillDownLevel == "keyword" && selectedCategory != null) {
+            incomesKeywordBreakdown = viewModel.calculateKeywordBreakdown(
+                filteredIncomes,
+                selectedCategory,
+                defaultCurrency
+            )
+        }
+    }
+
+    // Reset diagram drill-down when category filter is cleared
+    LaunchedEffect(filterState.category) {
+        if (filterState.category == null) {
+            expensesDrillDownLevel = "category"
+            expensesSelectedCategory = null
+            expensesKeywordBreakdown = null
+            incomesDrillDownLevel = "category"
+            incomesSelectedCategory = null
+            incomesKeywordBreakdown = null
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
             // Filter chips row (above tabs) (Hide for Debts tab logic if desired, or keep globally)
@@ -187,20 +268,76 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
 
             when (selectedTabIndex) {
                 0 -> {
-                    TotalHeaderWithSort(
-                        totalState = expensesTotal,
-                        sortOption = expenseSortOption,
-                        onSortChange = { viewModel.setExpenseSortOption(it) }
+                    // Expenses Tab
+                    TransactionList(
+                        transactions = filteredExpenses,
+                        navController = navController,
+                        topContent = {
+                            TotalHeaderWithSortAndDiagram(
+                                totalState = expensesTotal,
+                                sortOption = expenseSortOption,
+                                onSortChange = { viewModel.setExpenseSortOption(it) },
+                                isDiagramVisible = expensesIsDiagramVisible,
+                                onDiagramToggle = {
+                                    expensesIsDiagramVisible = !expensesIsDiagramVisible
+                                    if (expensesIsDiagramVisible && filterState.category != null) {
+                                        expensesSelectedCategory = filterState.category
+                                        expensesDrillDownLevel = "keyword"
+                                    }
+                                },
+                                drillDownLevel = expensesDrillDownLevel,
+                                selectedCategory = expensesSelectedCategory,
+                                categoryBreakdown = expensesCategoryBreakdown,
+                                keywordBreakdown = expensesKeywordBreakdown,
+                                onCategorySelected = { categoryName ->
+                                    expensesSelectedCategory = categoryName
+                                    expensesDrillDownLevel = "keyword"
+                                    viewModel.setCategoryFilter(categoryName)
+                                },
+                                onKeywordSelected = { keywordName ->
+                                    viewModel.setTextQueryFilter(keywordName)
+                                },
+                                diagramIconTag = TestTags.HOME_DIAGRAM_ICON_EXPENSES,
+                                diagramContainerTag = TestTags.HOME_DIAGRAM_CONTAINER_EXPENSES
+                            )
+                        }
                     )
-                    TransactionList(filteredExpenses, navController)
                 }
                 1 -> {
-                    TotalHeaderWithSort(
-                        totalState = incomesTotal,
-                        sortOption = incomeSortOption,
-                        onSortChange = { viewModel.setIncomeSortOption(it) }
+                    // Incomes Tab
+                    TransactionList(
+                        transactions = filteredIncomes,
+                        navController = navController,
+                        topContent = {
+                            TotalHeaderWithSortAndDiagram(
+                                totalState = incomesTotal,
+                                sortOption = incomeSortOption,
+                                onSortChange = { viewModel.setIncomeSortOption(it) },
+                                isDiagramVisible = incomesIsDiagramVisible,
+                                onDiagramToggle = {
+                                    incomesIsDiagramVisible = !incomesIsDiagramVisible
+                                    if (incomesIsDiagramVisible && filterState.category != null) {
+                                        incomesSelectedCategory = filterState.category
+                                        incomesDrillDownLevel = "keyword"
+                                    }
+                                },
+                                drillDownLevel = incomesDrillDownLevel,
+                                selectedCategory = incomesSelectedCategory,
+                                categoryBreakdown = incomesCategoryBreakdown,
+                                keywordBreakdown = incomesKeywordBreakdown,
+                                onCategorySelected = { categoryName ->
+                                    incomesSelectedCategory = categoryName
+                                    incomesDrillDownLevel = "keyword"
+                                    viewModel.setCategoryFilter(categoryName)
+                                },
+                                onKeywordSelected = { keywordName ->
+                                    viewModel.setTextQueryFilter(keywordName)
+                                },
+                                diagramIconTag = TestTags.HOME_DIAGRAM_ICON_INCOMES,
+                                diagramContainerTag = TestTags.HOME_DIAGRAM_CONTAINER_INCOMES
+                            )
+                        }
                     )
-                    TransactionList(filteredIncomes, navController)
                 }
                 2 -> {
                     TotalHeader(totalState = transfersTotal)
@@ -490,6 +627,196 @@ private fun TotalHeaderWithSort(
 }
 
 /**
+ * Displays total amount with sort button on right and diagram toggle icon on left.
+ * Optionally shows a pie chart diagram below the total based on isDiagramVisible state.
+ */
+@Composable
+private fun TotalHeaderWithSortAndDiagram(
+    totalState: TotalState,
+    sortOption: SortOption,
+    onSortChange: (SortOption) -> Unit,
+    isDiagramVisible: Boolean,
+    onDiagramToggle: () -> Unit,
+    drillDownLevel: String,
+    selectedCategory: String?,
+    categoryBreakdown: CategoryBreakdown?,
+    keywordBreakdown: KeywordBreakdown?,
+    onCategorySelected: (String) -> Unit,
+    onKeywordSelected: (String) -> Unit,
+    diagramIconTag: String,
+    diagramContainerTag: String
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        // Header row with diagram icon (left), total (center), and sort button (right)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+        ) {
+            // Left: Diagram Toggle Icon
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+            ) {
+                IconButton(onClick = onDiagramToggle) {
+                    Icon(
+                        imageVector = Icons.Default.FilterList,
+                        contentDescription = stringResource(R.string.desc_diagram_toggle),
+                        tint = if (isDiagramVisible) 
+                            MaterialTheme.colorScheme.tertiary 
+                        else 
+                            MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.testTag(diagramIconTag)
+                    )
+                }
+            }
+
+            // Center: Total Amount
+            Box(
+                modifier = Modifier.align(Alignment.Center),
+                contentAlignment = Alignment.Center
+            ) {
+                when (totalState) {
+                    is TotalState.Loading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(4.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    is TotalState.Success -> {
+                        Text(
+                            text = stringResource(R.string.lbl_total, formatMoney(totalState.total), totalState.currencyCode),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    is TotalState.RateMissing -> {
+                        Text(
+                            text = stringResource(R.string.lbl_total_unavailable),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+
+            // Right: Sort Button
+            Box(
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                var expanded by remember { mutableStateOf(false) }
+
+                IconButton(onClick = { expanded = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Sort,
+                        contentDescription = stringResource(R.string.desc_sort),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    SortOption.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = stringResource(option.displayNameRes),
+                                    fontWeight = if (option == sortOption) androidx.compose.ui.text.font.FontWeight.Bold else null
+                                )
+                            },
+                            onClick = {
+                                onSortChange(option)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Diagram section (shown below header when visible)
+        if (isDiagramVisible) {
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            when (drillDownLevel) {
+                "category" -> {
+                    if (categoryBreakdown != null && categoryBreakdown.entries.isNotEmpty()) {
+                        CategoryPieChart(
+                            entries = categoryBreakdown.entries.map { it.categoryName to it.percentageOfTotal },
+                            onSectorTapped = { categoryName ->
+                                onCategorySelected(categoryName)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag(diagramContainerTag),
+                            testTag = "${diagramContainerTag}_chart"
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp)
+                                .testTag(diagramContainerTag),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.lbl_no_data),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+                }
+                "keyword" -> {
+                    if (keywordBreakdown != null && keywordBreakdown.entries.isNotEmpty()) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = stringResource(R.string.lbl_keyword_breakdown),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                            CategoryPieChart(
+                                entries = keywordBreakdown.entries.map { it.keywordName to it.percentageOfCategoryTotal },
+                                onSectorTapped = { keywordName ->
+                                    onKeywordSelected(keywordName)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag(diagramContainerTag),
+                                testTag = "${diagramContainerTag}_chart"
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp)
+                                .testTag(diagramContainerTag),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.lbl_no_data),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * Displays the total amount header above transaction lists.
  */
 @Composable
@@ -541,7 +868,11 @@ private fun formatMoney(amount: BigDecimal): String {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TransactionList(transactions: List<Expense>, navController: NavController) {
+private fun TransactionList(
+    transactions: List<Expense>,
+    navController: NavController,
+    topContent: @Composable (() -> Unit)? = null
+) {
     // Use bespoke sequential grouping to preserve sort order (e.g. By Amount)
     // while still grouping consecutive items with the same date header.
     val groupedTransactions = remember(transactions) {
@@ -553,6 +884,13 @@ private fun TransactionList(transactions: List<Expense>, navController: NavContr
     LazyColumn(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 88.dp)
     ) {
+        if (topContent != null) {
+            item {
+                topContent()
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
         groupedTransactions.forEach { (date, transactionsOnDate) ->
             stickyHeader {
                 Row(
@@ -593,7 +931,7 @@ private fun <T, K> groupSequentially(items: List<T>, keySelector: (T) -> K): Lis
     val result = mutableListOf<Pair<K, MutableList<T>>>()
     var currentKey = keySelector(items.first())
     var currentList = mutableListOf(items.first())
-    
+
     for (i in 1 until items.size) {
         val item = items[i]
         val key = keySelector(item)

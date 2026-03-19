@@ -28,6 +28,10 @@
     <string name="lbl_total_missing_rates">Сумма недоступна (нет курсов)</string>
     <string name="msg_no_debts">Долги по фильтрам не найдены</string>
     <string name="desc_sort">Сортировка</string>
+    <string name="desc_diagram_toggle">Переключить диаграмму по категориям</string>
+    <string name="lbl_category_breakdown">Разбивка по категориям</string>
+    <string name="lbl_keyword_breakdown">Разбивка по ключевым словам</string>
+    <string name="lbl_no_data">Нет данных</string>
 
     <!-- Edit Expense/Income -->
     <string name="title_edit_expense">Редактировать Расход</string>

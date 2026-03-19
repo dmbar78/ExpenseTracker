@@ -2,12 +2,22 @@ package com.example.expensetracker.ui.components
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.atan2
+import kotlin.math.PI
+import kotlin.math.sqrt
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -17,9 +27,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.expensetracker.data.*
 import java.text.SimpleDateFormat
@@ -28,6 +43,11 @@ import androidx.compose.ui.res.stringResource
 import com.example.expensetracker.R
 import androidx.compose.ui.platform.testTag
 import com.example.expensetracker.ui.TestTags
+import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sin
 
 // ==================== Filter Icon Button ====================
 
@@ -1282,6 +1302,285 @@ private fun FilterChip(
                     tint = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
+        }
+    }
+}
+
+// ==================== Category Pie Chart ====================
+
+/**
+ * Generates a deterministic color for a label for consistent visual representation.
+ */
+private fun colorForLabel(label: String): Color {
+    val hue = Math.floorMod(label.hashCode(), 360)
+    val saturation = 0.7f
+    val lightness = 0.5f
+    return Color.hsv(hue.toFloat(), saturation, lightness)
+}
+
+/**
+ * Data class for a pie chart sector.
+ */
+private data class PieSector(
+    val label: String,
+    val angleStart: Float,
+    val angleSweep: Float,
+    val color: Color,
+    val percentage: Float
+)
+
+private data class PieLabelPlacement(
+    val label: String,
+    val percentage: Float,
+    val color: Color,
+    val textX: Float,
+    val textY: Float,
+    val textWidth: Float,
+    val isRightSide: Boolean,
+    val connectorStart: Offset,
+    val connectorBend: Offset,
+    val connectorEnd: Offset
+)
+
+private data class PieLabelRaw(
+    val sector: PieSector,
+    val directionX: Float,
+    val directionY: Float,
+    val desiredCenterY: Float,
+    val isRightSide: Boolean
+)
+
+private fun formatDiagramPercentage(percentage: Float): String {
+    return String.format(Locale.getDefault(), "%.2f%%", percentage)
+}
+
+private fun buildLabelPlacements(
+    sectors: List<PieSector>,
+    centerX: Float,
+    centerY: Float,
+    radius: Float,
+    widthPx: Float,
+    heightPx: Float,
+    labelWidthPx: Float,
+    sidePaddingPx: Float,
+    slotHeightPx: Float,
+    topPaddingPx: Float,
+    bottomPaddingPx: Float
+): List<PieLabelPlacement> {
+    val rawLabels = sectors.map { sector ->
+        val midAngleRadians = (sector.angleStart + sector.angleSweep / 2f) * PI.toFloat() / 180f
+        val directionX = cos(midAngleRadians)
+        val directionY = sin(midAngleRadians)
+        PieLabelRaw(
+            sector = sector,
+            directionX = directionX,
+            directionY = directionY,
+            desiredCenterY = centerY + directionY * (radius + 18f),
+            isRightSide = directionX >= 0f
+        )
+    }
+
+    fun placeSide(entries: List<PieLabelRaw>, isRightSide: Boolean): List<PieLabelPlacement> {
+        if (entries.isEmpty()) return emptyList()
+
+        val sorted = entries.sortedBy { it.desiredCenterY }
+        val placedTops = mutableListOf<Float>()
+        var nextTop = topPaddingPx
+
+        sorted.forEach { raw ->
+            val desiredTop = raw.desiredCenterY - slotHeightPx / 2f
+            val top = max(desiredTop, nextTop)
+            placedTops += top
+            nextTop = top + slotHeightPx
+        }
+
+        val maxBottom = heightPx - bottomPaddingPx
+        val overflow = (placedTops.last() + slotHeightPx) - maxBottom
+        val shift = if (overflow > 0f) overflow else 0f
+
+        return sorted.mapIndexed { index, raw ->
+            val adjustedTop = max(topPaddingPx, placedTops[index] - shift)
+            val labelCenterY = adjustedTop + slotHeightPx / 2f
+            val textX = if (isRightSide) {
+                widthPx - sidePaddingPx - labelWidthPx
+            } else {
+                sidePaddingPx
+            }
+            val anchorX = if (isRightSide) textX else textX + labelWidthPx
+
+            PieLabelPlacement(
+                label = raw.sector.label,
+                percentage = raw.sector.percentage,
+                color = raw.sector.color,
+                textX = textX,
+                textY = adjustedTop,
+                textWidth = labelWidthPx,
+                isRightSide = isRightSide,
+                connectorStart = Offset(
+                    x = centerX + raw.directionX * radius,
+                    y = centerY + raw.directionY * radius
+                ),
+                connectorBend = Offset(
+                    x = centerX + raw.directionX * (radius + 14f),
+                    y = centerY + raw.directionY * (radius + 14f)
+                ),
+                connectorEnd = Offset(
+                    x = anchorX,
+                    y = labelCenterY
+                )
+            )
+        }
+    }
+
+    val left = rawLabels.filterNot { it.isRightSide }
+    val right = rawLabels.filter { it.isRightSide }
+    return placeSide(left, isRightSide = false) + placeSide(right, isRightSide = true)
+}
+
+/**
+ * Composable to render a circular pie chart with labels and support for tapping sectors.
+ */
+@Composable
+fun CategoryPieChart(
+    entries: List<Pair<String, Double>>, // label to percentage
+    onSectorTapped: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    testTag: String = ""
+) {
+    if (entries.isEmpty()) {
+        Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Text(stringResource(R.string.lbl_no_data))
+        }
+        return
+    }
+    
+    // Create sectors
+    val sectors = mutableListOf<PieSector>()
+    var currentAngle = -90f // Start from top
+    
+    for ((label, percentage) in entries) {
+        val percentageFloat = percentage.toFloat()
+        val sweep = (percentageFloat / 100f) * 360f
+        val color = colorForLabel(label)
+        sectors.add(PieSector(label, currentAngle, sweep, color, percentageFloat))
+        currentAngle += sweep
+    }
+    
+    val chartHeight = (entries.size * 22).coerceIn(280, 520).dp
+    val density = LocalDensity.current
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(chartHeight)
+    ) {
+        val labelWidthDp = 132.dp
+        val widthPx = with(density) { maxWidth.toPx() }
+        val heightPx = with(density) { chartHeight.toPx() }
+        val labelWidthPx = with(density) { labelWidthDp.toPx() }
+        val sidePaddingPx = with(density) { 8.dp.toPx() }
+        val slotHeightPx = with(density) { 30.dp.toPx() }
+        val topPaddingPx = with(density) { 8.dp.toPx() }
+        val bottomPaddingPx = with(density) { 8.dp.toPx() }
+        val centerX = widthPx / 2f
+        val centerY = heightPx / 2f
+        val radius = min(widthPx * 0.28f, heightPx * 0.36f).coerceAtLeast(92f)
+        val labelPlacements = buildLabelPlacements(
+            sectors = sectors,
+            centerX = centerX,
+            centerY = centerY,
+            radius = radius,
+            widthPx = widthPx,
+            heightPx = heightPx,
+            labelWidthPx = labelWidthPx,
+            sidePaddingPx = sidePaddingPx,
+            slotHeightPx = slotHeightPx,
+            topPaddingPx = topPaddingPx,
+            bottomPaddingPx = bottomPaddingPx
+        )
+
+        Canvas(
+            modifier = Modifier
+                .matchParentSize()
+                .testTag(testTag)
+                .pointerInput(sectors) {
+                    detectTapGestures { offset ->
+                        val dx = offset.x - centerX
+                        val dy = offset.y - centerY
+                        val distance = sqrt(dx * dx + dy * dy)
+
+                        if (distance < radius) {
+                            var angle = (atan2(dy, dx) * 180f / PI.toFloat() + 90f) % 360f
+                            if (angle < 0) angle += 360f
+
+                            for (sector in sectors) {
+                                if (angle >= sector.angleStart && angle < sector.angleStart + sector.angleSweep) {
+                                    onSectorTapped(sector.label)
+                                    break
+                                }
+                            }
+                        }
+                    }
+                }
+        ) {
+            sectors.forEach { sector ->
+                drawArc(
+                    color = sector.color,
+                    startAngle = sector.angleStart,
+                    sweepAngle = sector.angleSweep,
+                    useCenter = true,
+                    topLeft = Offset(centerX - radius, centerY - radius),
+                    size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f)
+                )
+                drawArc(
+                    color = Color.White,
+                    startAngle = sector.angleStart,
+                    sweepAngle = sector.angleSweep,
+                    useCenter = true,
+                    topLeft = Offset(centerX - radius, centerY - radius),
+                    size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f),
+                    style = Stroke(width = 1.5f)
+                )
+            }
+
+            labelPlacements.forEach { placement ->
+                drawLine(
+                    color = placement.color,
+                    start = placement.connectorStart,
+                    end = placement.connectorBend,
+                    strokeWidth = 1.6f
+                )
+                drawLine(
+                    color = placement.color,
+                    start = placement.connectorBend,
+                    end = placement.connectorEnd,
+                    strokeWidth = 1.6f
+                )
+            }
+        }
+
+        labelPlacements.forEach { placement ->
+            Text(
+                text = "${placement.label} (${formatDiagramPercentage(placement.percentage)})",
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            x = placement.textX.roundToInt(),
+                            y = placement.textY.roundToInt()
+                        )
+                    }
+                    .width(labelWidthDp)
+                    .clickable { onSectorTapped(placement.label) }
+                    .testTag("${TestTags.HOME_DIAGRAM_SECTOR_PREFIX}${placement.label}"),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
+                textAlign = if (placement.isRightSide) TextAlign.Start else TextAlign.End,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
