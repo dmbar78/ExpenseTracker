@@ -30,6 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -1336,10 +1338,8 @@ private data class PieLabelPlacement(
     val textX: Float,
     val textY: Float,
     val textWidth: Float,
-    val isRightSide: Boolean,
-    val connectorStart: Offset,
-    val connectorBend: Offset,
-    val connectorEnd: Offset
+    val slotHeight: Float,
+    val isRightSide: Boolean
 )
 
 private data class PieLabelRaw(
@@ -1354,6 +1354,24 @@ private fun formatDiagramPercentage(percentage: Float): String {
     return String.format(Locale.getDefault(), "%.2f%%", percentage)
 }
 
+private fun diagramLabelText(label: String, percentage: Float): String {
+    return "$label (${formatDiagramPercentage(percentage)})"
+}
+
+private fun requiredChartHeightDp(sectors: List<PieSector>): Int {
+    val maxLabelsOnSide = sectors.count { sector ->
+        val midAngleRadians = (sector.angleStart + sector.angleSweep / 2f) * PI.toFloat() / 180f
+        cos(midAngleRadians) >= 0f
+    }.coerceAtLeast(
+        sectors.count { sector ->
+            val midAngleRadians = (sector.angleStart + sector.angleSweep / 2f) * PI.toFloat() / 180f
+            cos(midAngleRadians) < 0f
+        }
+    )
+
+    return (maxLabelsOnSide * 26 + 120).coerceIn(320, 860)
+}
+
 private fun buildLabelPlacements(
     sectors: List<PieSector>,
     centerX: Float,
@@ -1361,11 +1379,12 @@ private fun buildLabelPlacements(
     radius: Float,
     widthPx: Float,
     heightPx: Float,
-    labelWidthPx: Float,
+    maxLabelWidthPx: Float,
     sidePaddingPx: Float,
     slotHeightPx: Float,
     topPaddingPx: Float,
-    bottomPaddingPx: Float
+    bottomPaddingPx: Float,
+    labelWidthForSector: (PieSector) -> Float
 ): List<PieLabelPlacement> {
     val rawLabels = sectors.map { sector ->
         val midAngleRadians = (sector.angleStart + sector.angleSweep / 2f) * PI.toFloat() / 180f
@@ -1385,28 +1404,29 @@ private fun buildLabelPlacements(
 
         val sorted = entries.sortedBy { it.desiredCenterY }
         val placedTops = mutableListOf<Float>()
+        val availableHeight = (heightPx - topPaddingPx - bottomPaddingPx).coerceAtLeast(slotHeightPx)
+        val dynamicSlotHeight = max(slotHeightPx, availableHeight / entries.size)
         var nextTop = topPaddingPx
 
         sorted.forEach { raw ->
-            val desiredTop = raw.desiredCenterY - slotHeightPx / 2f
+            val desiredTop = raw.desiredCenterY - dynamicSlotHeight / 2f
             val top = max(desiredTop, nextTop)
             placedTops += top
-            nextTop = top + slotHeightPx
+            nextTop = top + dynamicSlotHeight
         }
 
         val maxBottom = heightPx - bottomPaddingPx
-        val overflow = (placedTops.last() + slotHeightPx) - maxBottom
+        val overflow = (placedTops.last() + dynamicSlotHeight) - maxBottom
         val shift = if (overflow > 0f) overflow else 0f
 
         return sorted.mapIndexed { index, raw ->
             val adjustedTop = max(topPaddingPx, placedTops[index] - shift)
-            val labelCenterY = adjustedTop + slotHeightPx / 2f
+            val textWidth = labelWidthForSector(raw.sector)
             val textX = if (isRightSide) {
-                widthPx - sidePaddingPx - labelWidthPx
+                widthPx - sidePaddingPx - textWidth
             } else {
-                sidePaddingPx
+                sidePaddingPx + (maxLabelWidthPx - textWidth)
             }
-            val anchorX = if (isRightSide) textX else textX + labelWidthPx
 
             PieLabelPlacement(
                 label = raw.sector.label,
@@ -1414,20 +1434,9 @@ private fun buildLabelPlacements(
                 color = raw.sector.color,
                 textX = textX,
                 textY = adjustedTop,
-                textWidth = labelWidthPx,
-                isRightSide = isRightSide,
-                connectorStart = Offset(
-                    x = centerX + raw.directionX * radius,
-                    y = centerY + raw.directionY * radius
-                ),
-                connectorBend = Offset(
-                    x = centerX + raw.directionX * (radius + 14f),
-                    y = centerY + raw.directionY * (radius + 14f)
-                ),
-                connectorEnd = Offset(
-                    x = anchorX,
-                    y = labelCenterY
-                )
+                textWidth = textWidth,
+                slotHeight = dynamicSlotHeight,
+                isRightSide = isRightSide
             )
         }
     }
@@ -1453,134 +1462,69 @@ fun CategoryPieChart(
         }
         return
     }
-    
-    // Create sectors
-    val sectors = mutableListOf<PieSector>()
-    var currentAngle = -90f // Start from top
-    
-    for ((label, percentage) in entries) {
-        val percentageFloat = percentage.toFloat()
-        val sweep = (percentageFloat / 100f) * 360f
-        val color = colorForLabel(label)
-        sectors.add(PieSector(label, currentAngle, sweep, color, percentageFloat))
-        currentAngle += sweep
-    }
-    
-    val chartHeight = (entries.size * 22).coerceIn(280, 520).dp
-    val density = LocalDensity.current
 
-    BoxWithConstraints(
+    val normalizedEntries = remember(entries) {
+        entries.map { (label, percentage) ->
+            label to percentage.toFloat().coerceAtLeast(0f)
+        }
+    }
+
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(chartHeight)
+            .testTag(testTag),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        val labelWidthDp = 132.dp
-        val widthPx = with(density) { maxWidth.toPx() }
-        val heightPx = with(density) { chartHeight.toPx() }
-        val labelWidthPx = with(density) { labelWidthDp.toPx() }
-        val sidePaddingPx = with(density) { 8.dp.toPx() }
-        val slotHeightPx = with(density) { 30.dp.toPx() }
-        val topPaddingPx = with(density) { 8.dp.toPx() }
-        val bottomPaddingPx = with(density) { 8.dp.toPx() }
-        val centerX = widthPx / 2f
-        val centerY = heightPx / 2f
-        val radius = min(widthPx * 0.28f, heightPx * 0.36f).coerceAtLeast(92f)
-        val labelPlacements = buildLabelPlacements(
-            sectors = sectors,
-            centerX = centerX,
-            centerY = centerY,
-            radius = radius,
-            widthPx = widthPx,
-            heightPx = heightPx,
-            labelWidthPx = labelWidthPx,
-            sidePaddingPx = sidePaddingPx,
-            slotHeightPx = slotHeightPx,
-            topPaddingPx = topPaddingPx,
-            bottomPaddingPx = bottomPaddingPx
-        )
+        normalizedEntries.forEach { (label, percentage) ->
+            val color = colorForLabel(label)
+            val fraction = (percentage / 100f).coerceIn(0f, 1f)
 
-        Canvas(
-            modifier = Modifier
-                .matchParentSize()
-                .testTag(testTag)
-                .pointerInput(sectors) {
-                    detectTapGestures { offset ->
-                        val dx = offset.x - centerX
-                        val dy = offset.y - centerY
-                        val distance = sqrt(dx * dx + dy * dy)
-
-                        if (distance < radius) {
-                            var angle = (atan2(dy, dx) * 180f / PI.toFloat() + 90f) % 360f
-                            if (angle < 0) angle += 360f
-
-                            for (sector in sectors) {
-                                if (angle >= sector.angleStart && angle < sector.angleStart + sector.angleSweep) {
-                                    onSectorTapped(sector.label)
-                                    break
-                                }
-                            }
-                        }
-                    }
-                }
-        ) {
-            sectors.forEach { sector ->
-                drawArc(
-                    color = sector.color,
-                    startAngle = sector.angleStart,
-                    sweepAngle = sector.angleSweep,
-                    useCenter = true,
-                    topLeft = Offset(centerX - radius, centerY - radius),
-                    size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f)
-                )
-                drawArc(
-                    color = Color.White,
-                    startAngle = sector.angleStart,
-                    sweepAngle = sector.angleSweep,
-                    useCenter = true,
-                    topLeft = Offset(centerX - radius, centerY - radius),
-                    size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f),
-                    style = Stroke(width = 1.5f)
-                )
-            }
-
-            labelPlacements.forEach { placement ->
-                drawLine(
-                    color = placement.color,
-                    start = placement.connectorStart,
-                    end = placement.connectorBend,
-                    strokeWidth = 1.6f
-                )
-                drawLine(
-                    color = placement.color,
-                    start = placement.connectorBend,
-                    end = placement.connectorEnd,
-                    strokeWidth = 1.6f
-                )
-            }
-        }
-
-        labelPlacements.forEach { placement ->
-            Text(
-                text = "${placement.label} (${formatDiagramPercentage(placement.percentage)})",
+            Column(
                 modifier = Modifier
-                    .offset {
-                        IntOffset(
-                            x = placement.textX.roundToInt(),
-                            y = placement.textY.roundToInt()
+                    .fillMaxWidth()
+                    .clickable { onSectorTapped(label) }
+                    .testTag("${TestTags.HOME_DIAGRAM_SECTOR_PREFIX}${label}")
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = label,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = formatDiagramPercentage(percentage),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(14.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(6.dp)
                         )
-                    }
-                    .width(labelWidthDp)
-                    .clickable { onSectorTapped(placement.label) }
-                    .testTag("${TestTags.HOME_DIAGRAM_SECTOR_PREFIX}${placement.label}"),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                    lineHeight = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
-                textAlign = if (placement.isRightSide) TextAlign.Start else TextAlign.End,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(if (fraction <= 0f) 0.01f else fraction)
+                            .fillMaxHeight()
+                            .background(
+                                color = color,
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                    )
+                }
+            }
         }
     }
 }
