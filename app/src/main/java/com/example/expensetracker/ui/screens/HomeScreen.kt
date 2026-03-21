@@ -45,6 +45,7 @@ import com.example.expensetracker.ui.TestTags
 import com.example.expensetracker.viewmodel.CategoryBreakdown
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import com.example.expensetracker.viewmodel.KeywordBreakdown
+import com.example.expensetracker.viewmodel.KeywordBreakdownEntry
 import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -105,11 +106,33 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
     // Sort state
     val expenseSortOption by viewModel.expenseSortOption.collectAsState()
     val incomeSortOption by viewModel.incomeSortOption.collectAsState()
+
+    // Selected keyword drill-down state (persisted in screen state, not FilterState)
+    var expensesSelectedKeywordLabel by rememberSaveable { mutableStateOf<String?>(null) }
+    var expensesSelectedKeywordIsNoKeyword by rememberSaveable { mutableStateOf(false) }
+    var incomesSelectedKeywordLabel by rememberSaveable { mutableStateOf<String?>(null) }
+    var incomesSelectedKeywordIsNoKeyword by rememberSaveable { mutableStateOf(false) }
+
+    val displayedExpenses = expensesSelectedKeywordLabel?.let { keywordName ->
+        viewModel.applyKeywordDrillDown(
+            expenses = filteredExpenses,
+            keywordName = keywordName,
+            isNoKeywordBucket = expensesSelectedKeywordIsNoKeyword
+        )
+    } ?: filteredExpenses
+
+    val displayedIncomes = incomesSelectedKeywordLabel?.let { keywordName ->
+        viewModel.applyKeywordDrillDown(
+            expenses = filteredIncomes,
+            keywordName = keywordName,
+            isNoKeywordBucket = incomesSelectedKeywordIsNoKeyword
+        )
+    } ?: filteredIncomes
     
     // Calculate totals when data or default currency changes
-    LaunchedEffect(filteredExpenses, defaultCurrency) {
+    LaunchedEffect(displayedExpenses, defaultCurrency) {
         expensesTotal = TotalState.Loading
-        val total = viewModel.calculateExpensesTotal(filteredExpenses, defaultCurrency)
+        val total = viewModel.calculateExpensesTotal(displayedExpenses, defaultCurrency)
         expensesTotal = if (total != null) {
             TotalState.Success(total, defaultCurrency)
         } else {
@@ -117,9 +140,9 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
         }
     }
     
-    LaunchedEffect(filteredIncomes, defaultCurrency) {
+    LaunchedEffect(displayedIncomes, defaultCurrency) {
         incomesTotal = TotalState.Loading
-        val total = viewModel.calculateExpensesTotal(filteredIncomes, defaultCurrency)
+        val total = viewModel.calculateExpensesTotal(displayedIncomes, defaultCurrency)
         incomesTotal = if (total != null) {
             TotalState.Success(total, defaultCurrency)
         } else {
@@ -215,10 +238,22 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
             expensesDrillDownLevel = "category"
             expensesSelectedCategory = null
             expensesKeywordBreakdown = null
+            expensesSelectedKeywordLabel = null
+            expensesSelectedKeywordIsNoKeyword = false
             incomesDrillDownLevel = "category"
             incomesSelectedCategory = null
             incomesKeywordBreakdown = null
+            incomesSelectedKeywordLabel = null
+            incomesSelectedKeywordIsNoKeyword = false
         }
+    }
+
+    // Clear temporary drill-down whenever persistent filters change.
+    LaunchedEffect(filterState) {
+        expensesSelectedKeywordLabel = null
+        expensesSelectedKeywordIsNoKeyword = false
+        incomesSelectedKeywordLabel = null
+        incomesSelectedKeywordIsNoKeyword = false
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -270,7 +305,7 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                 0 -> {
                     // Expenses Tab
                     TransactionList(
-                        transactions = filteredExpenses,
+                        transactions = displayedExpenses,
                         navController = navController,
                         topContent = {
                             TotalHeaderWithSortAndDiagram(
@@ -280,6 +315,10 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                                 isDiagramVisible = expensesIsDiagramVisible,
                                 onDiagramToggle = {
                                     expensesIsDiagramVisible = !expensesIsDiagramVisible
+                                    if (!expensesIsDiagramVisible) {
+                                        expensesSelectedKeywordLabel = null
+                                        expensesSelectedKeywordIsNoKeyword = false
+                                    }
                                     if (expensesIsDiagramVisible && filterState.category != null) {
                                         expensesSelectedCategory = filterState.category
                                         expensesDrillDownLevel = "keyword"
@@ -292,10 +331,18 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                                 onCategorySelected = { categoryName ->
                                     expensesSelectedCategory = categoryName
                                     expensesDrillDownLevel = "keyword"
+                                    expensesSelectedKeywordLabel = null
+                                    expensesSelectedKeywordIsNoKeyword = false
                                     viewModel.setCategoryFilter(categoryName)
                                 },
-                                onKeywordSelected = { keywordName ->
-                                    viewModel.setTextQueryFilter(keywordName)
+                                onKeywordSelected = { keywordEntry ->
+                                    expensesSelectedKeywordLabel = keywordEntry.keywordName
+                                    expensesSelectedKeywordIsNoKeyword = keywordEntry.isNoKeywordBucket
+                                },
+                                selectedKeywordLabel = expensesSelectedKeywordLabel,
+                                onKeywordSelectionReset = {
+                                    expensesSelectedKeywordLabel = null
+                                    expensesSelectedKeywordIsNoKeyword = false
                                 },
                                 diagramIconTag = TestTags.HOME_DIAGRAM_ICON_EXPENSES,
                                 diagramContainerTag = TestTags.HOME_DIAGRAM_CONTAINER_EXPENSES
@@ -306,7 +353,7 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                 1 -> {
                     // Incomes Tab
                     TransactionList(
-                        transactions = filteredIncomes,
+                        transactions = displayedIncomes,
                         navController = navController,
                         topContent = {
                             TotalHeaderWithSortAndDiagram(
@@ -316,6 +363,10 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                                 isDiagramVisible = incomesIsDiagramVisible,
                                 onDiagramToggle = {
                                     incomesIsDiagramVisible = !incomesIsDiagramVisible
+                                    if (!incomesIsDiagramVisible) {
+                                        incomesSelectedKeywordLabel = null
+                                        incomesSelectedKeywordIsNoKeyword = false
+                                    }
                                     if (incomesIsDiagramVisible && filterState.category != null) {
                                         incomesSelectedCategory = filterState.category
                                         incomesDrillDownLevel = "keyword"
@@ -328,10 +379,18 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                                 onCategorySelected = { categoryName ->
                                     incomesSelectedCategory = categoryName
                                     incomesDrillDownLevel = "keyword"
+                                    incomesSelectedKeywordLabel = null
+                                    incomesSelectedKeywordIsNoKeyword = false
                                     viewModel.setCategoryFilter(categoryName)
                                 },
-                                onKeywordSelected = { keywordName ->
-                                    viewModel.setTextQueryFilter(keywordName)
+                                onKeywordSelected = { keywordEntry ->
+                                    incomesSelectedKeywordLabel = keywordEntry.keywordName
+                                    incomesSelectedKeywordIsNoKeyword = keywordEntry.isNoKeywordBucket
+                                },
+                                selectedKeywordLabel = incomesSelectedKeywordLabel,
+                                onKeywordSelectionReset = {
+                                    incomesSelectedKeywordLabel = null
+                                    incomesSelectedKeywordIsNoKeyword = false
                                 },
                                 diagramIconTag = TestTags.HOME_DIAGRAM_ICON_INCOMES,
                                 diagramContainerTag = TestTags.HOME_DIAGRAM_CONTAINER_INCOMES
@@ -642,7 +701,9 @@ private fun TotalHeaderWithSortAndDiagram(
     categoryBreakdown: CategoryBreakdown?,
     keywordBreakdown: KeywordBreakdown?,
     onCategorySelected: (String) -> Unit,
-    onKeywordSelected: (String) -> Unit,
+    onKeywordSelected: (KeywordBreakdownEntry) -> Unit,
+    selectedKeywordLabel: String?,
+    onKeywordSelectionReset: () -> Unit,
     diagramIconTag: String,
     diagramContainerTag: String
 ) {
@@ -778,21 +839,23 @@ private fun TotalHeaderWithSortAndDiagram(
                 "keyword" -> {
                     if (keywordBreakdown != null && keywordBreakdown.entries.isNotEmpty()) {
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = stringResource(R.string.lbl_keyword_breakdown),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            KeywordBreakdownHeader(
+                                selectedKeywordLabel = selectedKeywordLabel,
+                                onResetSelection = onKeywordSelectionReset,
+                                resetButtonTestTag = "${diagramContainerTag}_keyword_reset"
                             )
                             CategoryPieChart(
                                 entries = keywordBreakdown.entries.map { it.keywordName to it.percentageOfCategoryTotal },
                                 onSectorTapped = { keywordName ->
-                                    onKeywordSelected(keywordName)
+                                    keywordBreakdown.entries
+                                        .firstOrNull { it.keywordName == keywordName }
+                                        ?.let(onKeywordSelected)
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .testTag(diagramContainerTag),
-                                testTag = "${diagramContainerTag}_chart"
+                                testTag = "${diagramContainerTag}_chart",
+                                selectedLabel = selectedKeywordLabel
                             )
                         }
                     } else {

@@ -102,13 +102,27 @@ class PlusMenuExtendedTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN).performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Test Account").performClick()
-        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            try {
+                composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE).assertTextContains("Test Account")
+                true
+            } catch (_: AssertionError) {
+                false
+            }
+        }
 
         // Select category
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN).performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Test Category").performClick()
-        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            try {
+                composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE).assertTextContains("Test Category")
+                true
+            } catch (_: AssertionError) {
+                false
+            }
+        }
 
         // Note: Keyword selection skipped due to UI timing flakiness
         // Keywords can be tested separately when dropdown behavior is more stable
@@ -121,9 +135,11 @@ class PlusMenuExtendedTest {
 
         // Step 4: Save
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
-        
-        // Wait for save operation and navigation back to main screen
-        Thread.sleep(1000) // Give time for save and navigation
+
+        // Wait for save operation to persist in DB (navigation can be async)
+        composeTestRule.waitUntil(timeoutMillis = 60_000) {
+            runBlocking { db.expenseDao().getAllExpensesOnce().count { it.type == "Expense" } == 1 }
+        }
         composeTestRule.waitForIdle()
         
         // Step 5: Verify saved in DB
@@ -195,13 +211,27 @@ class PlusMenuExtendedTest {
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_DROPDOWN).performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Income Account").performClick()
-        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            try {
+                composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_ACCOUNT_VALUE).assertTextContains("Income Account")
+                true
+            } catch (_: AssertionError) {
+                false
+            }
+        }
 
         // Select category
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_DROPDOWN).performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Salary").performClick()
-        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            try {
+                composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_CATEGORY_VALUE).assertTextContains("Salary")
+                true
+            } catch (_: AssertionError) {
+                false
+            }
+        }
 
         // Fill comment
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_COMMENT_FIELD)
@@ -211,6 +241,11 @@ class PlusMenuExtendedTest {
 
         // Step 4: Save
         composeTestRule.onNodeWithTag(TestTags.EDIT_EXPENSE_SAVE).performClick()
+
+        // Wait for save operation to persist in DB
+        composeTestRule.waitUntil(timeoutMillis = 60_000) {
+            runBlocking { db.expenseDao().getAllExpensesOnce().count { it.type == "Income" } == 1 }
+        }
         composeTestRule.waitForIdle()
 
         // Step 5: Verify saved in DB

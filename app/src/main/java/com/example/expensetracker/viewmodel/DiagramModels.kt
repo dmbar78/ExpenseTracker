@@ -27,7 +27,8 @@ data class CategoryBreakdown(
 data class KeywordBreakdownEntry(
     val keywordName: String,
     val amountInDefault: BigDecimal,
-    val percentageOfCategoryTotal: Double // 0.0 to 100.0
+    val percentageOfCategoryTotal: Double, // 0.0 to 100.0
+    val isNoKeywordBucket: Boolean = false
 )
 
 /**

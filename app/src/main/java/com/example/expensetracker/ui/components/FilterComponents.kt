@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,6 +32,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
@@ -45,6 +48,8 @@ import androidx.compose.ui.res.stringResource
 import com.example.expensetracker.R
 import androidx.compose.ui.platform.testTag
 import com.example.expensetracker.ui.TestTags
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -1454,7 +1459,8 @@ fun CategoryPieChart(
     entries: List<Pair<String, Double>>, // label to percentage
     onSectorTapped: (String) -> Unit,
     modifier: Modifier = Modifier,
-    testTag: String = ""
+    testTag: String = "",
+    selectedLabel: String? = null
 ) {
     if (entries.isEmpty()) {
         Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -1478,11 +1484,13 @@ fun CategoryPieChart(
         normalizedEntries.forEach { (label, percentage) ->
             val color = colorForLabel(label)
             val fraction = (percentage / 100f).coerceIn(0f, 1f)
+            val isSelected = label == selectedLabel
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onSectorTapped(label) }
+                    .semantics { selected = isSelected }
                     .testTag("${TestTags.HOME_DIAGRAM_SECTOR_PREFIX}${label}")
             ) {
                 Row(
@@ -1493,7 +1501,10 @@ fun CategoryPieChart(
                     Text(
                         text = label,
                         modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            fontStyle = if (isSelected) FontStyle.Italic else FontStyle.Normal
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1524,6 +1535,44 @@ fun CategoryPieChart(
                             )
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun KeywordBreakdownHeader(
+    selectedKeywordLabel: String?,
+    onResetSelection: () -> Unit,
+    resetButtonTestTag: String,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = stringResource(R.string.lbl_keyword_breakdown),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.outline
+        )
+
+        if (selectedKeywordLabel != null) {
+            IconButton(
+                onClick = onResetSelection,
+                modifier = Modifier
+                    .size(24.dp)
+                    .testTag(resetButtonTestTag)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Reset keyword selection",
+                    tint = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }

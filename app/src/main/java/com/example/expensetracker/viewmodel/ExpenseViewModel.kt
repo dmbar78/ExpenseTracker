@@ -48,6 +48,7 @@ class ExpenseViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "VoiceDateParse"
+        const val NO_KEYWORD_BUCKET_LABEL = "(No Keyword)"
 
         /**
          * @deprecated Use Hilt injection instead. This factory is kept for backward compatibility.
@@ -124,6 +125,7 @@ class ExpenseViewModel @Inject constructor(
     val filteredExpenses: StateFlow<List<Expense>>
     val filteredIncomes: StateFlow<List<Expense>>
     val filteredTransfers: StateFlow<List<TransferHistory>>
+    private val expenseKeywordNamesMap: StateFlow<Map<Int, List<String>>>
 
     // Sorting state
     private val _expenseSortOption = MutableStateFlow(SortOption.DATE)
@@ -253,14 +255,14 @@ class ExpenseViewModel @Inject constructor(
         allDebts = debtRepository.getAllDebts().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         
         // Build a map of expenseId -> list of keyword names for text query filtering
-        val expenseKeywordNamesMap: StateFlow<Map<Int, List<String>>> = combine(
+        expenseKeywordNamesMap = combine(
             keywordDao.getAllExpenseKeywordCrossRefs(),
             keywordDao.getAllKeywords()
         ) { crossRefs, keywords ->
             val keywordIdToName = keywords.associate { it.id to it.name }
             crossRefs.groupBy { it.expenseId }
                 .mapValues { (_, refs) -> refs.mapNotNull { keywordIdToName[it.keywordId] } }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
         
         // Derive filtered expenses from allExpenses + filterState + keyword names + sortOption
         filteredExpenses = combine(allExpenses, _filterState, expenseKeywordNamesMap, _expenseSortOption) { expenses, filter, keywordMap, sortOption ->
@@ -1048,7 +1050,7 @@ class ExpenseViewModel @Inject constructor(
             
             if (expenseKeywords.isEmpty()) {
                 // Assign to "(No Keyword)" entry
-                keywordTotals["(No Keyword)"] = keywordTotals.getOrDefault("(No Keyword)", BigDecimal.ZERO).add(amountInDefault)
+                keywordTotals[NO_KEYWORD_BUCKET_LABEL] = keywordTotals.getOrDefault(NO_KEYWORD_BUCKET_LABEL, BigDecimal.ZERO).add(amountInDefault)
             } else {
                 for (keyword in expenseKeywords) {
                     keywordTotals[keyword] = keywordTotals.getOrDefault(keyword, BigDecimal.ZERO).add(amountInDefault)
@@ -1066,10 +1068,51 @@ class ExpenseViewModel @Inject constructor(
                 } else {
                     0.0
                 }
-                KeywordBreakdownEntry(keyword, amount, percentage)
+                KeywordBreakdownEntry(
+                    keywordName = keyword,
+                    amountInDefault = amount,
+                    percentageOfCategoryTotal = percentage,
+                    isNoKeywordBucket = keyword == NO_KEYWORD_BUCKET_LABEL
+                )
             }
         
         return KeywordBreakdown(categoryName, entries, categoryTotal, currentDefault, hasMissingRates)
+    }
+
+    /**
+     * Applies temporary keyword drill-down filtering to a pre-filtered expense/income list.
+     * This does not mutate persistent FilterState.
+     */
+    fun applyKeywordDrillDown(
+        expenses: List<Expense>,
+        keywordEntry: KeywordBreakdownEntry
+    ): List<Expense> {
+        return if (keywordEntry.isNoKeywordBucket) {
+            expenses.filter { expense ->
+                expenseKeywordNamesMap.value[expense.id].isNullOrEmpty()
+            }
+        } else {
+            expenses.filter { expense ->
+                expenseKeywordNamesMap.value[expense.id]
+                    ?.any { keyword -> keyword.equals(keywordEntry.keywordName, ignoreCase = true) } == true
+            }
+        }
+    }
+
+    fun applyKeywordDrillDown(
+        expenses: List<Expense>,
+        keywordName: String,
+        isNoKeywordBucket: Boolean
+    ): List<Expense> {
+        return applyKeywordDrillDown(
+            expenses = expenses,
+            keywordEntry = KeywordBreakdownEntry(
+                keywordName = keywordName,
+                amountInDefault = BigDecimal.ZERO,
+                percentageOfCategoryTotal = 0.0,
+                isNoKeywordBucket = isNoKeywordBucket
+            )
+        )
     }
     
     // ==================== End Breakdown/Aggregation Methods ====================

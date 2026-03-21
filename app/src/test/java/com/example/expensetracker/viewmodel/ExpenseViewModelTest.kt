@@ -562,4 +562,85 @@ class ExpenseViewModelTest {
             job.cancel()
         }
     }
+
+    @Test
+    fun applyKeywordDrillDown_noKeywordBucket_returnsOnlyTransactionsWithoutKeywords() = runTest {
+        val keyword = Keyword(id = 1, name = "Groceries")
+        whenever(keywordDao.getAllKeywords()).thenReturn(MutableStateFlow(listOf(keyword)))
+        whenever(keywordDao.getAllExpenseKeywordCrossRefs()).thenReturn(
+            MutableStateFlow(listOf(ExpenseKeywordCrossRef(expenseId = 1, keywordId = 1)))
+        )
+
+        viewModel = ExpenseViewModel(
+            application,
+            expenseRepository,
+            accountRepository,
+            categoryRepository,
+            currencyRepository,
+            transferHistoryRepository,
+            ledgerRepository,
+            filterPreferences,
+            userPreferences,
+            exchangeRateRepository,
+            backupRepository,
+            keywordDao,
+            debtRepository
+        )
+        advanceUntilIdle()
+
+        val expenses = listOf(
+            Expense(id = 1, account = "Bank", amount = BigDecimal("10.00"), currency = "USD", category = "Food", type = "Expense"),
+            Expense(id = 2, account = "Bank", amount = BigDecimal("20.00"), currency = "USD", category = "Food", type = "Expense")
+        )
+        val noKeywordEntry = KeywordBreakdownEntry(
+            keywordName = ExpenseViewModel.NO_KEYWORD_BUCKET_LABEL,
+            amountInDefault = BigDecimal("20.00"),
+            percentageOfCategoryTotal = 50.0,
+            isNoKeywordBucket = true
+        )
+
+        val result = viewModel.applyKeywordDrillDown(expenses, noKeywordEntry)
+
+        assertEquals(listOf(2), result.map { it.id })
+    }
+
+    @Test
+    fun applyKeywordDrillDown_regularKeyword_returnsMatchingTransactions() = runTest {
+        val keyword = Keyword(id = 1, name = "Groceries")
+        whenever(keywordDao.getAllKeywords()).thenReturn(MutableStateFlow(listOf(keyword)))
+        whenever(keywordDao.getAllExpenseKeywordCrossRefs()).thenReturn(
+            MutableStateFlow(listOf(ExpenseKeywordCrossRef(expenseId = 1, keywordId = 1)))
+        )
+
+        viewModel = ExpenseViewModel(
+            application,
+            expenseRepository,
+            accountRepository,
+            categoryRepository,
+            currencyRepository,
+            transferHistoryRepository,
+            ledgerRepository,
+            filterPreferences,
+            userPreferences,
+            exchangeRateRepository,
+            backupRepository,
+            keywordDao,
+            debtRepository
+        )
+        advanceUntilIdle()
+
+        val expenses = listOf(
+            Expense(id = 1, account = "Bank", amount = BigDecimal("10.00"), currency = "USD", category = "Food", type = "Expense"),
+            Expense(id = 2, account = "Bank", amount = BigDecimal("20.00"), currency = "USD", category = "Food", type = "Expense")
+        )
+        val keywordEntry = KeywordBreakdownEntry(
+            keywordName = "gRoCeRiEs",
+            amountInDefault = BigDecimal("10.00"),
+            percentageOfCategoryTotal = 50.0
+        )
+
+        val result = viewModel.applyKeywordDrillDown(expenses, keywordEntry)
+
+        assertEquals(listOf(1), result.map { it.id })
+    }
 }
