@@ -248,12 +248,26 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
         }
     }
 
-    // Clear temporary drill-down whenever persistent filters change.
-    LaunchedEffect(filterState) {
-        expensesSelectedKeywordLabel = null
-        expensesSelectedKeywordIsNoKeyword = false
-        incomesSelectedKeywordLabel = null
-        incomesSelectedKeywordIsNoKeyword = false
+    // Clear temporary drill-down only when persistent filter values actually change.
+    val currentFilterSignature = remember(filterState) {
+        listOf(
+            filterState.timeFilter.toString(),
+            filterState.expenseIncomeAccount ?: "",
+            filterState.category ?: "",
+            filterState.transferSourceAccount ?: "",
+            filterState.transferDestAccount ?: "",
+            filterState.textQuery ?: ""
+        ).joinToString("|")
+    }
+    var lastFilterSignature by rememberSaveable { mutableStateOf(currentFilterSignature) }
+    LaunchedEffect(currentFilterSignature) {
+        if (lastFilterSignature != currentFilterSignature) {
+            expensesSelectedKeywordLabel = null
+            expensesSelectedKeywordIsNoKeyword = false
+            incomesSelectedKeywordLabel = null
+            incomesSelectedKeywordIsNoKeyword = false
+            lastFilterSignature = currentFilterSignature
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
