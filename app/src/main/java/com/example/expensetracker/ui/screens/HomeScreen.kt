@@ -40,6 +40,10 @@ import com.example.expensetracker.data.Expense
 import com.example.expensetracker.data.TimeFilter
 import com.example.expensetracker.data.TransferHistory
 import com.example.expensetracker.data.getWeekStartMillis
+import com.example.expensetracker.data.toChartGrain
+import com.example.expensetracker.data.generate5PeriodWindow
+import com.example.expensetracker.data.stepBy
+import com.example.expensetracker.data.isAfterCurrentPeriod
 import com.example.expensetracker.ui.components.*
 import com.example.expensetracker.ui.TestTags
 import com.example.expensetracker.viewmodel.CategoryBreakdown
@@ -97,7 +101,55 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
     
     // Default currency for totals
     val defaultCurrency by viewModel.defaultCurrencyCode.collectAsState()
-    
+
+    // Home bar-chart state (session-scoped)
+    val homeChartMode by viewModel.homeChartMode.collectAsState()
+    var chartGrain by rememberSaveable { mutableStateOf(com.example.expensetracker.data.ChartGrain.Month.name) }
+    val currentGrain = com.example.expensetracker.data.ChartGrain.valueOf(chartGrain)
+    var chartPeriodBars by remember { mutableStateOf<List<com.example.expensetracker.viewmodel.PeriodBarData>>(emptyList()) }
+    var chartSelectedBarKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var chartSelectedBarValue by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Auto-set current month when chart activates with None/AllTime
+    LaunchedEffect(homeChartMode) {
+        if (homeChartMode) {
+            val tf = filterState.timeFilter
+            if (tf is com.example.expensetracker.data.TimeFilter.None || tf is com.example.expensetracker.data.TimeFilter.AllTime) {
+                val now = Calendar.getInstance()
+                viewModel.setTimeFilter(com.example.expensetracker.data.TimeFilter.Month(now.get(Calendar.YEAR), now.get(Calendar.MONTH)))
+                chartGrain = com.example.expensetracker.data.ChartGrain.Month.name
+            } else if (tf is com.example.expensetracker.data.TimeFilter.Period) {
+                // Map Period to Month anchored by period start
+                val cal = Calendar.getInstance().apply { timeInMillis = tf.startMillis }
+                viewModel.setTimeFilter(com.example.expensetracker.data.TimeFilter.Month(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH)))
+                chartGrain = com.example.expensetracker.data.ChartGrain.Month.name
+            } else {
+                // Sync grain from existing time filter
+                val grain = tf.toChartGrain()
+                if (grain != null) chartGrain = grain.name
+            }
+        } else {
+            // Clear transient chart selection when deactivated
+            chartSelectedBarKey = null
+            chartSelectedBarValue = null
+        }
+    }
+
+    // Compute period bars when chart mode is active
+    LaunchedEffect(homeChartMode, filterState.timeFilter, defaultCurrency, chartGrain,
+        filteredExpenses, filteredIncomes) {
+        if (homeChartMode) {
+            val tf = filterState.timeFilter
+            val grain = tf.toChartGrain()
+            if (grain != null) {
+                val window = tf.generate5PeriodWindow()
+                chartPeriodBars = viewModel.calculatePeriodBars(window, defaultCurrency)
+            } else {
+                chartPeriodBars = emptyList()
+            }
+        }
+    }
+
     // Totals state
     var expensesTotal by remember { mutableStateOf<TotalState>(TotalState.Loading) }
     var incomesTotal by remember { mutableStateOf<TotalState>(TotalState.Loading) }
@@ -298,6 +350,63 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                 onClearTransferFilter = { viewModel.resetTransferFilters() },
                 onClearTextQueryFilter = { viewModel.resetTextQueryFilter() }
             )
+
+            // Home bar chart (above tabs, below filter chips)
+            if (homeChartMode) {
+                Spacer(modifier = Modifier.height(8.dp))
+                TimeAxisComparisonBars(
+                    periodBars = chartPeriodBars,
+                    selectedGrain = currentGrain,
+                    onGrainSelected = { grain ->
+                        chartGrain = grain.name
+                        val newTf = com.example.expensetracker.data.chartGrainToCurrentTimeFilter(grain)
+                        viewModel.setTimeFilter(newTf)
+                        chartSelectedBarKey = null
+                        chartSelectedBarValue = null
+                    },
+                    onPeriodTapped = { tappedFilter, barType ->
+                        viewModel.setTimeFilter(tappedFilter)
+                        val bar = chartPeriodBars.find { it.timeFilter == tappedFilter }
+                        if (bar != null) {
+                            val value = when (barType) {
+                                "income" -> formatMoney(bar.incomeTotal) + " " + defaultCurrency
+                                "expense" -> formatMoney(bar.expenseTotal) + " " + defaultCurrency
+                                else -> {
+                                    val prefix = if (bar.delta < BigDecimal.ZERO) "-" else ""
+                                    prefix + formatMoney(bar.delta.abs()) + " " + defaultCurrency
+                                }
+                            }
+                            chartSelectedBarKey = "${bar.label}_$barType"
+                            chartSelectedBarValue = value
+                        }
+                        // Tab switch for income/expense bars
+                        when (barType) {
+                            "income" -> viewModel.onTabSelected(1)
+                            "expense" -> viewModel.onTabSelected(0)
+                            // "delta" -> no tab switch
+                        }
+                    },
+                    onSlideLeft = {
+                        val prev = filterState.timeFilter.stepBy(-1)
+                        viewModel.setTimeFilter(prev)
+                        chartSelectedBarKey = null
+                        chartSelectedBarValue = null
+                    },
+                    onSlideRight = {
+                        val next = filterState.timeFilter.stepBy(1)
+                        if (!next.isAfterCurrentPeriod()) {
+                            viewModel.setTimeFilter(next)
+                            chartSelectedBarKey = null
+                            chartSelectedBarValue = null
+                        }
+                    },
+                    canSlideRight = !filterState.timeFilter.stepBy(1).isAfterCurrentPeriod(),
+                    selectedBarKey = chartSelectedBarKey,
+                    selectedBarValue = chartSelectedBarValue,
+                    currencyCode = defaultCurrency
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             
             TabRow(selectedTabIndex = selectedTabIndex) {
                 tabs.forEachIndexed { index, title ->

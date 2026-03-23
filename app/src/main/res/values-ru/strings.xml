@@ -309,4 +309,18 @@
     <string name="msg_delete_photo_confirm">Вы уверены, что хотите удалить это фото?</string>
     <string name="btn_take_photo">Сделать снимок</string>
     <string name="btn_choose_gallery">Выбрать из галереи</string>
+
+    <!-- Home Bar Chart -->
+    <string name="desc_home_chart_toggle">Показать сравнительную диаграмму</string>
+    <string name="lbl_chart_grain_selector">Диапазон</string>
+    <string name="opt_grain_day">День</string>
+    <string name="opt_grain_week">Неделя</string>
+    <string name="opt_grain_month">Месяц</string>
+    <string name="opt_grain_year">Год</string>
+    <string name="lbl_chart_income">Доход</string>
+    <string name="lbl_chart_expense">Расход</string>
+    <string name="lbl_chart_profit_loss">Прибыль/Убыток</string>
+    <string name="lbl_chart_selected_value">%1$s %2$s</string>
+    <string name="msg_chart_no_data">Нет данных</string>
+    <string name="msg_chart_missing_rates">Некоторые курсы отсутствуют</string>
 </resources>

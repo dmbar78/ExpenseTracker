@@ -105,7 +105,11 @@ class ExpenseViewModel @Inject constructor(
     val allTransfers: StateFlow<List<TransferHistory>>
     val allKeywords: StateFlow<List<Keyword>>
     val allDebts: StateFlow<List<Debt>>
-    
+
+    // Home bar-chart mode (session-only, not persisted)
+    private val _homeChartMode = MutableStateFlow(false)
+    val homeChartMode: StateFlow<Boolean> = _homeChartMode.asStateFlow()
+
     // Default currency
     private val _defaultCurrencyCode = MutableStateFlow(UserPreferences.INITIAL_DEFAULT_CURRENCY)
     val defaultCurrencyCode: StateFlow<String> = _defaultCurrencyCode.asStateFlow()
@@ -368,6 +372,14 @@ class ExpenseViewModel @Inject constructor(
 
     fun onTabSelected(tabIndex: Int) {
         _selectedTab.value = tabIndex
+    }
+
+    fun toggleHomeChartMode() {
+        _homeChartMode.value = !_homeChartMode.value
+    }
+
+    fun setHomeChartMode(enabled: Boolean) {
+        _homeChartMode.value = enabled
     }
 
     fun loadAccount(accountId: Int) { _selectedAccountId.value = accountId }
@@ -1077,6 +1089,55 @@ class ExpenseViewModel @Inject constructor(
             }
         
         return KeywordBreakdown(categoryName, entries, categoryTotal, currentDefault, hasMissingRates)
+    }
+
+    /**
+     * Compute aggregated bar-chart data for a list of period windows.
+     * Each period is evaluated independently using the non-time filters from [filterState]
+     * applied to the full expense/income sets.
+     */
+    suspend fun calculatePeriodBars(
+        periodFilters: List<TimeFilter>,
+        currentDefault: String
+    ): List<PeriodBarData> {
+        val filter = _filterState.value
+        val allExp = allExpenses.value
+        val allInc = allIncomes.value
+        val kwMap = expenseKeywordNamesMap.value
+
+        return periodFilters.map { periodTf ->
+            val periodFilter = filter.copy(timeFilter = periodTf)
+            val periodExpenses = applyExpenseFilters(allExp, periodFilter, kwMap)
+            val periodIncomes = applyExpenseFilters(allInc, periodFilter, kwMap)
+
+            var expTotal = java.math.BigDecimal.ZERO
+            var incTotal = java.math.BigDecimal.ZERO
+            var missing = false
+
+            for (e in periodExpenses) {
+                val amt = getAmountInCurrentDefault(
+                    e.amount, e.currency, e.expenseDate,
+                    e.originalDefaultCurrencyCode, e.amountInOriginalDefault, currentDefault
+                )
+                if (amt != null) expTotal = expTotal.add(amt) else missing = true
+            }
+            for (i in periodIncomes) {
+                val amt = getAmountInCurrentDefault(
+                    i.amount, i.currency, i.expenseDate,
+                    i.originalDefaultCurrencyCode, i.amountInOriginalDefault, currentDefault
+                )
+                if (amt != null) incTotal = incTotal.add(amt) else missing = true
+            }
+
+            PeriodBarData(
+                timeFilter = periodTf,
+                label = periodTf.toChartLabel(),
+                expenseTotal = expTotal,
+                incomeTotal = incTotal,
+                delta = incTotal.subtract(expTotal),
+                hasMissingRates = missing
+            )
+        }
     }
 
     /**

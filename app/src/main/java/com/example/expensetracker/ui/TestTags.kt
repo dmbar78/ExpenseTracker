@@ -129,4 +129,14 @@ object TestTags {
     const val HOME_DIAGRAM_CONTAINER_EXPENSES = "home_diagram_container_expenses"
     const val HOME_DIAGRAM_CONTAINER_INCOMES = "home_diagram_container_incomes"
     const val HOME_DIAGRAM_SECTOR_PREFIX = "home_diagramSector_"
+
+    // Home Bar Chart
+    const val HOME_CHART_MODE_ICON = "home_chartMode_icon"
+    const val HOME_CHART_CONTAINER = "home_chart_container"
+    const val HOME_CHART_BAR_PREFIX = "home_chart_bar_"
+    const val HOME_CHART_GRAIN_DROPDOWN = "home_chart_grain_dropdown"
+    const val HOME_CHART_SELECTED_VALUE = "home_chart_selected_value"
+    const val HOME_CHART_SLIDE_LEFT = "home_chart_slide_left"
+    const val HOME_CHART_SLIDE_RIGHT = "home_chart_slide_right"
+    const val HOME_CHART_PERIOD_LABEL_PREFIX = "home_chart_period_label_"
 }

@@ -192,4 +192,87 @@ class HomeDiagramUiTest {
         nodeWithTag(TestTags.HOME_DIAGRAM_CONTAINER_EXPENSES)
             .assertExists()
     }
+
+    // ==================== Home Bar Chart Tests ====================
+
+    @Test
+    fun testChartIcon_visibleOnHomeOnly() {
+        // Chart icon should exist on Home
+        nodeWithTag(TestTags.HOME_CHART_MODE_ICON)
+            .assertExists()
+    }
+
+    @Test
+    fun testChartToggle_showsContainer() {
+        // Initially chart container should not exist
+        nodeWithTag(TestTags.HOME_CHART_CONTAINER)
+            .assertDoesNotExist()
+
+        // Toggle chart on
+        nodeWithTag(TestTags.HOME_CHART_MODE_ICON)
+            .performClick()
+        composeTestRule.waitForIdle()
+
+        nodeWithTag(TestTags.HOME_CHART_CONTAINER)
+            .assertExists()
+    }
+
+    @Test
+    fun testChartToggle_offHidesContainer() {
+        nodeWithTag(TestTags.HOME_CHART_MODE_ICON)
+            .performClick()
+        composeTestRule.waitForIdle()
+
+        nodeWithTag(TestTags.HOME_CHART_CONTAINER)
+            .assertExists()
+
+        // Toggle off
+        nodeWithTag(TestTags.HOME_CHART_MODE_ICON)
+            .performClick()
+        composeTestRule.waitForIdle()
+
+        nodeWithTag(TestTags.HOME_CHART_CONTAINER)
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun testChartToggle_persistsAcrossTabSwitch() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        nodeWithTag(TestTags.HOME_CHART_MODE_ICON)
+            .performClick()
+        composeTestRule.waitForIdle()
+
+        nodeWithTag(TestTags.HOME_CHART_CONTAINER)
+            .assertExists()
+
+        // Switch tabs and back
+        selectTab(context.getString(R.string.tab_income))
+        selectTab(context.getString(R.string.tab_expense))
+
+        nodeWithTag(TestTags.HOME_CHART_CONTAINER)
+            .assertExists()
+    }
+
+    @Test
+    fun testChartActivation_showsGrainDropdown() {
+        nodeWithTag(TestTags.HOME_CHART_MODE_ICON)
+            .performClick()
+        composeTestRule.waitForIdle()
+
+        nodeWithTag(TestTags.HOME_CHART_GRAIN_DROPDOWN)
+            .assertExists()
+    }
+
+    @Test
+    fun testChartActivation_showsSlideControls() {
+        nodeWithTag(TestTags.HOME_CHART_MODE_ICON)
+            .performClick()
+        composeTestRule.waitForIdle()
+
+        nodeWithTag(TestTags.HOME_CHART_SLIDE_LEFT)
+            .assertExists()
+        nodeWithTag(TestTags.HOME_CHART_SLIDE_RIGHT)
+            .assertExists()
+    }
 }

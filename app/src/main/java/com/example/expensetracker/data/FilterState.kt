@@ -1,6 +1,8 @@
 package com.example.expensetracker.data
 
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Locale
 
 /**
  * Represents different time filter modes for filtering transactions.
@@ -222,4 +224,150 @@ fun getDayEndMillis(dateMillis: Long): Long {
         set(Calendar.MILLISECOND, 999)
     }
     return cal.timeInMillis
+}
+
+// ==================== Chart Grain & Period Helpers ====================
+
+/**
+ * Supported grain types for the Home bar-chart.
+ */
+enum class ChartGrain { Day, Week, Month, Year }
+
+/**
+ * Normalize a TimeFilter to its period start for chart alignment.
+ */
+fun TimeFilter.normalizeToPeriodStart(): TimeFilter {
+    return when (this) {
+        is TimeFilter.Day -> {
+            TimeFilter.Day(getDayStartMillis(dateMillis))
+        }
+        is TimeFilter.Week -> {
+            TimeFilter.Week(getWeekStartMillis(weekStartMillis))
+        }
+        is TimeFilter.Month -> this // already normalized
+        is TimeFilter.Year -> this  // already normalized
+        else -> this
+    }
+}
+
+/**
+ * Determine the ChartGrain for a given TimeFilter.
+ */
+fun TimeFilter.toChartGrain(): ChartGrain? {
+    return when (this) {
+        is TimeFilter.Day -> ChartGrain.Day
+        is TimeFilter.Week -> ChartGrain.Week
+        is TimeFilter.Month -> ChartGrain.Month
+        is TimeFilter.Year -> ChartGrain.Year
+        else -> null
+    }
+}
+
+/**
+ * Create a TimeFilter from a ChartGrain using the current date as anchor.
+ */
+fun chartGrainToCurrentTimeFilter(grain: ChartGrain): TimeFilter {
+    val now = Calendar.getInstance()
+    return when (grain) {
+        ChartGrain.Day -> TimeFilter.Day(getDayStartMillis(now.timeInMillis))
+        ChartGrain.Week -> TimeFilter.Week(getWeekStartMillis(now.timeInMillis))
+        ChartGrain.Month -> TimeFilter.Month(now.get(Calendar.YEAR), now.get(Calendar.MONTH))
+        ChartGrain.Year -> TimeFilter.Year(now.get(Calendar.YEAR))
+    }
+}
+
+/**
+ * Step a TimeFilter by [delta] periods (negative = previous, positive = next).
+ */
+fun TimeFilter.stepBy(delta: Int): TimeFilter {
+    return when (this) {
+        is TimeFilter.Day -> {
+            val cal = Calendar.getInstance().apply { timeInMillis = dateMillis }
+            cal.add(Calendar.DAY_OF_MONTH, delta)
+            TimeFilter.Day(getDayStartMillis(cal.timeInMillis))
+        }
+        is TimeFilter.Week -> {
+            val cal = Calendar.getInstance().apply { timeInMillis = weekStartMillis }
+            cal.add(Calendar.WEEK_OF_YEAR, delta)
+            TimeFilter.Week(getWeekStartMillis(cal.timeInMillis))
+        }
+        is TimeFilter.Month -> {
+            val cal = Calendar.getInstance().apply {
+                set(Calendar.YEAR, year)
+                set(Calendar.MONTH, month)
+                set(Calendar.DAY_OF_MONTH, 1)
+            }
+            cal.add(Calendar.MONTH, delta)
+            TimeFilter.Month(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH))
+        }
+        is TimeFilter.Year -> TimeFilter.Year(year + delta)
+        else -> this
+    }
+}
+
+/**
+ * Check if this TimeFilter's period start is after the current system period.
+ */
+fun TimeFilter.isAfterCurrentPeriod(): Boolean {
+    val now = Calendar.getInstance()
+    return when (this) {
+        is TimeFilter.Day -> dateMillis > getDayStartMillis(now.timeInMillis)
+        is TimeFilter.Week -> weekStartMillis > getWeekStartMillis(now.timeInMillis)
+        is TimeFilter.Month -> {
+            val currentYear = now.get(Calendar.YEAR)
+            val currentMonth = now.get(Calendar.MONTH)
+            year > currentYear || (year == currentYear && month > currentMonth)
+        }
+        is TimeFilter.Year -> year > now.get(Calendar.YEAR)
+        else -> false
+    }
+}
+
+/**
+ * Produce a 5-period window: the selected period in the middle (index 2) when possible,
+ * with 4 neighbors. Caps right side so no period starts after current system period.
+ * Returns a list of up to 5 TimeFilters ordered chronologically.
+ */
+fun TimeFilter.generate5PeriodWindow(): List<TimeFilter> {
+    // Start with selected at center (index 2): offsets -4..-0..+0..+0
+    // We want: [selected-4, selected-3, selected-2, selected-1, selected]
+    // But try centered first, then shift left if right side exceeds current period.
+    val raw = (-2..2).map { this.stepBy(it) }
+
+    // Cap right side: find first index that exceeds current period
+    val firstExceedIndex = raw.indexOfFirst { it.isAfterCurrentPeriod() }
+    if (firstExceedIndex == -1) return raw // all within bounds
+
+    // Shift window left
+    val shift = raw.size - firstExceedIndex
+    val shifted = ((-2 - shift)..(2 - shift)).map { this.stepBy(it) }
+    return shifted.filterNot { it.isAfterCurrentPeriod() }.takeLast(5)
+}
+
+/**
+ * Format a TimeFilter as a short label for chart axis display.
+ */
+fun TimeFilter.toChartLabel(): String {
+    return when (this) {
+        is TimeFilter.Day -> {
+            val cal = Calendar.getInstance().apply { timeInMillis = dateMillis }
+            SimpleDateFormat("dd MMM", Locale.getDefault()).format(cal.time)
+        }
+        is TimeFilter.Week -> {
+            val cal = Calendar.getInstance().apply { timeInMillis = weekStartMillis }
+            val start = SimpleDateFormat("dd MMM", Locale.getDefault()).format(cal.time)
+            cal.add(Calendar.DAY_OF_MONTH, 6)
+            val end = SimpleDateFormat("dd MMM", Locale.getDefault()).format(cal.time)
+            "$start-$end"
+        }
+        is TimeFilter.Month -> {
+            val cal = Calendar.getInstance().apply {
+                set(Calendar.YEAR, year)
+                set(Calendar.MONTH, month)
+            }
+            SimpleDateFormat("MMM yy", Locale.getDefault()).format(cal.time)
+        }
+        is TimeFilter.Year -> year.toString()
+        else -> ""
+    }
 }

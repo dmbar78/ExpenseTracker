@@ -1540,6 +1540,246 @@ fun CategoryPieChart(
     }
 }
 
+// ==================== Time-Axis Comparison Bars ====================
+
+/**
+ * Vertical bar chart showing Income / Expense / Profit-Loss across up to 5 periods.
+ */
+@Composable
+fun TimeAxisComparisonBars(
+    periodBars: List<com.example.expensetracker.viewmodel.PeriodBarData>,
+    selectedGrain: com.example.expensetracker.data.ChartGrain,
+    onGrainSelected: (com.example.expensetracker.data.ChartGrain) -> Unit,
+    onPeriodTapped: (com.example.expensetracker.data.TimeFilter, String) -> Unit,
+    onSlideLeft: () -> Unit,
+    onSlideRight: () -> Unit,
+    canSlideRight: Boolean,
+    selectedBarKey: String?,
+    selectedBarValue: String?,
+    currencyCode: String,
+    modifier: Modifier = Modifier
+) {
+    val incomeColor = Color(0xFF4CAF50)
+    val expenseColor = Color(0xFFF44336)
+    val profitColor = Color(0xFF2196F3)
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(TestTags.HOME_CHART_CONTAINER)
+    ) {
+        // Grain dropdown + slide controls
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Grain dropdown
+            var grainExpanded by remember { mutableStateOf(false) }
+            Box {
+                OutlinedButton(
+                    onClick = { grainExpanded = true },
+                    modifier = Modifier.testTag(TestTags.HOME_CHART_GRAIN_DROPDOWN)
+                ) {
+                    Text(
+                        text = when (selectedGrain) {
+                            com.example.expensetracker.data.ChartGrain.Day -> stringResource(R.string.opt_grain_day)
+                            com.example.expensetracker.data.ChartGrain.Week -> stringResource(R.string.opt_grain_week)
+                            com.example.expensetracker.data.ChartGrain.Month -> stringResource(R.string.opt_grain_month)
+                            com.example.expensetracker.data.ChartGrain.Year -> stringResource(R.string.opt_grain_year)
+                        },
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+                DropdownMenu(expanded = grainExpanded, onDismissRequest = { grainExpanded = false }) {
+                    com.example.expensetracker.data.ChartGrain.entries.forEach { grain ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    when (grain) {
+                                        com.example.expensetracker.data.ChartGrain.Day -> stringResource(R.string.opt_grain_day)
+                                        com.example.expensetracker.data.ChartGrain.Week -> stringResource(R.string.opt_grain_week)
+                                        com.example.expensetracker.data.ChartGrain.Month -> stringResource(R.string.opt_grain_month)
+                                        com.example.expensetracker.data.ChartGrain.Year -> stringResource(R.string.opt_grain_year)
+                                    }
+                                )
+                            },
+                            onClick = {
+                                grainExpanded = false
+                                onGrainSelected(grain)
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Slide controls
+            Row {
+                IconButton(
+                    onClick = onSlideLeft,
+                    modifier = Modifier.testTag(TestTags.HOME_CHART_SLIDE_LEFT)
+                ) {
+                    Text("◀", style = MaterialTheme.typography.titleMedium)
+                }
+                IconButton(
+                    onClick = onSlideRight,
+                    enabled = canSlideRight,
+                    modifier = Modifier.testTag(TestTags.HOME_CHART_SLIDE_RIGHT)
+                ) {
+                    Text(
+                        "▶",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (canSlideRight)
+                            MaterialTheme.colorScheme.onSurface
+                        else
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                    )
+                }
+            }
+        }
+
+        // Selected value annotation
+        if (selectedBarValue != null) {
+            Text(
+                text = selectedBarValue,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .testTag(TestTags.HOME_CHART_SELECTED_VALUE),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        if (periodBars.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.msg_chart_no_data),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        } else {
+            // Compute max value for proportional scaling
+            val maxVal = periodBars.maxOf {
+                maxOf(it.incomeTotal, it.expenseTotal, it.delta.abs())
+            }.coerceAtLeast(java.math.BigDecimal.ONE)
+
+            val barMaxHeight = 100.dp
+
+            // Legend row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                LegendDot(color = incomeColor, label = stringResource(R.string.lbl_chart_income))
+                Spacer(modifier = Modifier.width(12.dp))
+                LegendDot(color = expenseColor, label = stringResource(R.string.lbl_chart_expense))
+                Spacer(modifier = Modifier.width(12.dp))
+                LegendDot(color = profitColor, label = stringResource(R.string.lbl_chart_profit_loss))
+            }
+
+            // Bars
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                periodBars.forEach { bar ->
+                    val incomeFraction = bar.incomeTotal.toFloat() / maxVal.toFloat()
+                    val expenseFraction = bar.expenseTotal.toFloat() / maxVal.toFloat()
+                    val deltaFraction = bar.delta.abs().toFloat() / maxVal.toFloat()
+                    val periodKey = bar.label
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Bar group
+                        Row(
+                            modifier = Modifier.height(barMaxHeight),
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            // Income bar
+                            Box(
+                                modifier = Modifier
+                                    .width(12.dp)
+                                    .fillMaxHeight(incomeFraction.coerceIn(0f, 1f).coerceAtLeast(if (bar.incomeTotal > java.math.BigDecimal.ZERO) 0.02f else 0f))
+                                    .background(incomeColor, RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                                    .clickable {
+                                        onPeriodTapped(bar.timeFilter, "income")
+                                    }
+                                    .testTag("${TestTags.HOME_CHART_BAR_PREFIX}${periodKey}_income")
+                            )
+                            // Expense bar
+                            Box(
+                                modifier = Modifier
+                                    .width(12.dp)
+                                    .fillMaxHeight(expenseFraction.coerceIn(0f, 1f).coerceAtLeast(if (bar.expenseTotal > java.math.BigDecimal.ZERO) 0.02f else 0f))
+                                    .background(expenseColor, RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                                    .clickable {
+                                        onPeriodTapped(bar.timeFilter, "expense")
+                                    }
+                                    .testTag("${TestTags.HOME_CHART_BAR_PREFIX}${periodKey}_expense")
+                            )
+                            // Profit/Loss bar
+                            Box(
+                                modifier = Modifier
+                                    .width(12.dp)
+                                    .fillMaxHeight(deltaFraction.coerceIn(0f, 1f).coerceAtLeast(if (bar.delta != java.math.BigDecimal.ZERO) 0.02f else 0f))
+                                    .background(profitColor, RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                                    .clickable {
+                                        onPeriodTapped(bar.timeFilter, "delta")
+                                    }
+                                    .testTag("${TestTags.HOME_CHART_BAR_PREFIX}${periodKey}_delta")
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Period label
+                        Text(
+                            text = bar.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.testTag("${TestTags.HOME_CHART_PERIOD_LABEL_PREFIX}${periodKey}")
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegendDot(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(color, RoundedCornerShape(50))
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(text = label, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
 @Composable
 fun KeywordBreakdownHeader(
     selectedKeywordLabel: String?,

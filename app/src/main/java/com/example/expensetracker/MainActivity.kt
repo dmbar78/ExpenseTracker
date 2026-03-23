@@ -20,8 +20,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -124,6 +126,8 @@ class MainActivity : FragmentActivity() {
         // Show FABs only on Home screen
         val showFabs = currentRoute == "home"
 
+        val homeChartMode by viewModel.homeChartMode.collectAsState()
+
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
 
@@ -149,6 +153,23 @@ class MainActivity : FragmentActivity() {
                         navigationIcon = {
                             IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                 Icon(Icons.Default.Menu, contentDescription = androidx.compose.ui.res.stringResource(R.string.menu_desc))
+                            }
+                        },
+                        actions = {
+                            if (showFabs) {
+                                IconButton(
+                                    onClick = { viewModel.toggleHomeChartMode() },
+                                    modifier = Modifier.testTag(TestTags.HOME_CHART_MODE_ICON)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.BarChart,
+                                        contentDescription = androidx.compose.ui.res.stringResource(R.string.desc_home_chart_toggle),
+                                        tint = if (homeChartMode)
+                                            MaterialTheme.colorScheme.tertiary
+                                        else
+                                            MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                             }
                         }
                     )

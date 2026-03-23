@@ -309,4 +309,18 @@
     <string name="msg_delete_photo_confirm">Are you sure you want to delete this photo?</string>
     <string name="btn_take_photo">Take Photo</string>
     <string name="btn_choose_gallery">Choose from Gallery</string>
+
+    <!-- Home Bar Chart -->
+    <string name="desc_home_chart_toggle">Toggle comparison chart</string>
+    <string name="lbl_chart_grain_selector">Period type</string>
+    <string name="opt_grain_day">Day</string>
+    <string name="opt_grain_week">Week</string>
+    <string name="opt_grain_month">Month</string>
+    <string name="opt_grain_year">Year</string>
+    <string name="lbl_chart_income">Income</string>
+    <string name="lbl_chart_expense">Expense</string>
+    <string name="lbl_chart_profit_loss">Profit/Loss</string>
+    <string name="lbl_chart_selected_value">%1$s %2$s</string>
+    <string name="msg_chart_no_data">No data</string>
+    <string name="msg_chart_missing_rates">Some rates missing</string>
 </resources>
