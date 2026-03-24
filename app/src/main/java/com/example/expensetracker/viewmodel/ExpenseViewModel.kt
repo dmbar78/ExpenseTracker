@@ -2352,7 +2352,7 @@ class ExpenseViewModel @Inject constructor(
         _backupState.value = BackupOperationState.Idle
     }
 
-    private var pendingImportJson: String? = null
+    private var pendingImportUri: Uri? = null
 
     private val _csvExportState = MutableStateFlow<CsvExportState>(CsvExportState.Idle)
     val csvExportState: StateFlow<CsvExportState> = _csvExportState.asStateFlow()
@@ -2480,30 +2480,38 @@ class ExpenseViewModel @Inject constructor(
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             _backupState.value = BackupOperationState.Loading
             try {
-                val json = getApplication<Application>().contentResolver.openInputStream(uri)?.use { inputStream ->
+                val format = getApplication<Application>().contentResolver.openInputStream(uri)?.use { inputStream ->
                     inputStream.reader().use { reader ->
-                        reader.readText()
+                        backupRepository.detectBackupFormat(reader)
                     }
-                }
-
-                if (json == null) {
+                } ?: run {
                     _backupState.value = BackupOperationState.Error("Failed to read backup file")
                     return@launch
                 }
 
-                if (backupRepository.isBackupEncrypted(json)) {
-                    pendingImportJson = json
-                    _backupState.value = BackupOperationState.RequestPassword
-                    return@launch
-                }
+                when (format) {
+                    BackupRepository.BackupFormat.ENCRYPTED -> {
+                        pendingImportUri = uri
+                        _backupState.value = BackupOperationState.RequestPassword
+                        return@launch
+                    }
 
-                val backupData = backupRepository.deserializeFromJson(json)
-                if (backupData == null) {
-                    _backupState.value = BackupOperationState.Error("Invalid backup file format")
-                    return@launch
-                }
+                    BackupRepository.BackupFormat.PLAIN,
+                    BackupRepository.BackupFormat.UNKNOWN -> {
+                        val backupData = getApplication<Application>().contentResolver.openInputStream(uri)?.use { inputStream ->
+                            inputStream.reader().use { reader ->
+                                backupRepository.deserializeFromJson(reader)
+                            }
+                        }
 
-                performRestore(backupData)
+                        if (backupData == null) {
+                            _backupState.value = BackupOperationState.Error("Invalid backup file format")
+                            return@launch
+                        }
+
+                        performRestore(backupData)
+                    }
+                }
             } catch (e: Exception) {
                 _backupState.value = BackupOperationState.Error("Import failed: ${e.localizedMessage}")
             }
@@ -2511,8 +2519,8 @@ class ExpenseViewModel @Inject constructor(
     }
 
     fun provideRestorePassword(password: String) {
-        val json = pendingImportJson
-        if (json == null) {
+        val pendingUri = pendingImportUri
+        if (pendingUri == null) {
              _backupState.value = BackupOperationState.Error("No pending restore data")
              return
         }
@@ -2520,14 +2528,16 @@ class ExpenseViewModel @Inject constructor(
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             _backupState.value = BackupOperationState.Loading
             try {
-                val backupData = backupRepository.deserializeFromEncryptedJson(json, password)
+                val backupData = getApplication<Application>().contentResolver.openInputStream(pendingUri)?.use { inputStream ->
+                    inputStream.reader().use { reader ->
+                        backupRepository.deserializeFromEncryptedJson(reader, password)
+                    }
+                }
+
                 if (backupData != null) {
                     performRestore(backupData)
-                    pendingImportJson = null // Clear memory
+                    pendingImportUri = null
                 } else {
-                    // Stay in RequestPassword state or go to Error? 
-                    // Better to go to Error or back to RequestPassword?
-                    // Error message is better, user can retry.
                     _backupState.value = BackupOperationState.Error("Incorrect password or invalid data")
                 }
             } catch (e: Exception) {
@@ -2537,7 +2547,7 @@ class ExpenseViewModel @Inject constructor(
     }
     
     fun cancelRestore() {
-        pendingImportJson = null
+        pendingImportUri = null
         resetBackupState()
     }
 

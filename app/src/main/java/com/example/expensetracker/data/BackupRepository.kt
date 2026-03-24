@@ -3,6 +3,7 @@ package com.example.expensetracker.data
 import androidx.room.withTransaction
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.stream.JsonReader
 import com.google.gson.JsonSyntaxException
 import kotlinx.coroutines.flow.first
 
@@ -19,6 +20,7 @@ import android.util.Base64
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.Reader
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,6 +30,12 @@ class BackupRepository(
     private val userPreferences: UserPreferences,
     private val filesDir: File // Inject filesDir to access internal storage
 ) {
+    enum class BackupFormat {
+        PLAIN,
+        ENCRYPTED,
+        UNKNOWN
+    }
+
     companion object {
         /** Current schema version for backups */
         const val CURRENT_SCHEMA_VERSION = 3
@@ -233,6 +241,17 @@ class BackupRepository(
     }
 
     /**
+     * Deserialize backup JSON from a reader to avoid loading full files into memory.
+     */
+    fun deserializeFromJson(reader: Reader): BackupData? {
+        return try {
+            gson.fromJson(reader, BackupData::class.java)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
      * Deserialize Encrypted JSON string to BackupData.
      *
      * @param json The encrypted JSON string
@@ -248,9 +267,62 @@ class BackupRepository(
             null
         }
     }
+
+    /**
+     * Deserialize encrypted backup JSON from a reader.
+     */
+    fun deserializeFromEncryptedJson(reader: Reader, password: String): BackupData? {
+        return try {
+            val payload = gson.fromJson(reader, SecurityManager.EncryptedBackupPayload::class.java)
+                ?: return null
+            val encryptedJson = Gson().toJson(payload)
+            val decryptedJson = SecurityManager.decryptData(encryptedJson, password)
+            gson.fromJson(decryptedJson, BackupData::class.java)
+        } catch (e: Exception) {
+            null
+        }
+    }
     
     fun isBackupEncrypted(json: String): Boolean {
         return SecurityManager.isEncrypted(json)
+    }
+
+    /**
+     * Read only top-level keys to detect backup format without loading full content.
+     */
+    fun detectBackupFormat(reader: Reader): BackupFormat {
+        return try {
+            JsonReader(reader).use { jsonReader ->
+                jsonReader.beginObject()
+                var sawSalt = false
+                var sawIv = false
+                var fieldsRead = 0
+
+                while (jsonReader.hasNext() && fieldsRead < 8) {
+                    val name = jsonReader.nextName()
+                    fieldsRead++
+                    when (name) {
+                        "metadata" -> return BackupFormat.PLAIN
+                        "salt" -> {
+                            sawSalt = true
+                            jsonReader.skipValue()
+                        }
+                        "iv" -> {
+                            sawIv = true
+                            jsonReader.skipValue()
+                        }
+                        else -> jsonReader.skipValue()
+                    }
+
+                    if (sawSalt && sawIv) {
+                        return BackupFormat.ENCRYPTED
+                    }
+                }
+            }
+            BackupFormat.UNKNOWN
+        } catch (e: Exception) {
+            BackupFormat.UNKNOWN
+        }
     }
 
     /**
