@@ -46,6 +46,8 @@ class ExpenseViewModel @Inject constructor(
     private val debtRepository: DebtRepository
 ) : AndroidViewModel(application) {
 
+    private val csvExportService = CsvExportService()
+
     companion object {
         private const val TAG = "VoiceDateParse"
         const val NO_KEYWORD_BUCKET_LABEL = "(No Keyword)"
@@ -2352,6 +2354,104 @@ class ExpenseViewModel @Inject constructor(
 
     private var pendingImportJson: String? = null
 
+    private val _csvExportState = MutableStateFlow<CsvExportState>(CsvExportState.Idle)
+    val csvExportState: StateFlow<CsvExportState> = _csvExportState.asStateFlow()
+
+    fun resetCsvExportState() {
+        _csvExportState.value = CsvExportState.Idle
+    }
+
+    fun exportReportingCsv(period: TimeFilter, uri: Uri) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _csvExportState.value = CsvExportState.Loading
+            try {
+                val expenses = expenseRepository.getExpensesByType("Expense").first()
+                val incomes = expenseRepository.getExpensesByType("Income").first()
+                val transfers = transferHistoryRepository.allTransfers.first()
+                val accounts = accountRepository.allAccounts.first()
+                val debts = debtRepository.getAllDebts().first()
+
+                val allKeywordsList = keywordDao.getAllKeywords().first()
+                val keywordIdToName = allKeywordsList.associate { it.id to it.name }
+                val keywordCrossRefs = keywordDao.getAllExpenseKeywordCrossRefs().first()
+                val keywordMap = keywordCrossRefs
+                    .groupBy { it.expenseId }
+                    .mapValues { (_, refs) ->
+                        refs.mapNotNull { keywordIdToName[it.keywordId] }
+                    }
+
+                val allExpensesForDebtPayments = expenses + incomes
+                val paymentsByDebtId = allExpensesForDebtPayments
+                    .filter { it.relatedDebtId != null }
+                    .groupBy { it.relatedDebtId!! }
+
+                val exportInput = CsvExportInput(
+                    expenses = expenses,
+                    incomes = incomes,
+                    transfers = transfers,
+                    accounts = accounts,
+                    debts = debts,
+                    expenseKeywords = keywordMap,
+                    paymentsByDebtId = paymentsByDebtId
+                )
+
+                val result = csvExportService.buildReportingZip(
+                    period = period,
+                    input = exportInput,
+                    defaultCurrencyAtExport = _defaultCurrencyCode.value,
+                    convertToDefaultAtExport = { amount, currency, date, originalDefaultCurrency, amountInOriginalDefault ->
+                        getAmountInCurrentDefault(
+                            amount = amount,
+                            currency = currency,
+                            date = date,
+                            originalDefaultCurrency = originalDefaultCurrency,
+                            amountInOriginalDefault = amountInOriginalDefault,
+                            currentDefault = _defaultCurrencyCode.value
+                        )
+                    },
+                    convertAmountToTargetCurrency = { amount, sourceCurrency, targetCurrency, date ->
+                        getAmountInTargetCurrency(
+                            amount = amount,
+                            sourceCurrency = sourceCurrency,
+                            targetCurrency = targetCurrency,
+                            date = date
+                        )
+                    }
+                )
+
+                val outputStream = getApplication<Application>().contentResolver.openOutputStream(uri)
+                if (outputStream == null) {
+                    _csvExportState.value = CsvExportState.Error(
+                        getApplication<Application>().getString(R.string.msg_csv_export_failed)
+                    )
+                    return@launch
+                }
+
+                outputStream.use { stream ->
+                    stream.write(result.zipBytes)
+                }
+
+                val successMessage = if (result.warningCount > 0) {
+                    getApplication<Application>().getString(
+                        R.string.msg_csv_export_success_with_warnings,
+                        result.warningCount
+                    )
+                } else {
+                    getApplication<Application>().getString(R.string.msg_csv_export_success)
+                }
+
+                _csvExportState.value = CsvExportState.Success(successMessage)
+            } catch (e: Exception) {
+                _csvExportState.value = CsvExportState.Error(
+                    getApplication<Application>().getString(
+                        R.string.msg_csv_export_failed_with_reason,
+                        e.localizedMessage ?: "Unknown error"
+                    )
+                )
+            }
+        }
+    }
+
     fun exportBackup(uri: Uri, password: String? = null) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             _backupState.value = BackupOperationState.Loading
@@ -2494,6 +2594,13 @@ sealed class BackupOperationState {
     data class Success(val message: String) : BackupOperationState()
     data class Error(val message: String) : BackupOperationState()
     object RequestPassword : BackupOperationState() // For encrypted backups
+}
+
+sealed class CsvExportState {
+    object Idle : CsvExportState()
+    object Loading : CsvExportState()
+    data class Success(val message: String) : CsvExportState()
+    data class Error(val message: String) : CsvExportState()
 }
 
 sealed class TestConnectionState {

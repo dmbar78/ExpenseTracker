@@ -22,8 +22,15 @@ import androidx.navigation.NavController
 import com.example.expensetracker.data.Account
 import com.example.expensetracker.data.Currency
 import com.example.expensetracker.data.SecurityManager
+import com.example.expensetracker.data.TimeFilter
 import com.example.expensetracker.ui.TestTags
+import com.example.expensetracker.ui.components.DayPickerDialog
+import com.example.expensetracker.ui.components.MonthPickerDialog
+import com.example.expensetracker.ui.components.PeriodPickerDialog
+import com.example.expensetracker.ui.components.WeekPickerDialog
+import com.example.expensetracker.ui.components.YearPickerDialog
 import com.example.expensetracker.viewmodel.BackupOperationState
+import com.example.expensetracker.viewmodel.CsvExportState
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -43,6 +50,8 @@ fun SettingsScreen(
     val defaultTransferAccountId by viewModel.defaultTransferAccountId.collectAsState()
     val allAccounts by viewModel.allAccounts.collectAsState()
     val backupState by viewModel.backupState.collectAsState()
+    val csvExportState by viewModel.csvExportState.collectAsState()
+    val filterState by viewModel.filterState.collectAsState()
     
     val isGeminiEnabled by viewModel.isGeminiEnabled.collectAsState()
     val geminiApiKey by viewModel.geminiApiKey.collectAsState()
@@ -76,6 +85,17 @@ fun SettingsScreen(
     // State for Import Password
     var restorePasswordInput by remember { mutableStateOf("") }
 
+    // State for CSV reporting export
+    var showCsvPeriodDialog by remember { mutableStateOf(false) }
+    var showCsvDayPicker by remember { mutableStateOf(false) }
+    var showCsvWeekPicker by remember { mutableStateOf(false) }
+    var showCsvMonthPicker by remember { mutableStateOf(false) }
+    var showCsvYearPicker by remember { mutableStateOf(false) }
+    var showCsvCustomPeriodPicker by remember { mutableStateOf(false) }
+    var selectedCsvPeriod by remember { mutableStateOf<TimeFilter?>(null) }
+    var csvPeriodValidationError by remember { mutableStateOf(false) }
+    var pendingCsvPeriod by remember { mutableStateOf<TimeFilter?>(null) }
+
     // Launchers for Backup/Restore
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -94,6 +114,16 @@ fun SettingsScreen(
         }
     }
 
+    val csvExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        val selectedPeriod = pendingCsvPeriod
+        if (uri != null && selectedPeriod != null) {
+            viewModel.exportReportingCsv(selectedPeriod, uri)
+        }
+        pendingCsvPeriod = null
+    }
+
     // Handle Backup State
     LaunchedEffect(backupState) {
         when (val state = backupState) {
@@ -109,7 +139,21 @@ fun SettingsScreen(
         }
     }
 
-    if (backupState is BackupOperationState.Loading) {
+    LaunchedEffect(csvExportState) {
+        when (val state = csvExportState) {
+            is CsvExportState.Success -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                viewModel.resetCsvExportState()
+            }
+            is CsvExportState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                viewModel.resetCsvExportState()
+            }
+            else -> {}
+        }
+    }
+
+    if (backupState is BackupOperationState.Loading || csvExportState is CsvExportState.Loading) {
         AlertDialog(
             onDismissRequest = {},
             title = { Text(stringResource(R.string.title_processing)) },
@@ -636,6 +680,19 @@ fun SettingsScreen(
                 importLauncher.launch(arrayOf("application/json"))
             }
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        SettingsItem(
+            title = stringResource(R.string.title_export_reporting_csv),
+            value = stringResource(R.string.val_csv_zip),
+            onClick = {
+                selectedCsvPeriod = prefillReportingPeriod(filterState.timeFilter)
+                csvPeriodValidationError = false
+                showCsvPeriodDialog = true
+            },
+            modifier = Modifier.testTag(TestTags.SETTINGS_EXPORT_REPORTING_CSV)
+        )
     }
     
     // Currency picker dialog
@@ -722,6 +779,226 @@ fun SettingsScreen(
             onDismiss = { showTransferAccountPicker = false }
         )
     }
+
+    if (showCsvPeriodDialog) {
+        ExportReportingPeriodDialog(
+            selectedPeriod = selectedCsvPeriod,
+            showValidationError = csvPeriodValidationError,
+            onSelectDay = { showCsvDayPicker = true },
+            onSelectWeek = { showCsvWeekPicker = true },
+            onSelectMonth = { showCsvMonthPicker = true },
+            onSelectYear = { showCsvYearPicker = true },
+            onSelectPeriod = { showCsvCustomPeriodPicker = true },
+            onConfirm = {
+                val resolvedPeriod = selectedCsvPeriod
+                if (resolvedPeriod == null) {
+                    csvPeriodValidationError = true
+                    return@ExportReportingPeriodDialog
+                }
+
+                pendingCsvPeriod = resolvedPeriod
+                showCsvPeriodDialog = false
+                csvPeriodValidationError = false
+                val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                csvExportLauncher.launch("expense-reporting-$timestamp.zip")
+            },
+            onCancel = {
+                showCsvPeriodDialog = false
+                csvPeriodValidationError = false
+                pendingCsvPeriod = null
+            }
+        )
+    }
+
+    if (showCsvDayPicker) {
+        val currentDay = (selectedCsvPeriod as? TimeFilter.Day)?.dateMillis
+        DayPickerDialog(
+            currentSelection = currentDay,
+            onConfirm = { millis ->
+                selectedCsvPeriod = TimeFilter.Day(millis)
+                showCsvDayPicker = false
+                csvPeriodValidationError = false
+            },
+            onReset = {
+                selectedCsvPeriod = null
+                showCsvDayPicker = false
+            },
+            onCancel = { showCsvDayPicker = false }
+        )
+    }
+
+    if (showCsvWeekPicker) {
+        val currentWeek = (selectedCsvPeriod as? TimeFilter.Week)?.weekStartMillis
+        WeekPickerDialog(
+            currentSelection = currentWeek,
+            onConfirm = { millis ->
+                selectedCsvPeriod = TimeFilter.Week(millis)
+                showCsvWeekPicker = false
+                csvPeriodValidationError = false
+            },
+            onReset = {
+                selectedCsvPeriod = null
+                showCsvWeekPicker = false
+            },
+            onCancel = { showCsvWeekPicker = false }
+        )
+    }
+
+    if (showCsvMonthPicker) {
+        val currentMonth = selectedCsvPeriod as? TimeFilter.Month
+        MonthPickerDialog(
+            currentYear = currentMonth?.year,
+            currentMonth = currentMonth?.month,
+            onConfirm = { year, month ->
+                selectedCsvPeriod = TimeFilter.Month(year, month)
+                showCsvMonthPicker = false
+                csvPeriodValidationError = false
+            },
+            onReset = {
+                selectedCsvPeriod = null
+                showCsvMonthPicker = false
+            },
+            onCancel = { showCsvMonthPicker = false }
+        )
+    }
+
+    if (showCsvYearPicker) {
+        val currentYear = (selectedCsvPeriod as? TimeFilter.Year)?.year
+        YearPickerDialog(
+            currentYear = currentYear,
+            onConfirm = { year ->
+                selectedCsvPeriod = TimeFilter.Year(year)
+                showCsvYearPicker = false
+                csvPeriodValidationError = false
+            },
+            onReset = {
+                selectedCsvPeriod = null
+                showCsvYearPicker = false
+            },
+            onCancel = { showCsvYearPicker = false }
+        )
+    }
+
+    if (showCsvCustomPeriodPicker) {
+        val currentPeriod = selectedCsvPeriod as? TimeFilter.Period
+        PeriodPickerDialog(
+            currentStartMillis = currentPeriod?.startMillis,
+            currentEndMillis = currentPeriod?.endMillis,
+            onConfirm = { start, end ->
+                selectedCsvPeriod = TimeFilter.Period(start, end)
+                showCsvCustomPeriodPicker = false
+                csvPeriodValidationError = false
+            },
+            onAllTime = {
+                selectedCsvPeriod = null
+                showCsvCustomPeriodPicker = false
+            },
+            onReset = {
+                selectedCsvPeriod = null
+                showCsvCustomPeriodPicker = false
+            },
+            onCancel = { showCsvCustomPeriodPicker = false }
+        )
+    }
+}
+
+private fun prefillReportingPeriod(timeFilter: TimeFilter): TimeFilter? {
+    return when (timeFilter) {
+        is TimeFilter.Day -> timeFilter
+        is TimeFilter.Week -> timeFilter
+        is TimeFilter.Month -> timeFilter
+        is TimeFilter.Year -> timeFilter
+        is TimeFilter.Period -> timeFilter
+        else -> null
+    }
+}
+
+@Composable
+private fun ExportReportingPeriodDialog(
+    selectedPeriod: TimeFilter?,
+    showValidationError: Boolean,
+    onSelectDay: () -> Unit,
+    onSelectWeek: () -> Unit,
+    onSelectMonth: () -> Unit,
+    onSelectYear: () -> Unit,
+    onSelectPeriod: () -> Unit,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        modifier = Modifier.testTag(TestTags.SETTINGS_CSV_PERIOD_DIALOG),
+        title = { Text(stringResource(R.string.title_select_reporting_period)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = selectedPeriod is TimeFilter.Day,
+                    onClick = onSelectDay,
+                    label = { Text(stringResource(R.string.lbl_time_day)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(TestTags.SETTINGS_CSV_PERIOD_DAY)
+                )
+                FilterChip(
+                    selected = selectedPeriod is TimeFilter.Week,
+                    onClick = onSelectWeek,
+                    label = { Text(stringResource(R.string.lbl_time_week)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(TestTags.SETTINGS_CSV_PERIOD_WEEK)
+                )
+                FilterChip(
+                    selected = selectedPeriod is TimeFilter.Month,
+                    onClick = onSelectMonth,
+                    label = { Text(stringResource(R.string.lbl_time_month)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(TestTags.SETTINGS_CSV_PERIOD_MONTH)
+                )
+                FilterChip(
+                    selected = selectedPeriod is TimeFilter.Year,
+                    onClick = onSelectYear,
+                    label = { Text(stringResource(R.string.lbl_time_year)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(TestTags.SETTINGS_CSV_PERIOD_YEAR)
+                )
+                FilterChip(
+                    selected = selectedPeriod is TimeFilter.Period,
+                    onClick = onSelectPeriod,
+                    label = { Text(stringResource(R.string.lbl_time_period)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(TestTags.SETTINGS_CSV_PERIOD_CUSTOM)
+                )
+
+                if (showValidationError) {
+                    Text(
+                        text = stringResource(R.string.msg_choose_reporting_period),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.testTag(TestTags.SETTINGS_CSV_PERIOD_ERROR)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                modifier = Modifier.testTag(TestTags.SETTINGS_CSV_PERIOD_OK)
+            ) {
+                Text(stringResource(R.string.btn_ok))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onCancel,
+                modifier = Modifier.testTag(TestTags.SETTINGS_CSV_PERIOD_CANCEL)
+            ) {
+                Text(stringResource(R.string.btn_cancel))
+            }
+        }
+    )
 }
 
 @Composable

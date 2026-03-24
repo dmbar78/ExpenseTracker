@@ -229,6 +229,14 @@
     <string name="header_data_management">Управление данными</string>
     <string name="title_export_backup">Экспорт резервной копии</string>
     <string name="title_restore_backup">Восстановление из копии</string>
+    <string name="title_export_reporting_csv">Экспорт для отчетности (CSV)</string>
+    <string name="title_select_reporting_period">Выберите отчетный период</string>
+    <string name="msg_choose_reporting_period">Пожалуйста, выберите отчетный период.</string>
+    <string name="val_csv_zip">CSV ZIP</string>
+    <string name="msg_csv_export_success">CSV-отчет успешно экспортирован.</string>
+    <string name="msg_csv_export_success_with_warnings">CSV-отчет экспортирован с предупреждениями: %1$d (часть сумм в валюте по умолчанию пустая).</string>
+    <string name="msg_csv_export_failed">Не удалось экспортировать CSV-отчет.</string>
+    <string name="msg_csv_export_failed_with_reason">Не удалось экспортировать CSV-отчет: %1$s</string>
     <string name="val_json">JSON</string>
     <string name="val_select_file">Выбрать файл</string>
     <string name="val_none">Не выбран</string>

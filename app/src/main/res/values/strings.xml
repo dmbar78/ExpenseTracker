@@ -229,6 +229,14 @@
     <string name="header_data_management">Data Management</string>
     <string name="title_export_backup">Export Backup</string>
     <string name="title_restore_backup">Restore from Backup</string>
+    <string name="title_export_reporting_csv">Export for Reporting (CSV)</string>
+    <string name="title_select_reporting_period">Select Reporting Period</string>
+    <string name="msg_choose_reporting_period">Please choose reporting period</string>
+    <string name="val_csv_zip">CSV ZIP</string>
+    <string name="msg_csv_export_success">CSV report exported successfully.</string>
+    <string name="msg_csv_export_success_with_warnings">CSV report exported with %1$d warnings (some converted amounts are blank).</string>
+    <string name="msg_csv_export_failed">CSV report export failed.</string>
+    <string name="msg_csv_export_failed_with_reason">CSV report export failed: %1$s</string>
     <string name="val_json">JSON</string>
     <string name="val_select_file">Select File</string>
     <string name="val_none">None</string>

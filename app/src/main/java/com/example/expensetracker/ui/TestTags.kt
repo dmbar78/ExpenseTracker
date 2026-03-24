@@ -118,6 +118,16 @@ object TestTags {
     const val SETTINGS_CHANGE_PIN = "settings_changePin"
     const val SETTINGS_REMOVE_PIN = "settings_removePin"
     const val SETTINGS_BIOMETRIC_SWITCH = "settings_biometricSwitch"
+    const val SETTINGS_EXPORT_REPORTING_CSV = "settings_exportReportingCsv"
+    const val SETTINGS_CSV_PERIOD_DIALOG = "settings_csvPeriodDialog"
+    const val SETTINGS_CSV_PERIOD_DAY = "settings_csvPeriodDay"
+    const val SETTINGS_CSV_PERIOD_WEEK = "settings_csvPeriodWeek"
+    const val SETTINGS_CSV_PERIOD_MONTH = "settings_csvPeriodMonth"
+    const val SETTINGS_CSV_PERIOD_YEAR = "settings_csvPeriodYear"
+    const val SETTINGS_CSV_PERIOD_CUSTOM = "settings_csvPeriodCustom"
+    const val SETTINGS_CSV_PERIOD_OK = "settings_csvPeriodOk"
+    const val SETTINGS_CSV_PERIOD_CANCEL = "settings_csvPeriodCancel"
+    const val SETTINGS_CSV_PERIOD_ERROR = "settings_csvPeriodError"
     
     // Filter Dialogs
     const val FILTER_ACCOUNT_DROPDOWN = "filter_accountDropdown"
