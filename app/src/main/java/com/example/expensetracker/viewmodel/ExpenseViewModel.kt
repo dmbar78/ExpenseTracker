@@ -2457,18 +2457,21 @@ class ExpenseViewModel @Inject constructor(
             _backupState.value = BackupOperationState.Loading
             try {
                 val backupData = backupRepository.exportBackupData()
-                
-                val outputString = if (password.isNullOrBlank()) {
-                    backupRepository.serializeToJson(backupData)
-                } else {
-                    backupRepository.serializeToEncryptedJson(backupData, password)
+
+                val outputStream = getApplication<Application>().contentResolver.openOutputStream(uri)
+                if (outputStream == null) {
+                    _backupState.value = BackupOperationState.Error("Failed to open destination file")
+                    return@launch
                 }
 
-                getApplication<Application>().contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    outputStream.writer().use { writer ->
-                        writer.write(outputString)
+                outputStream.use {
+                    if (password.isNullOrBlank()) {
+                        backupRepository.writeJsonToStream(backupData, it)
+                    } else {
+                        backupRepository.writeEncryptedJsonToStream(backupData, password, it)
                     }
                 }
+
                 _backupState.value = BackupOperationState.Success(getApplication<Application>().getString(com.example.expensetracker.R.string.msg_backup_exported_successfully))
             } catch (e: Exception) {
                 _backupState.value = BackupOperationState.Error("Export failed: ${e.localizedMessage}")
@@ -2481,9 +2484,7 @@ class ExpenseViewModel @Inject constructor(
             _backupState.value = BackupOperationState.Loading
             try {
                 val format = getApplication<Application>().contentResolver.openInputStream(uri)?.use { inputStream ->
-                    inputStream.reader().use { reader ->
-                        backupRepository.detectBackupFormat(reader)
-                    }
+                    backupRepository.detectBackupFormat(inputStream)
                 } ?: run {
                     _backupState.value = BackupOperationState.Error("Failed to read backup file")
                     return@launch
@@ -2529,9 +2530,7 @@ class ExpenseViewModel @Inject constructor(
             _backupState.value = BackupOperationState.Loading
             try {
                 val backupData = getApplication<Application>().contentResolver.openInputStream(pendingUri)?.use { inputStream ->
-                    inputStream.reader().use { reader ->
-                        backupRepository.deserializeFromEncryptedJson(reader, password)
-                    }
+                    backupRepository.deserializeFromEncryptedJson(inputStream, password)
                 }
 
                 if (backupData != null) {

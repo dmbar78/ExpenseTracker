@@ -20,6 +20,8 @@ import android.util.Base64
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
 import java.io.Reader
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
@@ -212,6 +214,16 @@ class BackupRepository(
     }
 
     /**
+     * Serialize BackupData directly to a stream to avoid building one large String.
+     */
+    fun writeJsonToStream(backupData: BackupData, outputStream: OutputStream) {
+        outputStream.writer(Charsets.UTF_8).use { writer ->
+            gson.toJson(backupData, writer)
+            writer.flush()
+        }
+    }
+
+    /**
      * Serialize BackupData to Encrypted JSON string.
      *
      * @param backupData The data to serialize
@@ -221,6 +233,18 @@ class BackupRepository(
     fun serializeToEncryptedJson(backupData: BackupData, password: String): String {
         val json = gson.toJson(backupData)
         return SecurityManager.encryptData(json, password)
+    }
+
+    /**
+     * Serialize and encrypt BackupData directly to a stream to avoid large intermediate Strings.
+     */
+    fun writeEncryptedJsonToStream(backupData: BackupData, password: String, outputStream: OutputStream) {
+        SecurityManager.encryptDataStream(password, outputStream) { plainTextOutput ->
+            plainTextOutput.writer(Charsets.UTF_8).use { writer ->
+                gson.toJson(backupData, writer)
+                writer.flush()
+            }
+        }
     }
 
     /**
@@ -282,6 +306,26 @@ class BackupRepository(
             null
         }
     }
+
+    /**
+     * Deserialize encrypted backup from an input stream.
+     * Supports stream-encrypted format and legacy JSON encrypted payloads.
+     */
+    fun deserializeFromEncryptedJson(inputStream: InputStream, password: String): BackupData? {
+        return try {
+            if (SecurityManager.isStreamingEncryptedBackup(inputStream)) {
+                SecurityManager.decryptDataStream(inputStream, password).use { decryptedReader ->
+                    gson.fromJson(decryptedReader, BackupData::class.java)
+                }
+            } else {
+                inputStream.reader().use { reader ->
+                    deserializeFromEncryptedJson(reader, password)
+                }
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
     
     fun isBackupEncrypted(json: String): Boolean {
         return SecurityManager.isEncrypted(json)
@@ -322,6 +366,19 @@ class BackupRepository(
             BackupFormat.UNKNOWN
         } catch (e: Exception) {
             BackupFormat.UNKNOWN
+        }
+    }
+
+    /**
+     * Detect backup format from stream, including stream-encrypted envelopes.
+     */
+    fun detectBackupFormat(inputStream: InputStream): BackupFormat {
+        return if (SecurityManager.isStreamingEncryptedBackup(inputStream)) {
+            BackupFormat.ENCRYPTED
+        } else {
+            inputStream.reader().use { reader ->
+                detectBackupFormat(reader)
+            }
         }
     }
 

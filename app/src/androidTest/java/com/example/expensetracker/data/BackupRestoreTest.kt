@@ -11,6 +11,9 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStreamReader
 import java.math.BigDecimal
 
 /**
@@ -645,5 +648,83 @@ class BackupRestoreTest {
         
         // Cleanup
         file.delete()
+    }
+
+    @Test
+    fun largeBackup_plainStreamExportAndRestore_succeeds() = runBlocking {
+        val largeBackup = createLargeBackupData()
+
+        val output = ByteArrayOutputStream()
+        backupRepository.writeJsonToStream(largeBackup, output)
+
+        val bytes = output.toByteArray()
+        assertTrue("Expected large JSON payload", bytes.size > 1_000_000)
+
+        val restored = InputStreamReader(ByteArrayInputStream(bytes), Charsets.UTF_8).use { reader ->
+            backupRepository.deserializeFromJson(reader)
+        }
+        assertNotNull(restored)
+
+        backupRepository.clearAllData()
+        val result = backupRepository.restoreBackupData(restored!!)
+        assertTrue(result.isSuccess)
+        assertEquals(largeBackup.data.expenses.size, database.expenseDao().getAllExpensesOnce().size)
+    }
+
+    @Test
+    fun largeBackup_encryptedStreamExportAndRestore_succeeds() = runBlocking {
+        val largeBackup = createLargeBackupData()
+        val password = "test-password"
+
+        val output = ByteArrayOutputStream()
+        backupRepository.writeEncryptedJsonToStream(largeBackup, password, output)
+
+        val bytes = output.toByteArray()
+        assertTrue("Expected large encrypted payload", bytes.size > 1_000_000)
+
+        val format = ByteArrayInputStream(bytes).use { inputStream ->
+            backupRepository.detectBackupFormat(inputStream)
+        }
+        assertEquals(BackupRepository.BackupFormat.ENCRYPTED, format)
+
+        val restored = ByteArrayInputStream(bytes).use { inputStream ->
+            backupRepository.deserializeFromEncryptedJson(inputStream, password)
+        }
+        assertNotNull(restored)
+
+        backupRepository.clearAllData()
+        val result = backupRepository.restoreBackupData(restored!!)
+        assertTrue(result.isSuccess)
+        assertEquals(largeBackup.data.expenses.size, database.expenseDao().getAllExpensesOnce().size)
+    }
+
+    private fun createLargeBackupData(): BackupData {
+        val largeImageChunk = "A".repeat(1_000_000)
+        val expenses = (1..20).map { index ->
+            Expense(
+                id = index,
+                amount = BigDecimal("10.00"),
+                currency = "EUR",
+                account = "BackupAccount",
+                category = "BackupCategory",
+                type = "Expense",
+                expenseDate = System.currentTimeMillis() + index
+            )
+        }
+
+        val expenseImages = expenses.associate { expense ->
+            expense.id to largeImageChunk
+        }
+
+        return createSampleBackupData().copy(
+            data = createSampleBackupData().data.copy(
+                expenses = expenses,
+                expenseImages = expenseImages
+            ),
+            integrityCheck = IntegrityCheck(
+                recordCount = 3 + expenses.size + expenseImages.size,
+                checksum = null
+            )
+        )
     }
 }

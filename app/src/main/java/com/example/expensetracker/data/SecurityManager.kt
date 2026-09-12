@@ -9,7 +9,14 @@ import androidx.biometric.BiometricPrompt
 import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.io.BufferedInputStream
+import java.io.FilterOutputStream
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.io.OutputStream
 import javax.crypto.Cipher
+import javax.crypto.CipherInputStream
+import javax.crypto.CipherOutputStream
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.SecretKeyFactory
@@ -21,6 +28,9 @@ import com.google.gson.Gson
 import javax.crypto.spec.GCMParameterSpec
 
 object SecurityManager {
+
+    private const val STREAM_BACKUP_VERSION = 2
+    private const val STREAM_BACKUP_MAGIC = "ETBK3"
 
     private const val BACKUP_PBE_ITERATIONS = 100000
     private const val BACKUP_KEY_LENGTH = 256
@@ -316,6 +326,97 @@ object SecurityManager {
         return Gson().toJson(payload)
     }
 
+    /**
+     * Encrypt backup JSON directly to an output stream without constructing a giant plaintext String.
+     */
+    fun encryptDataStream(
+        password: String,
+        outputStream: OutputStream,
+        writePlaintextJson: (OutputStream) -> Unit
+    ) {
+        val salt = generateBackupSalt()
+        val key = deriveKeyFromPassword(password, salt)
+        // Use CBC for streaming exports because GCM providers may buffer large payloads
+        // internally until doFinal(), which can still OOM on very large backups.
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        cipher.init(Cipher.ENCRYPT_MODE, key)
+        val iv = cipher.iv
+
+        val saltB64 = java.util.Base64.getEncoder().encodeToString(salt)
+        val ivB64 = java.util.Base64.getEncoder().encodeToString(iv)
+
+        // Stream-friendly envelope to avoid parsing a giant JSON string field.
+        outputStream.write(("$STREAM_BACKUP_MAGIC\n").toByteArray(Charsets.UTF_8))
+        outputStream.write(("version=$STREAM_BACKUP_VERSION\n").toByteArray(Charsets.UTF_8))
+        outputStream.write(("salt=$saltB64\n").toByteArray(Charsets.UTF_8))
+        outputStream.write(("iv=$ivB64\n").toByteArray(Charsets.UTF_8))
+        outputStream.write("data=\n".toByteArray(Charsets.UTF_8))
+
+        val nonClosingOutput = object : FilterOutputStream(outputStream) {
+            override fun close() {
+                flush()
+            }
+        }
+
+        java.util.Base64.getEncoder().wrap(nonClosingOutput).use { base64Out ->
+            CipherOutputStream(base64Out, cipher).use { cipherOut ->
+                writePlaintextJson(cipherOut)
+            }
+        }
+
+        outputStream.write("\n".toByteArray(Charsets.UTF_8))
+        outputStream.flush()
+    }
+
+    fun isStreamingEncryptedBackup(inputStream: InputStream): Boolean {
+        val buffered = if (inputStream.markSupported()) inputStream else BufferedInputStream(inputStream)
+        buffered.mark(16)
+        val prefix = ByteArray(STREAM_BACKUP_MAGIC.length)
+        val read = buffered.read(prefix)
+        buffered.reset()
+        return read == STREAM_BACKUP_MAGIC.length &&
+            String(prefix, Charsets.UTF_8) == STREAM_BACKUP_MAGIC
+    }
+
+    /**
+     * Returns a Reader of decrypted JSON for stream-encrypted backups.
+     */
+    fun decryptDataStream(inputStream: InputStream, password: String): InputStreamReader {
+        val buffered = if (inputStream is BufferedInputStream) inputStream else BufferedInputStream(inputStream)
+
+        val magic = readAsciiLine(buffered)
+        if (magic != STREAM_BACKUP_MAGIC) {
+            throw IllegalArgumentException("Not a stream-encrypted backup")
+        }
+
+        val versionLine = readAsciiLine(buffered)
+        val saltLine = readAsciiLine(buffered)
+        val ivLine = readAsciiLine(buffered)
+        val dataLine = readAsciiLine(buffered)
+
+        if (!versionLine.startsWith("version=") || !saltLine.startsWith("salt=") ||
+            !ivLine.startsWith("iv=") || dataLine != "data=") {
+            throw IllegalArgumentException("Invalid stream-encrypted header")
+        }
+
+        val version = versionLine.substringAfter("version=").toIntOrNull()
+            ?: throw IllegalArgumentException("Invalid stream backup version")
+        if (version != STREAM_BACKUP_VERSION) {
+            throw IllegalArgumentException("Unsupported stream backup version: $version")
+        }
+
+        val salt = java.util.Base64.getDecoder().decode(saltLine.substringAfter("salt="))
+        val iv = java.util.Base64.getDecoder().decode(ivLine.substringAfter("iv="))
+
+        val key = deriveKeyFromPassword(password, salt)
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        cipher.init(Cipher.DECRYPT_MODE, key, IvParameterSpec(iv))
+
+        val base64In = java.util.Base64.getDecoder().wrap(buffered)
+        val cipherIn = CipherInputStream(base64In, cipher)
+        return InputStreamReader(cipherIn, Charsets.UTF_8)
+    }
+
     fun decryptData(json: String, password: String): String {
         val gson = Gson()
         // Simple check if it matches our encrypted format
@@ -330,15 +431,24 @@ object SecurityManager {
              throw IllegalArgumentException("Not an encrypted backup")
         }
 
-        if (payload.version != 1) throw IllegalArgumentException("Unsupported backup version: ${payload.version}")
+        if (payload.version != 1 && payload.version != STREAM_BACKUP_VERSION) {
+            throw IllegalArgumentException("Unsupported backup version: ${payload.version}")
+        }
 
         val salt = java.util.Base64.getDecoder().decode(payload.salt)
         val iv = java.util.Base64.getDecoder().decode(payload.iv)
         val encryptedBytes = java.util.Base64.getDecoder().decode(payload.data)
 
         val key = deriveKeyFromPassword(password, salt)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
+        val cipher = if (payload.version == 1) {
+            Cipher.getInstance("AES/GCM/NoPadding").apply {
+                init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
+            }
+        } else {
+            Cipher.getInstance("AES/CBC/PKCS5Padding").apply {
+                init(Cipher.DECRYPT_MODE, key, IvParameterSpec(iv))
+            }
+        }
         
         val decryptedBytes = cipher.doFinal(encryptedBytes)
         return String(decryptedBytes, Charsets.UTF_8)
@@ -367,6 +477,23 @@ object SecurityManager {
         val salt = ByteArray(BACKUP_SALT_LENGTH)
         SecureRandom().nextBytes(salt)
         return salt
+    }
+
+    private fun readAsciiLine(inputStream: InputStream): String {
+        val builder = StringBuilder()
+        while (true) {
+            val b = inputStream.read()
+            if (b == -1) {
+                break
+            }
+            if (b == '\n'.code) {
+                break
+            }
+            if (b != '\r'.code) {
+                builder.append(b.toChar())
+            }
+        }
+        return builder.toString()
     }
 
     // --- Helpers ---
