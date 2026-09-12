@@ -1,10 +1,10 @@
 [versions]
 # Your core plugin versions are very modern and correct.
-agp = "8.13.2"
-kotlin = "2.0.0"
-ksp = "2.0.0-1.0.21"
+agp = "9.3.1"
+kotlin = "2.2.10"
+ksp = "2.2.10-2.0.2"
 navigationCompose = "2.9.6"
-hilt = "2.51.1"
+hilt = "2.60.1"
 hiltNavigationCompose = "1.2.0"
 
 # --- CONSOLIDATED LIBRARY VERSIONS ---
