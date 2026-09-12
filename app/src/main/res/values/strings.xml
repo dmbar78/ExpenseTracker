@@ -15,6 +15,10 @@
     <string name="action_create_expense">Create Expense</string>
     <string name="action_create_income">Create Income</string>
     <string name="action_create_transfer">Create Transfer</string>
+    <string name="msg_shared_file_processing">Reading shared file…</string>
+    <string name="err_shared_file_unsupported">The shared file is not a supported JPEG, PNG, or PDF.</string>
+    <string name="err_shared_file_unreadable">The shared file could not be opened.</string>
+    <string name="err_shared_file_processing">The shared file could not be read.</string>
 
     <!-- Home Screen -->
     <string name="tab_expense">Expenses</string>

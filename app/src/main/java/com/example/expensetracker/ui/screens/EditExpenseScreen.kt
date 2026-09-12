@@ -73,7 +73,8 @@ fun EditExpenseScreen(
     initialCategoryError: Boolean = false,
     defaultAccountUsed: Boolean = false,
     relatedDebtId: Int? = null,
-    copyFromId: Int? = null
+    copyFromId: Int? = null,
+    initialPhotoUri: String? = null
 ) {
     val context = LocalContext.current
     // Retrieve the result from AddCategoryScreen if available
@@ -230,7 +231,7 @@ fun EditExpenseScreen(
     var isSaving by remember { mutableStateOf(false) }
     
     // Photo State
-    var photoUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var photoUri by rememberSaveable { mutableStateOf(initialPhotoUri) }
     var photoUriToDelete by rememberSaveable { mutableStateOf<String?>(null) }
     var tempPhotoUriString by rememberSaveable { mutableStateOf<String?>(null) }
     var showPhotoSourceDialog by rememberSaveable { mutableStateOf(false) }
@@ -242,7 +243,7 @@ fun EditExpenseScreen(
         if (expense != null && expense!!.id == expenseId) {
             photoUri = expense!!.photoUri
         } else if (expenseId == 0 && copyFromId == null) {
-            photoUri = null
+            photoUri = initialPhotoUri
             photoUriToDelete = null
             tempPhotoUriString = null
         }

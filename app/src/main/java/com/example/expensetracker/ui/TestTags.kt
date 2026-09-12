@@ -97,6 +97,7 @@ object TestTags {
     const val GLOBAL_CREATE_EXPENSE = "globalCreate_expense"
     const val GLOBAL_CREATE_INCOME = "globalCreate_income"
     const val GLOBAL_CREATE_TRANSFER = "globalCreate_transfer"
+    const val SHARED_IMPORT_PROCESSING = "sharedImport_processing"
 
     // Dropdown item prefix (append account/category id or normalized name)
     const val ACCOUNT_OPTION_PREFIX = "accountOption_"

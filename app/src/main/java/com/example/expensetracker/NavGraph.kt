@@ -73,7 +73,7 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             SettingsScreen(viewModel = viewModel, navController = navController)
         }
         composable(
-            route = "editExpense/{expenseId}?accountName={accountName}&amount={amount}&categoryName={categoryName}&type={type}&expenseDateMillis={expenseDateMillis}&accountError={accountError}&categoryError={categoryError}&defaultAccountUsed={defaultAccountUsed}&relatedDebtId={relatedDebtId}&copyFromId={copyFromId}",
+            route = "editExpense/{expenseId}?accountName={accountName}&amount={amount}&categoryName={categoryName}&type={type}&expenseDateMillis={expenseDateMillis}&accountError={accountError}&categoryError={categoryError}&defaultAccountUsed={defaultAccountUsed}&relatedDebtId={relatedDebtId}&copyFromId={copyFromId}&initialPhotoUri={initialPhotoUri}",
             arguments = listOf(
                 navArgument("expenseId") { type = NavType.IntType },
                 navArgument("accountName") { type = NavType.StringType; nullable = true },
@@ -85,7 +85,8 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
                 navArgument("categoryError") { type = NavType.BoolType; defaultValue = false },
                 navArgument("defaultAccountUsed") { type = NavType.BoolType; defaultValue = false },
                 navArgument("relatedDebtId") { type = NavType.IntType; defaultValue = -1 },
-                navArgument("copyFromId") { type = NavType.IntType; defaultValue = -1 }
+                navArgument("copyFromId") { type = NavType.IntType; defaultValue = -1 },
+                navArgument("initialPhotoUri") { type = NavType.StringType; nullable = true; defaultValue = null }
             )
         ) {
             val expenseId = it.arguments?.getInt("expenseId") ?: 0
@@ -102,6 +103,7 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
             val relatedDebtId = if (relatedDebtIdArg == -1) null else relatedDebtIdArg
             val copyFromIdArg = it.arguments?.getInt("copyFromId") ?: -1
             val copyFromId = if (copyFromIdArg == -1) null else copyFromIdArg
+            val initialPhotoUri = it.arguments?.getString("initialPhotoUri")
 
             EditExpenseScreen(
                 expenseId = expenseId,
@@ -116,7 +118,8 @@ fun NavGraph(viewModel: ExpenseViewModel, navController: NavHostController, modi
                 initialCategoryError = categoryError,
                 defaultAccountUsed = defaultAccountUsed,
                 relatedDebtId = relatedDebtId,
-                copyFromId = copyFromId
+                copyFromId = copyFromId,
+                initialPhotoUri = initialPhotoUri
             )
         }
         composable(

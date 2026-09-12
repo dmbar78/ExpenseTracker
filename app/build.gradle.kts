@@ -138,6 +138,9 @@ dependencies {
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.6.0")
 
+    // Bundled, offline receipt OCR
+    implementation(libs.mlkit.text.recognition)
+
     // Fuzzy matching for voice categorization
     implementation("me.xdrop:fuzzywuzzy:1.4.0")
 }

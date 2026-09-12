@@ -2,6 +2,7 @@ package com.example.expensetracker
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -15,6 +16,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -29,22 +31,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import com.example.expensetracker.ui.TestTags
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.expensetracker.ui.dialogs.VoiceRecognitionDialogs
 import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
+import com.example.expensetracker.sharedimport.SharedFileImportProcessor
+import com.example.expensetracker.sharedimport.SharedFileImportState
+import com.example.expensetracker.sharedimport.SharedFileImportViewModel
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.Locale
+import java.util.UUID
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
     private var speechRecognizer: SpeechRecognizer? = null
     internal val viewModel: ExpenseViewModel by viewModels()
+    internal val sharedFileImportViewModel: SharedFileImportViewModel by viewModels()
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
@@ -58,6 +67,7 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         setupSpeechRecognizer()
         requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        submitSharedIntent(intent)
 
         requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
 
@@ -67,7 +77,12 @@ class MainActivity : FragmentActivity() {
                 val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
                 
                 // App Lock State
-                var isAppLocked by remember { mutableStateOf(false) }
+                var isAppLocked by remember {
+                    mutableStateOf(
+                        com.example.expensetracker.data.SecurityManager.isPinSet(context) &&
+                            com.example.expensetracker.data.SecurityManager.isLocked()
+                    )
+                }
 
                 // Check lock status on Resume
                 DisposableEffect(lifecycleOwner) {
@@ -93,7 +108,7 @@ class MainActivity : FragmentActivity() {
                 }
 
                 Box(modifier = Modifier.fillMaxSize()) {
-                    MainContent()
+                    MainContent(isAppLocked = isAppLocked)
 
                     if (isAppLocked) {
                         Surface(
@@ -119,7 +134,7 @@ class MainActivity : FragmentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun MainContent() {
+    fun MainContent(isAppLocked: Boolean = false) {
         val navController = rememberNavController()
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
@@ -130,6 +145,33 @@ class MainActivity : FragmentActivity() {
 
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
+        val context = LocalContext.current
+        val snackbarHostState = remember { SnackbarHostState() }
+        val sharedImportState by sharedFileImportViewModel.state.collectAsState()
+        var isPlusMenuExpanded by remember { mutableStateOf(false) }
+
+        LaunchedEffect(sharedImportState, isAppLocked, currentRoute) {
+            when (val state = sharedImportState) {
+                is SharedFileImportState.Ready -> {
+                    if (!isAppLocked && currentRoute != null) {
+                        if (currentRoute != "home") {
+                            navController.navigate("home") {
+                                popUpTo("home") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
+                        isPlusMenuExpanded = true
+                    }
+                }
+                is SharedFileImportState.Error -> {
+                    if (!isAppLocked) {
+                        snackbarHostState.showSnackbar(context.getString(state.messageResId))
+                        sharedFileImportViewModel.acknowledgeError()
+                    }
+                }
+                else -> Unit
+            }
+        }
 
         // Listen for navigation events from the ViewModel
         LaunchedEffect(Unit) {
@@ -147,6 +189,7 @@ class MainActivity : FragmentActivity() {
             }
         ) {
             Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHostState) },
                 topBar = {
                     TopAppBar(
                         title = { Text(androidx.compose.ui.res.stringResource(R.string.app_name)) },
@@ -190,7 +233,6 @@ class MainActivity : FragmentActivity() {
                     NavGraph(viewModel = viewModel, navController = navController)
 
                     // Global "+" create menu - available on every screen
-                    var isPlusMenuExpanded by remember { mutableStateOf(false) }
                     if (showFabs) {
                         Box(
                             modifier = Modifier
@@ -208,15 +250,18 @@ class MainActivity : FragmentActivity() {
                             }
                             DropdownMenu(
                                 expanded = isPlusMenuExpanded,
-                                onDismissRequest = { isPlusMenuExpanded = false }
+                                onDismissRequest = {
+                                    isPlusMenuExpanded = false
+                                    if (sharedImportState is SharedFileImportState.Ready) {
+                                        sharedFileImportViewModel.cancel()
+                                    }
+                                }
                             ) {
                                 DropdownMenuItem(
                                     text = { Text(androidx.compose.ui.res.stringResource(R.string.action_create_expense)) },
                                     onClick = {
                                         isPlusMenuExpanded = false
-                                        navController.navigate(
-                                            "editExpense/0?type=Expense&expenseDateMillis=${System.currentTimeMillis()}"
-                                        )
+                                        navController.navigate(createExpenseRoute("Expense", sharedImportState, context))
                                     },
                                     modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_EXPENSE)
                                 )
@@ -224,9 +269,7 @@ class MainActivity : FragmentActivity() {
                                     text = { Text(androidx.compose.ui.res.stringResource(R.string.action_create_income)) },
                                     onClick = {
                                         isPlusMenuExpanded = false
-                                        navController.navigate(
-                                            "editExpense/0?type=Income&expenseDateMillis=${System.currentTimeMillis()}"
-                                        )
+                                        navController.navigate(createExpenseRoute("Income", sharedImportState, context))
                                     },
                                     modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_INCOME)
                                 )
@@ -234,16 +277,69 @@ class MainActivity : FragmentActivity() {
                                     text = { Text(androidx.compose.ui.res.stringResource(R.string.action_create_transfer)) },
                                     onClick = {
                                         isPlusMenuExpanded = false
-                                        navController.navigate("editTransfer/0")
+                                        val ready = sharedFileImportViewModel.consume(deleteStagedFile = true)
+                                        navController.navigate(
+                                            if (ready == null) "editTransfer/0"
+                                            else buildString {
+                                                append("editTransfer/0?transferDateMillis=${ready.dateMillis}")
+                                                ready.amount?.let { append("&amount=${Uri.encode(it)}") }
+                                            }
+                                        )
                                     },
                                     modifier = Modifier.testTag(TestTags.GLOBAL_CREATE_TRANSFER)
                                 )
                             }
                         }
                     }
+
+                    if (sharedImportState is SharedFileImportState.Processing && !isAppLocked) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .fillMaxWidth()
+                                .testTag(TestTags.SHARED_IMPORT_PROCESSING)
+                        )
+                    }
                 }
             }
         }
+    }
+
+    private fun createExpenseRoute(
+        type: String,
+        state: SharedFileImportState,
+        context: android.content.Context
+    ): String {
+        val ready = state as? SharedFileImportState.Ready
+            ?: return "editExpense/0?type=$type&expenseDateMillis=${System.currentTimeMillis()}"
+        val isImage = ready.mimeType.startsWith("image/")
+        val photoUri = if (isImage) {
+            FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.fileprovider", File(ready.stagedFilePath))
+        } else null
+        sharedFileImportViewModel.consume(deleteStagedFile = !isImage)
+        return buildString {
+            append("editExpense/0?type=$type&expenseDateMillis=${ready.dateMillis}")
+            ready.amount?.let { append("&amount=${Uri.encode(it)}") }
+            photoUri?.let { append("&initialPhotoUri=${Uri.encode(it.toString())}") }
+        }
+    }
+
+    private fun submitSharedIntent(sharedIntent: Intent?) {
+        if (sharedIntent?.action != Intent.ACTION_SEND) return
+        val eventId = sharedIntent.getStringExtra(EXTRA_SHARED_EVENT_ID) ?: UUID.randomUUID().toString().also {
+            sharedIntent.putExtra(EXTRA_SHARED_EVENT_ID, it)
+        }
+        sharedFileImportViewModel.handleIntent(sharedIntent, eventId)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        submitSharedIntent(intent)
+    }
+
+    private companion object {
+        const val EXTRA_SHARED_EVENT_ID = "com.example.expensetracker.SHARED_EVENT_ID"
     }
 
     private fun setupSpeechRecognizer() {
