@@ -26,7 +26,7 @@ interface SharedFileImportProcessor {
 }
 
 class DefaultSharedFileImportProcessor @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val textExtractor: ReceiptTextExtractor
 ) : SharedFileImportProcessor {
     override suspend fun process(uri: Uri, declaredMimeType: String?): ProcessedSharedFile = withContext(Dispatchers.IO) {

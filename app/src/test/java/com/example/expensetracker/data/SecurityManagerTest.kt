@@ -56,6 +56,25 @@ class SecurityManagerTest {
         assertFalse(SecurityManager.isEncrypted("Not JSON"))
         assertFalse(SecurityManager.isEncrypted("{}"))
     }
+
+    @Test
+    fun malformedPayloadFields_areRejected() {
+        val malformedPayloads = listOf(
+            """{"version":1,"iv":"aXY=","data":"ZGF0YQ=="}""",
+            """{"version":1,"salt":"c2FsdA==","data":"ZGF0YQ=="}""",
+            """{"version":1,"salt":"c2FsdA==","iv":"aXY="}""",
+            """{"version":1,"salt":null,"iv":"aXY=","data":"ZGF0YQ=="}""",
+            """{"version":1,"salt":"c2FsdA==","iv":null,"data":"ZGF0YQ=="}""",
+            """{"version":1,"salt":"c2FsdA==","iv":"aXY=","data":null}"""
+        )
+
+        malformedPayloads.forEach { payload ->
+            assertFalse(SecurityManager.isEncrypted(payload))
+            assertThrows(IllegalArgumentException::class.java) {
+                SecurityManager.decryptData(payload, "pass")
+            }
+        }
+    }
     
     @Test
     fun decrypt_invalidFormat_throws() {

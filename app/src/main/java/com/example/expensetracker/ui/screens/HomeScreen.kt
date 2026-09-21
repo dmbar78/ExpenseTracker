@@ -16,8 +16,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -56,8 +56,8 @@ import java.util.Calendar
 import java.util.Locale
 import com.example.expensetracker.viewmodel.SortOption
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -408,7 +408,7 @@ fun HomeScreen(viewModel: ExpenseViewModel, navController: NavController) {
                 Spacer(modifier = Modifier.height(8.dp))
             }
             
-            TabRow(selectedTabIndex = selectedTabIndex) {
+            PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
                 tabs.forEachIndexed { index, title ->
                     Tab(selected = selectedTabIndex == index,
                         onClick = { viewModel.onTabSelected(index) },
@@ -779,7 +779,7 @@ private fun TotalHeaderWithSort(
 
             IconButton(onClick = { expanded = true }) {
                 Icon(
-                    imageVector = Icons.Default.Sort,
+                    imageVector = Icons.AutoMirrored.Filled.Sort,
                     contentDescription = androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.desc_sort),
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -898,7 +898,7 @@ private fun TotalHeaderWithSortAndDiagram(
 
                 IconButton(onClick = { expanded = true }) {
                     Icon(
-                        imageVector = Icons.Default.Sort,
+                        imageVector = Icons.AutoMirrored.Filled.Sort,
                         contentDescription = stringResource(R.string.desc_sort),
                         tint = MaterialTheme.colorScheme.primary
                     )

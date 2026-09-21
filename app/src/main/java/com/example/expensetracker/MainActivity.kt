@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.expensetracker.ui.TestTags
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -74,7 +75,7 @@ class MainActivity : FragmentActivity() {
         setContent {
             ExpenseTrackerTheme {
                 val context = LocalContext.current
-                val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+                val lifecycleOwner = LocalLifecycleOwner.current
                 
                 // App Lock State
                 var isAppLocked by remember {

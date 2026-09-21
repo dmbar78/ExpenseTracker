@@ -22,7 +22,6 @@ import com.example.expensetracker.ui.screens.content.EditTransferState
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import androidx.lifecycle.repeatOnLifecycle
 import java.math.BigDecimal
 import java.util.*
 
@@ -53,7 +52,6 @@ fun EditTransferScreen(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
 
     val context = LocalContext.current
     val isEditMode = transferId > 0
@@ -140,7 +138,7 @@ fun EditTransferScreen(
                 comment = it.comment ?: ""
                 hasInitialized = true
             }
-        } else if (transferId == 0 && copyFromId == null && transfer == null) {
+        } else if (transferId == 0 && transfer == null) {
             // Creating new transfer - reset form fields ONLY ONCE
             if (!hasInitialized) {
                 // Force reset to initial values (empty or voice) to clear any stale state

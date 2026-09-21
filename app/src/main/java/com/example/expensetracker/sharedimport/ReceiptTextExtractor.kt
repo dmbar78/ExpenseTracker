@@ -25,7 +25,7 @@ interface ReceiptTextExtractor {
 }
 
 class MlKitReceiptTextExtractor @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : ReceiptTextExtractor {
     override suspend fun extract(file: File, mimeType: String): String {
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)

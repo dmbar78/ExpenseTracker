@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.expensetracker.data.*
 import com.example.expensetracker.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -172,11 +173,13 @@ class ExpenseViewModel @Inject constructor(
 
     // For entity selection
     private val _selectedAccountId = MutableStateFlow<Int?>(null)
+    @OptIn(ExperimentalCoroutinesApi::class)
     val selectedAccount: StateFlow<Account?> = _selectedAccountId.flatMapLatest { accountId ->
         if (accountId == null) flowOf(null) else accountRepository.getAccountById(accountId)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
     private val _selectedCategoryId = MutableStateFlow<Int?>(null)
+    @OptIn(ExperimentalCoroutinesApi::class)
     val selectedCategory: StateFlow<Category?> = _selectedCategoryId.flatMapLatest { categoryId ->
         if (categoryId == null) flowOf(null) else categoryRepository.getCategoryById(categoryId)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
@@ -244,6 +247,7 @@ class ExpenseViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
     private val _selectedCurrencyId = MutableStateFlow<Int?>(null)
+    @OptIn(ExperimentalCoroutinesApi::class)
     val selectedCurrency: StateFlow<Currency?> = _selectedCurrencyId.flatMapLatest { currencyId ->
         if (currencyId == null) flowOf(null) else currencyRepository.getCurrencyById(currencyId)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)

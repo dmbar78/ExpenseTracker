@@ -738,7 +738,7 @@ fun EditExpenseScreen(
                                     }
                                 }
                             )
-                            Divider()
+                            HorizontalDivider()
                         }
                     }
                 }

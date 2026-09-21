@@ -38,9 +38,9 @@ object SecurityManager {
 
     data class EncryptedBackupPayload(
         val version: Int = 1,
-        val salt: String,
-        val iv: String,
-        val data: String
+        val salt: String? = null,
+        val iv: String? = null,
+        val data: String? = null
     )
 
     private const val PREFS_NAME = "security_prefs"
@@ -431,13 +431,17 @@ object SecurityManager {
              throw IllegalArgumentException("Not an encrypted backup")
         }
 
+           val saltValue = payload.salt
+           val ivValue = payload.iv
+           val dataValue = payload.data
+
         if (payload.version != 1 && payload.version != STREAM_BACKUP_VERSION) {
             throw IllegalArgumentException("Unsupported backup version: ${payload.version}")
         }
 
-        val salt = java.util.Base64.getDecoder().decode(payload.salt)
-        val iv = java.util.Base64.getDecoder().decode(payload.iv)
-        val encryptedBytes = java.util.Base64.getDecoder().decode(payload.data)
+        val salt = java.util.Base64.getDecoder().decode(saltValue)
+        val iv = java.util.Base64.getDecoder().decode(ivValue)
+        val encryptedBytes = java.util.Base64.getDecoder().decode(dataValue)
 
         val key = deriveKeyFromPassword(password, salt)
         val cipher = if (payload.version == 1) {

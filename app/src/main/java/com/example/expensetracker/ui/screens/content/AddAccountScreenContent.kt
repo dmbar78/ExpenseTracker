@@ -90,7 +90,10 @@ fun AddAccountScreenContent(
                 label = { Text(stringResource(R.string.lbl_currency)) },
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCurrencyDropdownExpanded) },
-                modifier = Modifier.menuAnchor().fillMaxWidth().testTag(TestTags.ADD_ACCOUNT_CURRENCY_VALUE)
+                modifier = Modifier
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                    .fillMaxWidth()
+                    .testTag(TestTags.ADD_ACCOUNT_CURRENCY_VALUE)
             )
             ExposedDropdownMenu(
                 expanded = isCurrencyDropdownExpanded,

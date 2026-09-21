@@ -604,7 +604,9 @@ fun SettingsScreen(
                         readOnly = true,
                         label = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_gemini_model)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
                     )
                     ExposedDropdownMenu(
                         expanded = modelExpanded,
@@ -1080,7 +1082,7 @@ private fun DefaultCurrencyPickerDialog(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(),
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
                         enabled = !isCheckingPivot
                     )
                     
@@ -1218,7 +1220,7 @@ private fun DefaultAccountPickerDialog(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
                     )
 
                     ExposedDropdownMenu(

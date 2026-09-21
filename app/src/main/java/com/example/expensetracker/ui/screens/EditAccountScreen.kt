@@ -97,7 +97,9 @@ fun EditAccountScreen(accountId: Int, viewModel: ExpenseViewModel, navController
                 label = { Text(androidx.compose.ui.res.stringResource(com.example.expensetracker.R.string.lbl_currency)) },
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCurrencyDropdownExpanded) },
-                modifier = Modifier.menuAnchor().fillMaxWidth()
+                modifier = Modifier
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                    .fillMaxWidth()
             )
             ExposedDropdownMenu(
                 expanded = isCurrencyDropdownExpanded,
