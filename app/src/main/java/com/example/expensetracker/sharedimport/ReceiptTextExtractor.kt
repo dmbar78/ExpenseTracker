@@ -2,6 +2,7 @@ package com.example.expensetracker.sharedimport
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.ImageDecoder
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
@@ -9,9 +10,12 @@ import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.google.mlkit.vision.text.Text
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
+import java.time.ZoneId
+import java.util.Locale
 import javax.inject.Inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -30,7 +34,17 @@ class MlKitReceiptTextExtractor @Inject constructor(
                 extractPdf(file, recognizer::process)
             } else {
                 val image = InputImage.fromFilePath(context, Uri.fromFile(file))
-                recognizer.process(image).await().text
+                val originalText = recognizer.process(image).await().toReceiptText()
+                if (!shouldTryEnhancedOcr(originalText, Locale.getDefault(), System.currentTimeMillis(), ZoneId.systemDefault())) {
+                    originalText
+                } else {
+                    val bitmap = decodeBoundedBitmap(file)
+                    try {
+                        selectEnhancedText(bitmap, originalText, recognizer::process)
+                    } finally {
+                        bitmap.recycle()
+                    }
+                }
             }
         } finally {
             recognizer.close()
@@ -56,7 +70,14 @@ class MlKitReceiptTextExtractor @Inject constructor(
                             bitmap.eraseColor(android.graphics.Color.WHITE)
                             page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
                             if (output.isNotEmpty()) output.append('\n')
-                            output.append(recognize(InputImage.fromBitmap(bitmap, 0)).await().text)
+                            val originalText = recognize(InputImage.fromBitmap(bitmap, 0)).await().toReceiptText()
+                            output.append(
+                                if (shouldTryEnhancedOcr(originalText, Locale.getDefault(), System.currentTimeMillis(), ZoneId.systemDefault())) {
+                                    selectEnhancedText(bitmap, originalText, recognize)
+                                } else {
+                                    originalText
+                                }
+                            )
                         } finally {
                             bitmap.recycle()
                         }
@@ -67,6 +88,50 @@ class MlKitReceiptTextExtractor @Inject constructor(
         return output.toString()
     }
 
+    private fun decodeBoundedBitmap(file: File): Bitmap {
+        return ImageDecoder.decodeBitmap(ImageDecoder.createSource(file)) { decoder, info, _ ->
+            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            val width = info.size.width
+            val height = info.size.height
+            val scale = minOf(1f, IMAGE_OCR_LONG_EDGE.toFloat() / maxOf(width, height))
+            decoder.setTargetSize(maxOf(1, (width * scale).toInt()), maxOf(1, (height * scale).toInt()))
+        }
+    }
+
+    private suspend fun selectEnhancedText(
+        bitmap: Bitmap,
+        originalText: String,
+        recognize: (InputImage) -> Task<Text>
+    ): String {
+        val enhanced = enhanceReceiptBitmap(bitmap)
+        return try {
+            val enhancedText = recognize(InputImage.fromBitmap(enhanced, 0)).await().toReceiptText()
+            selectBetterOcrText(
+                originalText,
+                enhancedText,
+                Locale.getDefault(),
+                System.currentTimeMillis(),
+                ZoneId.systemDefault()
+            )
+        } finally {
+            enhanced.recycle()
+        }
+    }
+
+    private fun Text.toReceiptText(): String {
+        val lines = textBlocks.flatMap { it.lines }
+        val fragments = lines.mapNotNull { line ->
+            line.boundingBox?.let { bounds ->
+                OcrTextFragment(line.text, bounds.left, bounds.top, bounds.right, bounds.bottom)
+            }
+        }
+        return if (fragments.size == lines.size && fragments.isNotEmpty()) {
+            reconstructOcrRows(fragments)
+        } else {
+            text
+        }
+    }
+
     private suspend fun <T> Task<T>.await(): T = suspendCancellableCoroutine { continuation ->
         addOnSuccessListener { result -> continuation.resume(result) }
         addOnFailureListener { error -> continuation.resumeWithException(error) }
@@ -75,5 +140,6 @@ class MlKitReceiptTextExtractor @Inject constructor(
 
     private companion object {
         const val PDF_OCR_LONG_EDGE = 2048
+        const val IMAGE_OCR_LONG_EDGE = 2400
     }
 }

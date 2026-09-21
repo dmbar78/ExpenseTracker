@@ -23,13 +23,20 @@ object ReceiptTextParser {
     private val isoDateRegex = Regex("""\b(\d{4})-(\d{1,2})-(\d{1,2})\b""")
     private val numericDateRegex = Regex("""\b(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b""")
     private val yearlessDateRegex = Regex("""\b(\d{1,2})[./](\d{1,2})(?![./]\d)\b""")
+    private val timeRegex = Regex("""\b\d{1,2}:\d{2}(?::\d{2})?\b""")
     private val amountLabels = listOf(
-        "grand total", "gesamtpreis", "gesamtbetrag", "total including vat", "amount paid",
-        "already paid", "balance due", "total", "paid", "amount", "flexpreis", "billett",
-        "reservierung", "reservation"
+        "grand total", "gesamtpreis", "gesamtbetrag", "bruttobetrag", "total including vat", "amount paid",
+        "already paid", "totale complessivo", "importo pagato", "somma", "summe",
+        "subtotaal", "totaal", "balance due", "total", "paid", "amount", "flexpreis",
+        "billett", "reservierung", "reservation"
+    )
+    private val embeddedAmountLabels = listOf(
+        "grand total", "gesamtpreis", "gesamtbetrag", "bruttobetrag", "total including vat", "amount paid",
+        "already paid", "totale complessivo", "importo pagato", "somma", "summe", "balance due"
     )
     private val negativeLabels = listOf(
-        "subtotal", "sub total", "total excluding", "excl.", "tax", "vat", "change", "cash", "tender"
+        "subtotal", "sub total", "subtotale", "zwsumme", "zw summe", "zwischensumme",
+        "total excluding", "excl.", "tax", "vat", "iva", "btw", "change", "cash", "tender"
     )
     private val currencyRegex = Regex("""(?:€|£|\$|\b(?:CHF|EUR|USD|GBP)\b)""", RegexOption.IGNORE_CASE)
 
@@ -58,29 +65,77 @@ object ReceiptTextParser {
             val lower = line.lowercase(Locale.ROOT)
             val previous = lines.getOrNull(index - 1)?.lowercase(Locale.ROOT).orEmpty()
             val twoLinesBack = lines.getOrNull(index - 2)?.lowercase(Locale.ROOT).orEmpty()
+            val next = lines.getOrNull(index + 1).orEmpty()
+            val nextLower = next.lowercase(Locale.ROOT)
             val header = lines.firstOrNull()?.lowercase(Locale.ROOT).orEmpty()
+            val excludedRanges = buildList {
+                addAll(isoDateRegex.findAll(line).map { it.range })
+                addAll(numericDateRegex.findAll(line).map { it.range })
+                addAll(timeRegex.findAll(line).map { it.range })
+            }
+            val matches = amountRegex.findAll(line)
+                .filterNot { match -> excludedRanges.any { range -> match.range.first in range } }
+                .toList()
+            val hasStrongLabel = embeddedAmountLabels.any { lower.contains(it) }
+            val hasDecimalAmount = matches.any { it.value.contains(',') || it.value.contains('.') }
+            val hasSommaContext = lower.contains("somma") || previous.contains("somma") ||
+                (twoLinesBack.contains("somma") && currencyRegex.containsMatchIn(previous))
+            val nextHasDecimalAmount = amountRegex.findAll(next).any { match ->
+                match.value.contains(',') || match.value.contains('.')
+            }
+            if (hasStrongLabel && !hasDecimalAmount && nextHasDecimalAmount) {
+                return@mapIndexedNotNull null
+            }
             val score = when {
                 negativeLabels.any { lower.contains(it) } -> -10
                 lower.contains("grand total") || lower.contains("gesamtpreis") ||
-                    lower.contains("gesamtbetrag") || lower.contains("total including vat") ||
-                    lower.contains("amount paid") || lower.contains("already paid") -> 7
+                    lower.contains("gesamtbetrag") || lower.contains("bruttobetrag") ||
+                    lower.contains("total including vat") ||
+                    lower.contains("amount paid") || lower.contains("already paid") ||
+                    lower.contains("totale complessivo") || lower.contains("importo pagato") ||
+                    lower.contains("somma") || lower.contains("summe") || lower.contains("totaal") -> 7
                 lower.contains("flexpreis") || lower.contains("balance due") -> 6
                 lower.contains("total") || lower.contains("amount") || lower.contains("billett") -> 5
                 lower.contains("reservierung") || lower.contains("reservation") -> 4
-                amountLabels.any { previous == it || previous.endsWith(": $it") } -> 6
-                amountLabels.any { twoLinesBack == it } && previous.none(Char::isDigit) -> 5
+                amountLabels.any { previous == it || previous.endsWith(": $it") } ||
+                    embeddedAmountLabels.any { previous.contains(it) } -> 6
+                !nextHasDecimalAmount && embeddedAmountLabels.any { nextLower.contains(it) } &&
+                    currencyRegex.containsMatchIn(next) -> 7
+                (amountLabels.any { twoLinesBack == it } || embeddedAmountLabels.any { twoLinesBack.contains(it) }) &&
+                    previous.none(Char::isDigit) -> 5
                 header.contains("amount") && index == 1 -> 5
                 currencyRegex.containsMatchIn(line) -> 4
                 else -> 0
             }
-            amountRegex.findAll(line).mapNotNull { match ->
+            if (hasSommaContext && !hasDecimalAmount) {
+                recoverMissingDecimalAmount(matches.map { it.value })?.let {
+                    return@mapIndexedNotNull Candidate(it, 7)
+                }
+            }
+            if (hasStrongLabel && currencyRegex.containsMatchIn(next) && amountRegex.find(next) == null
+            ) return@mapIndexedNotNull null
+            matches
+                .filterNot { match -> hasStrongLabel && !match.value.contains(',') && !match.value.contains('.') }
+                .mapNotNull { match ->
                 VoiceCommandParser.parseMoneyAmount(match.value)?.let { Candidate(it, score) }
-            }.lastOrNull()
+                }.lastOrNull()
         }.filter { it.score >= 4 }.toList()
 
         val bestScore = candidates.maxOfOrNull { it.score } ?: return null
         val best = candidates.filter { it.score == bestScore }.map { it.amount }.distinct()
         return best.singleOrNull()
+    }
+
+    private fun recoverMissingDecimalAmount(values: List<String>): BigDecimal? {
+        val numericValues = values.mapNotNull { it.toIntOrNull() }
+        val compact = numericValues.lastOrNull()?.takeIf { it >= 100 }
+        if (compact != null) return BigDecimal(compact).movePointLeft(2)
+        if (numericValues.size >= 3) {
+            val euros = numericValues[numericValues.lastIndex - 1]
+            val cents = numericValues.last()
+            if (cents in 0..99) return BigDecimal(euros).add(BigDecimal(cents).movePointLeft(2))
+        }
+        return null
     }
 
     internal fun parseDate(
@@ -107,9 +162,9 @@ object ReceiptTextParser {
                 else -> 0
             }
             line to score
-        }.sortedByDescending { it.second }.map { it.first }
+        }.sortedByDescending { it.second }
 
-        orderedLines.forEach { line ->
+        orderedLines.forEach { (line, score) ->
             isoDateRegex.find(line)?.let { match ->
                 dateMillis(match.groupValues[1], match.groupValues[2], match.groupValues[3], zoneId)?.let { return it }
             }
@@ -127,7 +182,7 @@ object ReceiptTextParser {
                 val day = if (monthFirst) second else first
                 localDateMillis(year, month, day, zoneId)?.let { return it }
             }
-            yearlessDateRegex.find(line)?.let { match ->
+            yearlessDateRegex.find(line)?.takeIf { score > 0 }?.let { match ->
                 val first = match.groupValues[1].toInt()
                 val second = match.groupValues[2].toInt()
                 val monthFirst = when {
